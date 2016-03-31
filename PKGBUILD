@@ -1,6 +1,6 @@
 pkgname=aurutils
 pkgver=0.2.2
-pkgrel=1
+pkgrel=2
 pkgdesc='helper tools for the aur'
 arch=('any')
 url=https://github.com/AladW/aurutils
@@ -14,12 +14,12 @@ optdepends=('devtools: aurbuild -c'
 	    'vifm: improved build file interaction')
 
 check() {
-  cd aurutils
+  cd "$pkgname-$pkgver"
   shellcheck -e 2016,2174 -x ./aur* repofind
 }
 
 package() {
-  cd aurutils
+  cd "$pkgname-$pkgver"
   install -d "$pkgdir"/usr/{bin,share{/licenses,/doc}/aurutils}
 
   install -m755 ./aur* repofind "$pkgdir"/usr/bin/
