@@ -26,43 +26,54 @@ reposelect() {
 	avail[$repo]=$server
     done < <(repofind)
 
-    if [[ ! ${avail[@]} ]]; then
-	error "No file:// repository found"
-        exit 2
-    elif ((${#avail[@]} > 1)); then
-	select repo in "${!avail[@]}"; do
+    if ((${#avail[@]} > 1)); then
+        select repo in "${!avail[@]}"; do
 	    break
 	done
+    elif [[ ${avail[@]} ]]; then
+        repo=${!avail[*]}
     else
-	repo=${!avail[*]}
+	error "No file:// repository found"
+        exit 2
     fi
 
     pool=${avail[$repo]#file://}
-    
-    if [[ ! -d $pool || ! -w $pool ]]; then
-	error "$pool: Directory is not writeable"
-	exit 1
+
+    if [[ ! -d $pool ]]; then
+        error "$pool: Not a directory"
+        exit 20
+    fi
+
+    if [[ ! -w $pool ]]; then
+        error "$pool: Permission denied"
+        exit 13
     fi
 
     msg2 "Using [$repo] repository"
     printf '%s %s\n' "$repo" "$pool"
 }
 
+namever() {
+    jshon -a -e results -a -e Name -u -p -e Version -u | xargs -n2
+}
+
 quickcheck() {
     declare pkg ver
     declare -A set_l set_r
 
-    # Check if the repo is configured
+    # Check if the repo is configured.
     pacconf --repo="$1" >/dev/null
-    
+
+    # If stdin is empty, expac -S lists all sync db packages.
     while read -r pkg ver; do
 	set_l[$pkg]=$ver
     done < <(pacsift --exact --repo="$1" <&- | xargs -r expac -S '%n %v')
-    
+
+    # Get remote versions from aursearch JSON output.
     if [[ ${set_l[@]} ]]; then
 	while read -r pkg ver; do
 	    set_r[$pkg]=$ver
-	done < <(aursearch -Fr "${!set_l[@]}" | jshon -a -e results -a -e Name -u -p -e Version -u | xargs -n2)
+	done < <(aursearch -Fr "${!set_l[@]}" | namever)
     else
 	error "No data available"
 	exit 61

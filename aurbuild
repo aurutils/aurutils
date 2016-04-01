@@ -72,8 +72,8 @@ if [[ ! $database || ! $pool || ! $root ]]; then
 fi
 
 if [[ ! -r $1 ]]; then
-    error "$1: File is not readable"
-    exit 1
+    error "$1: Permission denied"
+    exit 13
 fi
 
 # Read from FD 3 to choose providers with makepkg (#21)

@@ -1,0 +1,35 @@
+.TH AURSIFT 1 2016-03-30 AURUTILS
+.SH NAME
+aursift \- filter packages in the Arch Linux repositories
+.
+.SH SYNOPSIS
+.B aursift
+.OP \-S target
+.OP \-U target
+.
+.SH DESCRIPTION
+A target is usually a package name, or a (space-separated) string of
+package base and package version. Targets can be provided on stdin.
+.
+.SH OPERATIONS
+.B \-S
+.RS
+Check if \fIpkgname \fRis in the official Arch Linux repositories, and
+print it to stdout if not. Virtual packages, when found, are solved
+and printed to stderr.
+.RE
+.
+.B \-U
+.RS
+Compare \fIpkgbase pkgver \fRagainst packages from any configured
+repository. Names of updated package bases are printed to stdout.
+.RE
+.
+.SH SEE ALSO
+.BR pacsift (1),
+.BR expac (1)
+.
+.SH AUTHORS
+.MT https://github.com/AladW
+Alad Wenter
+.ME

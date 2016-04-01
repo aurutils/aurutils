@@ -63,11 +63,6 @@ sift() {
     grep -Fxvf <(printf '%s\n' "${repo[@]}") <(printf '%s\n' "${all[@]}")
 }
 
-# Simulate expac '%e %n %v' (requires expac 5-1-ge629dec)
-pacbase() {
-    pacinfo | awk '/^Name:/ {n = $2} /^Base:/ {e = $2} /^Version:/ {v = $2; print e, n, v}'
-}
-
 # Read "pkgbase pkgver" strings from stdin, find and compare
 # repository versions, and print updated packages on stdout.
 prepare() {
@@ -91,13 +86,13 @@ prepare() {
         else
             repo[$base]=$ver
         fi
-    done < <(pacsift --any --sync --exact "${siftargs[@]}" <&- | pacbase)
+    done < <(pacsift --any --sync --exact "${siftargs[@]}" <&- | xargs -r expac -S '%e %n %v')
 
     for base in "${!aur[@]}"; do       
-        check=$(vercmp "${repo[$base]:-0}" "${aur[$base]}")
+        check=$(vercmp "${repo[$base]:-null}" "${aur[$base]}")
 
         case "$check" in
-            -1) msg2 "$base ${repo[$base]:-0} -> ${aur[$base]}" ;;
+            -1) msg2 "$base ${repo[$base]:-null} -> ${aur[$base]}" ;;
             0)  msg "$base is up-to-date"
                 printf '%s\n' "$base" ;;
             1)  warning "$base ${repo[$base]} is newer than ${aur[$base]}"

@@ -54,12 +54,17 @@ request() {
         fi
     done < pair_base
 
-    # all -> AUR, remove duplicates (total order)
-    grep -Fxf list_base list_tsort | awk '{if (!x[$1]++) print $1}' > list_aur
+    # all -> AUR (total order)
+    grep -Fxf list_base list_tsort | awk -v arch="$(uname -m)" '{
+        if(arch == "i686")
+            gsub(/^lib32-/,"")
+        if(!seen[$1]++)
+            print $1
+    }' > list_aur
 
     # append version string
     while read -r name; do
-        awk "/^$name/ {print \$1, \$2; exit}" pair_version
+        awk -v n="$name" '{if($1 == n) {print; exit};}' pair_version
     done < list_aur
 }
 
@@ -95,7 +100,7 @@ chain() {
     done
 
     if ((a > 100)); then
-        error "Total requests: $((++a)) (exceeded maximum)"
+        error "Total requests: $((++a)) (out of range)"
         exit 34
     fi
 }

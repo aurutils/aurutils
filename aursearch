@@ -1,12 +1,12 @@
 #!/bin/bash
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-set -o pipefail
+set -e
 
 argv0=aursearch
 aurweb="https://aur.archlinux.org"
 cache="${XDG_CACHE_HOME:-$HOME/.cache}/$argv0"
 rpc="$aurweb/rpc/?v=5&type=info"
-tmp=$(mktemp -d) || exit
+tmp=$(mktemp -d)
 
 readonly argv0 aurweb cache rpc tmp
 
@@ -19,7 +19,7 @@ stamp() {
         # aurweb lacks a "Last-Modified" field, so use head to close the
         # pipe after reading one line.
         # XXX: curl returns 141, noticed by pipefail
-        stamp_r=$(curl -s "$1" | gzip -cd | head -1 | awk -F, '{print $3}')
+        stamp_r=$(curl -sS "$1" | gzip -cd 2>/dev/null | head -1 | awk -F, '{print $3}')
 
         if [[ $stamp_r ]]; then
             stamp_r=$(date -d "$stamp_r" '+%s')
@@ -45,13 +45,12 @@ match() {
         printf '%s\n' "$@"
     else
         stamp "$aurweb"/packages.gz
-        if ! grep -P -- "$1" packages; then
-            error "No matches found"
-            exit 2
-        fi
+        grep -P -- "$1" packages
     fi
 }
 
+# aurweb only takes GET requests, so split arguments by 150 to prevent
+# HTTP 414 errors.
 split() {
     awk -v rpc="$rpc" '{
         # URL encode @ and +
@@ -66,9 +65,14 @@ split() {
 }
 
 getjson() {
-    aria2c -s 16 -x 16 -j 32 -q -d "$tmp" -i -
-    # Merge to a single JSON structure.
-    awk '{print}' "$tmp"/index.html* | sed -e '1i[' -e '$!s/$/,/' -e '$a]'
+    # If stdin is empty, aria reports "No files to download" (even
+    # with -q) and returns 0.
+    aria2c -s 16 -x 16 -j 32 -d "$tmp" -i - >/dev/null
+
+    if [[ -s "$tmp"/index.html ]]; then
+        # Merge to a single JSON structure.
+        awk '{print}' "$tmp"/index.html* | sed -e '1i[' -e '$!s/$/,/' -e '$a]'
+    fi
 }
 
 brief() {
@@ -81,7 +85,7 @@ brief() {
         # libmakepkg misses PURPLE and CYAN
         printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s)\n    %s\n" \
                "$Name" "$Version" "$NumVotes" "$Description"
-    done < <(jshon -C -a -e results -a -e Name -u -p -e Version \
+    done < <(jshon -Q -C -a -e results -a -e Name -u -p -e Version \
                    -u -p -e NumVotes -u -p -e Description -u)
 }
 
@@ -111,7 +115,7 @@ long() {
         printf "First Submitted: %s\n" "$(date -d @"$FirstSubmitted" '+%c')"
         printf "Last Modified:   %s\n" "$(date -d @"$LastModified" '+%c')"
         printf '%s\n'
-    done < <(jshon -C -a -e results -a -e Name -u -p -e PackageBase -u -p -e Version \
+    done < <(jshon -Q -C -a -e results -a -e Name -u -p -e PackageBase -u -p -e Version \
                    -u -p -e Description -u -p -e URL -u -p -e NumVotes -u -p -e Popularity \
                    -u -p -e OutOfDate -u -p -e Maintainer -u -p -e FirstSubmitted \
                    -u -p -e LastModified -u)
@@ -119,7 +123,7 @@ long() {
 
 trap 'rm -rf "$tmp"' EXIT
 
-source /usr/share/makepkg/util.sh || exit
+source /usr/share/makepkg/util.sh
 
 [[ -t 2 ]] && colorize
 
@@ -141,7 +145,7 @@ fi
 
 # Operations are done in the cache directory, unless said otherwise.
 mkdir -p "$cache" -m 700
-cd "$cache" || exit
+cd "$cache"
 
 if ((nameonly)); then
     match "$1"

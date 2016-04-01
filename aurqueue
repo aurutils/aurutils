@@ -3,7 +3,7 @@
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
-tmp=$(mktemp -d) || exit 1
+tmp=$(mktemp -d) || exit
 
 # Determine the path to each .SRCINFO, output to stdout using null
 # delimitation to prevent ARG_MAX issues.
