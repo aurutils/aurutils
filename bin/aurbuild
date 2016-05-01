@@ -16,10 +16,10 @@ mkchr_args=(-cu)
 # that pacman now considers packages inside the official repositories
 # as "local", and warns if they are newer than a custom counterpart.
 build_local() {
-    #global database pool root mkpkg_args
+    #global database pool root sign mkpkg_args
 
-    PKGDEST="$pool" LC_MESSAGES=C makepkg "${mkpkg_args[@]}"
-    repose -vf "$database" -r "$root" -p "$pool"
+    PKGDEST="$pool" LC_MESSAGES=C makepkg "${mkpkg_args[@]}" "$sign"
+    repose "$sign" -vf "$database" -r "$root" -p "$pool"
 
     printf '%s\n%s\n' "[$database]" "$(pacconf --repo="$database")" > "$tmp"/config
     sudo pacman -Syu --config="$tmp"/config
@@ -30,13 +30,13 @@ build_local() {
 # '/pkgdest' is hardcoded in makechrootpkg, packages are rebuilt even
 # if already available.
 build_chroot() {
-    #global CHROOT database pool root mkchr_args
+    #global CHROOT database pool root sign mkchr_args
 
     # Skip verification checks in the chroot instance as .gnupg paths
     # are hardcoded in makechrootpkg. Signatures are still verified
     # outside the chroot. Preserve PKGDEST with sudo -E, see FS#44827.
-    sudo -E PKGDEST="$pool" makechrootpkg "${mkchr_args[@]}" -d "$pool" -r "$CHROOT" -- --skippgpcheck
-    repose -vf "$database" -r "$root" -p "$pool"
+    sudo -E PKGDEST="$pool" makechrootpkg -r "$CHROOT" -d "$pool" "${mkchr_args[@]}" -- "$sign"
+    repose "$sign" -vf "$database" -r "$root" -p "$pool"
 }
 
 # If a package is rebuilt (same pkgver), checksums in the database no
@@ -56,6 +56,10 @@ clean_cache() {
     done < <(makepkg --packagelist)
 }
 
+usage() {
+    plain "Usage: $argv0 [-c] [-s] -a <queue> -d <database> -p <pool> -r <root> [--] [<makepkg/makechrootpkg args>]"
+}
+
 trap 'exit' INT
 trap 'rm -rf "$tmp"' EXIT
 
@@ -63,17 +67,45 @@ source /usr/share/makepkg/util.sh
 
 [[ -t 2 ]] && colorize
 
-while getopts :a:cd:p:r: OPT; do
+while getopts :a:cd:p:r:s OPT; do
     case $OPT in
-        a|+a) queue="$OPTARG"    ;;
-        c|+c) build=build_chroot ;;
-        d|+d) database="$OPTARG" ;;
-        p|+p) pool="$OPTARG"     ;;
-        r|+r) root="$OPTARG"     ;;
-        *) plain "usage: $argv0 [-c] -a <queue> -d <database> -p <pool> -r <root> [--] [makepkg args]"
-           exit 1 ;;
+        a) queue="$OPTARG"    ;;
+        c) build=build_chroot ;;
+        d) database="$OPTARG" ;;
+        p) pool="$OPTARG"     ;;
+        r) root="$OPTARG"     ;;
+        s) sign="--sign"      ;;
+        :) case $OPTARG in
+                a) error "$argv0: No package queue specified (-a)"; usage; exit 1 ;;
+                d) error "$argv0: No repository database specified (-d)"; usage; exit 1 ;;
+                p) error "$argv0: No package pool specified (-p)"; usage; exit 1 ;;
+                r) error "$argv0: No repository root specified (-r)"; usage; exit 1 ;;
+            esac ;;
+        ?) error "$argv0: Option not recognized (-$OPTARG)"; usage; exit 1; ;;
     esac
 done
+
+# Validate arguments
+re_blank='^[[:space:]]*$'
+if [[ $queue =~ $re_blank || $database =~ $re_blank || $pool =~ $re_blank || $root =~ $re_blank ]]; then
+    error "$argv0: Missing arguments" && usage
+    exit 1
+elif [[ ! -r $queue ]]; then
+    error "$argv0: $queue: Permission denied"
+    exit 13
+elif [[ ! -d $pool ]]; then
+    error "$argv0: $pool: not a directory"
+    exit 20
+elif [[ ! -w $pool ]]; then
+    error "$argv0: $pool: permission denied"
+    exit 13
+elif [[ ! -d $root ]]; then
+    error "$argv0: $root: not a directory"
+    exit 20
+elif [[ ! -w $root ]]; then
+    error "$argv0: $root: permission denied"
+    exit 13
+fi
 
 # Pass all arguments after -- to makepkg/makechrootpkg.
 if [[ $build == build_chroot ]]; then
@@ -82,14 +114,10 @@ else
     mkpkg_args+=("${@:$OPTIND}")
 fi
 
-if [[ ! $database || ! $pool || ! $root ]]; then
-    error "$argv0: Missing arguments (-d, -p, -r)"
-    exit 1
-fi
-
-if [[ ! -r $queue ]]; then
-    error "$argv0: $queue: Permission denied"
-    exit 13
+if [[ $sign == --sign ]]; then
+    # Pass socket and environment to the build chroot.
+    mkchr_args+=("-d" "$HOME/.gnupg/S.gpg-agent:/build/.gnupg/S.gpg-agent")
+    mkchr_args+=("-e" "GPG_TTY=$(tty)" "-e" "DISPLAY=$DISPLAY")
 fi
 
 if [[ $build == build_chroot ]]; then
@@ -104,6 +132,10 @@ if [[ $build == build_chroot ]]; then
     pacconf --raw > "$tmp"/pacman.conf
     sudo cp -v "$tmp"/pacman.conf "$CHROOT"/root/etc/pacman.conf
 fi
+
+# Canonicalise paths
+pool="$(realpath "${pool}")"
+root="$(realpath "${root}")"
 
 # Read from FD 3 to choose providers with makepkg (#21)
 exec 3< "$queue"
