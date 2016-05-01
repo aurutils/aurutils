@@ -56,6 +56,11 @@ clean_cache() {
     done < <(makepkg --packagelist)
 }
 
+usage() {
+    plain "Usage: $argv0 [-c] -a <queue> -d <database> -p <pool> -r <root> [--] [<makepkg/makechrootpkg args>]"
+}
+
+
 trap 'exit' INT
 trap 'rm -rf "$tmp"' EXIT
 
@@ -65,15 +70,42 @@ source /usr/share/makepkg/util.sh
 
 while getopts :a:cd:p:r: OPT; do
     case $OPT in
-        a|+a) queue="$OPTARG"    ;;
-        c|+c) build=build_chroot ;;
-        d|+d) database="$OPTARG" ;;
-        p|+p) pool="$OPTARG"     ;;
-        r|+r) root="$OPTARG"     ;;
-        *) plain "usage: $argv0 [-c] -a <queue> -d <database> -p <pool> -r <root> [--] [makepkg args]"
-           exit 1 ;;
+        a) queue="$OPTARG"    ;;
+        c) build=build_chroot ;;
+        d) database="$OPTARG" ;;
+        p) pool="$OPTARG"     ;;
+        r) root="$OPTARG"     ;;
+        :) case $OPTARG in
+                a) error "$argv0: No package queue specified (-a)"; usage; exit 1 ;;
+                d) error "$argv0: No repository database specified (-d)"; usage; exit 1 ;;
+                p) error "$argv0: No package pool specified (-p)"; usage; exit 1 ;;
+                r) error "$argv0: No repository root specified (-r)"; usage; exit 1 ;;
+            esac ;;
+        ?) error "$argv0: Option not recognized (-$OPTARG)"; usage; exit 1; ;;
     esac
 done
+
+# Validate arguments
+re_blank='^[[:space:]]*$'
+if [[ $queue =~ $re_blank || $database =~ $re_blank || $pool =~ $re_blank || $root =~ $re_blank ]]; then
+    error "$argv0: Missing arguments" && usage
+    exit 1
+elif [[ ! -r $queue ]]; then
+    error "$argv0: $queue: Permission denied"
+    exit 13
+elif [[ ! -d $pool ]]; then
+    error "$argv0: $pool: not a directory"
+    exit 20
+elif [[ ! -w $pool ]]; then
+    error "$argv0: $pool: permission denied"
+    exit 13
+elif [[ ! -d $root ]]; then
+    error "$argv0: $root: not a directory"
+    exit 20
+elif [[ ! -w $root ]]; then
+    error "$argv0: $root: permission denied"
+    exit 13
+fi
 
 # Pass all arguments after -- to makepkg/makechrootpkg.
 if [[ $build == build_chroot ]]; then
@@ -82,15 +114,6 @@ else
     mkpkg_args+=("${@:$OPTIND}")
 fi
 
-if [[ ! $database || ! $pool || ! $root ]]; then
-    error "$argv0: Missing arguments (-d, -p, -r)"
-    exit 1
-fi
-
-if [[ ! -r $queue ]]; then
-    error "$argv0: $queue: Permission denied"
-    exit 13
-fi
 
 if [[ $build == build_chroot ]]; then
     CHROOT=/var/lib/aurbuild
