@@ -133,6 +133,10 @@ if [[ $build == build_chroot ]]; then
     sudo cp -v "$tmp"/pacman.conf "$CHROOT"/root/etc/pacman.conf
 fi
 
+# Canonicalise paths
+pool="$(realpath "${pool}")"
+root="$(realpath "${root}")"
+
 # Read from FD 3 to choose providers with makepkg (#21)
 exec 3< "$queue"
 
