@@ -73,7 +73,7 @@ source /usr/share/makepkg/util.sh
 
 [[ -t 2 ]] && colorize
 
-while getopts a:cd:p:r:s OPT; do
+while getopts a:cd:p:r:sjJzZ OPT; do
     case $OPT in
         a|+a) queue="$OPTARG"    ;;
         c|+c) chroot=1           ;;
@@ -81,7 +81,11 @@ while getopts a:cd:p:r:s OPT; do
         p|+p) pool="$OPTARG"     ;;
         r|+r) root="$OPTARG"     ;;
         s|+s) sign=1             ;;
-        *) plain "usage: $argv0 [-cs] -a <queue> -d <repo> -p <pool> -r <root> [--] ARGS"
+        j|+j) bzip2=1            ;;
+        J|+J) xz=1               ;;
+        z|+z) gzip=1             ;;
+        Z|+Z) compress=1         ;;
+        *) plain "usage: $argv0 [-csjJzZ] -a <queue> -d <repo> -p <pool> -r <root> [--] ARGS"
            exit 1 ;;
     esac
 done
@@ -98,6 +102,16 @@ fi
 
 if ! pacconf --repo="$database" >/dev/null; then
     exit 22
+fi
+
+if ((bzip2)); then
+    r_args+=(-j)
+elif ((xz)); then
+    r_args+=(-J)
+elif ((gzip)); then
+    r_args+=(-z)
+elif ((compress)); then
+    r_args+=(-Z)
 fi
 
 # Canonicalize paths to avoid issues with chdir and relative paths.

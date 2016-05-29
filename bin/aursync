@@ -119,7 +119,7 @@ source /usr/share/makepkg/util.sh
 
 [[ -t 2 ]] && colorize
 
-while getopts :B:cdfLnrstTu-: OPT; do
+while getopts :B:cdfLnrstTujJzZ-: OPT; do
     case "$OPT" in
         B|+B) bindro=1
               newdir=$OPTARG ;;
@@ -132,6 +132,10 @@ while getopts :B:cdfLnrstTu-: OPT; do
         t|+t) snapshot=1     ;;
         T|+T) chtemp=1       ;;
         u|+u) update=1       ;;
+        j|+j) bzip2=1        ;;
+        J|+J) xz=1           ;;
+        z|+z) gzip=1         ;;
+        Z|+Z) compress=1     ;;
         -) case "$OPTARG" in
                chroot)    chroot=1    ;;
                ignore)    ignore=1    ;;
@@ -273,6 +277,16 @@ fi
 
 if ((sign)); then
     aurbuild_args+=(-s)
+fi
+
+if ((bzip2)); then
+    aurbuild_args+=(-j)
+elif ((xz)); then
+    aurbuild_args+=(-J)
+elif ((gzip)); then
+    aurbuild_args+=(-z)
+elif ((compress)); then
+    aurbuild_args+=(-Z)
 fi
 
 aurbuild_args+=(-d "$repo" -r "$root" -p "$root" -a "$tmp"/queue)
