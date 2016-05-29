@@ -4,7 +4,7 @@ aurbuild \- build packages to a local repository
 
 .SH SYNOPSIS
 .SY aurbuild
-.OP \-cs
+.OP \-csjJzZ
 .OP \-a queue
 .OP \-d database
 .OP \-p pool
@@ -53,6 +53,26 @@ The root for the repository where the database files will live.
 .B \-s
 .RS
 Sign built packages and the database with gpg.
+.RE
+
+.B \-j
+.RS
+Compress the resulting database with bzip2(1).
+.RE
+
+.B \-J
+.RS
+Compress the resulting database with xz(1).
+.RE
+
+.B \-z
+.RS
+Compress the resulting database with gzip(1).
+.RE
+
+.B \-Z
+.RS
+Compress the resulting database with compress(1).
 .RE
 
 .SH NOTES

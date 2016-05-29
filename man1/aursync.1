@@ -7,7 +7,7 @@ aursync \- download and build aur packages automatically
 .OP \-c
 .OP \-B newdir
 .OP \-u
-.OP \-dfLnstT
+.OP \-dfLnstTjJzZ
 .OP pkgname...
 .YS
 
@@ -109,6 +109,21 @@ Check a built package with namcap. (\fImakechrootpkg -n\fR)
 .B \-T
 .RS
 Build in a temporary directory. (\fImakechrootpkg -T\fR)
+.RE
+
+.B \-j
+.RS
+Compress the resulting database with bzip2(1).
+.RE
+
+.B \-J
+.RS
+Compress the resulting database with xz(1).
+.RE
+
+.B \-z
+.RS
+Compress the resulting database with gzip(1).
 .RE
 
 .SH ENVIRONMENT
