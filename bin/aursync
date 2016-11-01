@@ -15,6 +15,10 @@ readonly PS4 argv0 aurweb tmp XDG_CACHE_HOME AURDEST
 declare -i view=1 build=1 chkver=1 fetch=1
 declare -i update=0 snapshot=0 sign=0 rotate=0 chroot=0
 declare -i bindro=0 force=0 keep=0 logdest=0 namcap=0 chtemp=0
+declare -i pubkeypin=0
+
+curl_args=(--cert-status -fLsS --remote-name-all)
+git_clone_args=()
 
 # stdin: /path/to/repo.git
 clone() {
@@ -34,6 +38,13 @@ clone() {
                 warning "remote $remote does not match $repo"
             fi
 
+            # Update the config to get the newest pubkey. Is this smart or not efficient enough?
+            if ((pubkeypin)); then
+                git config http.pinnedpubkey "$AURUTILS_PINNED_AUR_TLS_PUBKEY"
+            else
+                git config --unset http.pinnedpubkey
+            fi
+
             git fetch -v # returns 0 even if nothing was fetched
 
             if [[ $(git rev-parse HEAD) != $(git rev-parse '@{upstream}') ]]; then
@@ -44,7 +55,7 @@ clone() {
 
             cd_safe "$startdir"
         else
-            git clone "$repo"
+            git clone "${git_clone_args[@]}" "$repo"
         fi
     done
 }
@@ -54,12 +65,12 @@ download() {
     declare gzdir=$1 startdir=$PWD
     cd_safe "$gzdir"
 
-    if type -P aria2c >/dev/null 2>&1; then
+    if ((pubkeypin==0)) && type -P aria2c >/dev/null 2>&1; then
         aria2c --stderr=true -i -
     elif type -P parallel >/dev/null 2>&1; then
-        parallel --will-cite -X -j +5 --nice 10 --halt soon,fail=1 "curl -fLsS --remote-name-all --cert-status {}"
+        parallel --will-cite -X -j +5 --nice 10 --halt soon,fail=1 "curl ${curl_args[*]} {}"
     else
-        xargs -I{} curl -fLsS --remote-name-all --cert-status {}
+        xargs -I{} curl "${curl_args[@]}" {}
     fi
 
     declare a
@@ -225,6 +236,12 @@ else
     ((logdest)) && makepkg_args+=(-L)
     ((namcap))  && makepkg_args+=(--noconfirm)
     ((keep))    || makepkg_args+=(-r)
+fi
+
+if [[ "$AURUTILS_PINNED_AUR_TLS_PUBKEY" ]]; then
+    pubkeypin=1
+    curl_args+=(--pinnedpubkey "$AURUTILS_PINNED_AUR_TLS_PUBKEY")
+    git_clone_args+=(--config http.pinnedpubkey "$AURUTILS_PINNED_AUR_TLS_PUBKEY")
 fi
 
 if ((sign)); then
