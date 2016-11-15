@@ -144,7 +144,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-c] [-B newdir] [-fLnstT] [-u] [--] pkgname..."
+    plain "usage: $argv0 [-c] [-B newdir] [-CfLnstT] [-u] [--] pkgname..."
     exit 1
 }
 
@@ -160,9 +160,9 @@ if getopt -T || (($? != 4)); then
     exit 22
 fi
 
-longopts=allan,chroot,force,keep,log,help,no-build,no-fetch,no-ver,no-view,sign,tar,temp,update,repo:
+longopts=allan,chroot,container,force,keep,log,help,no-build,no-fetch,no-ver,no-view,sign,tar,temp,update,repo:
 
-if TEMP=$(getopt -o B:cfhkLnstTu -l "$longopts" -n "$argv0" -- "$@"); then
+if TEMP=$(getopt -o B:cCfhkLnstTu -l "$longopts" -n "$argv0" -- "$@"); then
     eval set -- "$TEMP"
 else
     usage
@@ -170,23 +170,24 @@ fi
 
 while true; do
     case "$1" in
-        -B|--bind)   bindro=1;
-                     newdir=$2;  shift 2 ;;
-        -c|--chroot) chroot=1;   shift ;;
-        -f|--force)  force=1;    shift ;;
-        -k|--keep)   keep=1;     shift ;;
-        -L|--log)    logdest=1;  shift ;;
-        -n)          namcap=1;   shift ;;
-        -s|--sign)   sign=1;     shift ;;
-        -T|--temp)   chtemp=1;   shift ;;
-        -u|--update) update=1;   shift ;;
-        -t|--tar)    snapshot=1; shift ;;
-        --allan)     rotate=1;   shift ;;
-        --no-build)  build=0;    shift ;;
-        --no-fetch)  fetch=0;    shift ;;
-        --no-ver)    chkver=0;   shift ;;
-        --no-view)   view=0;     shift ;;
-        --repo)      repo=$2;    shift 2 ;;
+        -B|--bind)      bindro=1;
+                        newdir=$2;     shift 2 ;;
+        -c|--chroot)    chroot=1;      shift ;;
+        -C|--container) container=$2;  shift 2 ;;
+        -f|--force)     force=1;       shift ;;
+        -k|--keep)      keep=1;        shift ;;
+        -L|--log)       logdest=1;     shift ;;
+        -n)             namcap=1;      shift ;;
+        -s|--sign)      sign=1;        shift ;;
+        -T|--temp)      chtemp=1;      shift ;;
+        -u|--update)    update=1;      shift ;;
+        -t|--tar)       snapshot=1;    shift ;;
+        --allan)        rotate=1;      shift ;;
+        --no-build)     build=0;       shift ;;
+        --no-fetch)     fetch=0;       shift ;;
+        --no-ver)       chkver=0;      shift ;;
+        --no-view)      view=0;        shift ;;
+        --repo)         repo=$2;       shift 2 ;;
         --) shift
             break ;;
         -h|--help)
@@ -212,6 +213,7 @@ fi
 if ((chroot)); then
     aurbuild_args+=(-c) makepkg_args=(-cu)
 
+    [[ $container ]] && aurbuild_args+=(-C "$container")
     ((bindro))  && makepkg_args+=(-D "$newdir")
     ((chtemp))  && makepkg_args+=(-T)
     ((namcap))  && makepkg_args+=(-n)
