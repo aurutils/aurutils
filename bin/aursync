@@ -253,7 +253,7 @@ if ((build)) || ((update)); then
 
     if ((update)); then        
         shopt -s lastpipe
-        aurcheck -q "$repo" -r "$root" | readarray -t new
+        aurcheck -q -r "$root" "$repo" | readarray -t new
 
         shopt -u lastpipe
         set -- "$@" "${new[@]}"
