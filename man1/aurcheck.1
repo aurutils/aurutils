@@ -4,13 +4,19 @@ aurcheck \- check packages for AUR updates
 
 .SH SYNOPSIS
 .SY aurcheck
-.OP \-aq
+.OP \-acq
 .OP \-d repository
+.OP \-r root
 
 .SH OPTIONS
 .B \-a
 .RS
 Also show packages which are older or of the same version.
+.RE
+
+.B \-c
+.RS
+Compares the repository
 .RE
 
 .B \-d
@@ -23,6 +29,11 @@ field, \fIpkgver\fR as the second, both separated by blanks).
 .B \-q
 .RS
 Only show package names.
+.RE
+
+.B \-r
+.RS
+Path for the repository root. Used in conjuction with -c
 .RE
 
 .SH SEE ALSO
