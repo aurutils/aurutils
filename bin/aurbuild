@@ -40,7 +40,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-cs] -d <database> [-Car] [--] <makepkg args>"
+    plain "usage: $argv0 [-cfs] -d <database> [-a queue] [-C container] [-r root] [--] <makepkg args>"
     exit 1
 }
 
@@ -144,7 +144,7 @@ while read -r -u "$fd" pkg _; do
     cd_safe "$basedir/$pkg"
 
     if ((find_pkg)); then
-        while IFS= read -r -d $'\0'; do
+        while IFS= read -d $'\0' -r; do
             error "A package has already been built: $(printf '%q' "$REPLY") (use -f to overwrite)"
             exit 1
         done < <(makepkg --packagelist | xargs -I{} find "$root" -name '{}*' -print0)
