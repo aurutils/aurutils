@@ -6,7 +6,7 @@ set -e
 
 declare -a gpg_args=(--detach-sign --no-armor --verbose --batch)
 declare -a makechrootpkg_args=(-cnu) makepkg_args=(-Lcrs)
-declare -i chroot=0 sign_pkg=0 find_pkg=1
+declare -i chroot=0 sign_pkg=0 force=0
 
 conf_section() {
     printf '[%s]\n' "$1"
@@ -59,7 +59,7 @@ while getopts a:cC:d:fr:s OPT; do
         c) chroot=1           ;;
         C) container=$OPTARG  ;;
         d) database=$OPTARG   ;;
-        f) find_pkg=0         ;;
+        f) force=1            ;;
         r) root=$OPTARG       ;;
         s) sign_pkg=1         ;;
         *) usage              ;;
@@ -143,7 +143,7 @@ fi
 while read -r -u "$fd" pkg _; do
     cd_safe "$basedir/$pkg"
 
-    if ((find_pkg)); then
+    if ((!force)); then
         while IFS= read -d $'\0' -r; do
             error "A package has already been built: $(printf '%q' "$REPLY") (use -f to overwrite)"
             exit 1
