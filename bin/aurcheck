@@ -5,72 +5,22 @@ set -o pipefail
 
 declare -i geq=0 cmp=0 ver=1
 
-list_repo_equal() {
-    declare -r root=$1 db=$2
-
-    sort -k 1b,1 | join -a 1 - <(list_repo "$root/$db".db | sort -k 1b,1) | while {
-        read -r pkg v_in v_cmp _
-    } do
-        if [[ $v_cmp ]]; then
-            if [[ $v_in != "$v_cmp" ]]; then
-                op=$(vercmp "$v_cmp" "$v_in")
-            else
-                op=0
-            fi
+my_vercmp() {
+    declare -r v_in=$1 v_cmp=$2
+    
+    if [[ $v_cmp ]]; then
+        if [[ $v_in != "$v_cmp" ]]; then
+            vercmp "$v_cmp" "$v_in"
         else
-            # Package was found on an unpairable line, and is therefore
-            # not included in the database.
-	    v_cmp=0; op=-1
+            printf '%d' '0'
         fi
-
-        case $op in
-            -1) msg2 "$pkg $v_cmp -> $v_in" ;;
-             0) printf '%s\n' "$pkg" ;;
-             1) warning "$pkg $v_cmp is newer than $v_in" ;;
-        esac
-    done
-}
-
-quickcheck() {
-    declare -ri ver=$1 geq=$2
-
-    tee "$tmp"/stdin | awk '{print $1}' | aurver > "$tmp"/aur.tsv || exit
-
-    sort -k 1b,1 "$tmp"/stdin | join -a 1 - <(sort -k 1b,1 "$tmp"/aur.tsv) | while {
-        read -r pkg v_in v_cmp _
-    } do
-        if [[ $v_cmp ]]; then
-            if [[ $v_in != "$v_cmp" ]]; then
-                op=$(vercmp "$v_in" "$v_cmp")
-            else
-                op=0
-            fi
-        else
-            if ((geq > 1)); then
-                v_cmp=0; op=1
-            else
-                continue
-            fi
-        fi
-
-        if ((!geq && op > -1)); then
-            continue
-        fi
-
-        if ((!ver)); then
-            printf '%s\n' "$pkg"
-        else
-            case "$op" in
-                -1) printf '%s %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-                 0) printf '%s %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
-                 1) printf '%s %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-            esac
-        fi
-    done
+    else
+        printf '%d' '2'
+    fi
 }
 
 aurver() {
-    xargs -r aursearch -Fr | jq -er '.[].results[] | [.Name,.Version,.Maintainer] | @tsv'
+    jq -er '.[].results[] | [.Name,.Version] | @tsv'
 }
 
 syncver() {
@@ -81,6 +31,46 @@ syncver() {
 list_repo() {
     bsdcat "$1" | awk '/%NAME%/    {getline; printf("%s\t", $1)}
                        /%VERSION%/ {getline; printf("%s\n", $1)}'
+}
+
+list_repo_equal() {
+    sort -k 1b,1 | join -a 1 - <(list_repo "$1" | sort -k 1b,1) | while {
+        read -r pkg v_in v_cmp _
+    } do
+        op=$(my_vercmp "$v_in" "$v_cmp")
+ 
+        case $op in
+          -1|2) msg2 "$pkg ${v_cmp:-0} -> $v_in"          ;;
+             0) printf '%s\n' "$pkg"                      ;;
+             1) warning "$pkg $v_cmp is newer than $v_in" ;;
+        esac
+    done
+}
+
+quickcheck() {
+    declare -ri ver=$1 geq=$2   
+    tee "$tmp"/db | awk '{print $1}' | xargs -r aursearch -Fr | aurver > "$tmp"/aur
+
+    sort -k 1b,1 "$tmp"/db | join -a 1 - <(sort -k 1b,1 "$tmp"/aur) | while {
+        read -r pkg v_in v_cmp _
+    } do
+        op=$(my_vercmp "$v_in" "$v_cmp")
+        
+        if ((op == 2 && geq < 2)) || ((op > -1 && !geq)); then
+            continue
+        fi
+
+        if ((!ver)); then
+            printf '%s\n' "$pkg"
+        else
+            case "$op" in
+                -1) printf '%s %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+                 0) printf '%s %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
+                 1) printf '%s %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+                 2) printf '%s (not available)' "$pkg"             ;;
+            esac
+        fi
+    done
 }
 
 trap_exit() {
@@ -94,7 +84,7 @@ usage() {
     exit 1
 }
 
-readonly -f list_repo_equal quickcheck aurver syncver list_repo trap_exit usage
+readonly -f my_vercmp aurver syncver list_repo list_repo_equal quickcheck trap_exit usage
 
 source /usr/share/makepkg/util.sh || exit
 
@@ -105,12 +95,12 @@ fi
 unset db root
 while getopts :acd:qr: OPT; do
     case $OPT in
-        a) ((geq++)) ;;
-        c) cmp=1 ;;
-        d) db=$OPTARG ;;
-        q) ver=0 ;;
+        a) ((geq++))    ;;
+        c) cmp=1        ;;
+        d) db=$OPTARG   ;;
+        q) ver=0        ;;
         r) root=$OPTARG ;;
-        *) usage ;;
+        *) usage        ;;
     esac
 done
 shift $((OPTIND - 1))
@@ -119,15 +109,15 @@ OPTIND=1
 tmp=$(mktemp -dt "$argv0".XXXXXXXX) || exit
 trap 'trap_exit' EXIT
 
-if [[ -v db ]]; then
-    if ((cmp)); then
-        root=${root-$(pacconf --single --repo="$db" Server)} || exit
-        list_repo_equal "${root#*://}" "$db"
-    else
-        syncver "$db" | quickcheck "$ver" "$geq"
-    fi
+if ((cmp)); then
+    root=${root-$(pacconf --single --repo="$db" Server)} || exit
+    list_repo_equal "${root#*://}/$db".db
 else
-    quickcheck "$ver" "$geq"
+    if [[ -v db ]]; then
+        syncver "$db" | quickcheck "$ver" "$geq"
+    else
+        quickcheck "$ver" "$geq"
+    fi
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
