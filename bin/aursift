@@ -31,13 +31,13 @@ fi
 readarray -t all
 
 for p in "${all[@]}"; do
-    siftargs+=(--satisfies="$p")
+    siftargs+=("--satisfies=$p")
     pkgset[$p]=1
 done
 
-if [[ ${pkgset[@]} ]]; then
+if [[ ${pkgset[*]} ]]; then
     for p in "${arch_repo[@]}"; do
-        siftargs+=(--repo="$p")
+        siftargs+=("--repo=$p")
     done
 else
     error "$argv0: no data available"
@@ -47,7 +47,7 @@ fi
 # https://github.com/andrewgregory/pacutils/issues/3
 readarray -t query < <(pacsift --sync --exact "${siftargs[@]}" <&-)
 
-if [[ ${query[@]} ]]; then
+if [[ ${query[*]} ]]; then
     while read -r p v; do
         p=${p#*/}
 
