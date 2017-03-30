@@ -52,7 +52,7 @@ chain() {
         # Avoid querying duplicates (#4)
         readarray -t target < <(fld 2 tsv/$sub | grep -Fxvf seen)
 
-        if [[ ${target[@]} ]]; then
+        if [[ ${target[*]} ]]; then
             aursearch -Fr -- "${target[@]}" > json/$a || exit
         else
             break
