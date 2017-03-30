@@ -132,7 +132,7 @@ else
         fi
     done < <(pacconf --repo-list)
 
-    if [[ ${avail[@]} ]]; then
+    if [[ ${avail[*]} ]]; then
         if [[ ${#avail[@]} -gt 1 ]]; then
             PS3='Select a repository: '
             select repo in "${!avail[@]}"; do
