@@ -19,7 +19,7 @@ my_vercmp() {
     fi
 }
 
-aurver() {
+namever() {
     jq -er '.[].results[] | [.Name,.Version] | @tsv'
 }
 
@@ -49,7 +49,7 @@ list_repo_equal() {
 
 quickcheck() {
     declare -ri ver=$1 geq=$2   
-    tee "$tmp"/db | awk '{print $1}' | xargs -r aursearch -Fr | aurver > "$tmp"/aur
+    tee "$tmp"/db | awk '{print $1}' | xargs -r aursearch -Fr | namever > "$tmp"/aur
 
     sort -k 1b,1 "$tmp"/db | join -a 1 - <(sort -k 1b,1 "$tmp"/aur) | while {
         read -r pkg v_in v_cmp _
@@ -84,7 +84,7 @@ usage() {
     exit 1
 }
 
-readonly -f my_vercmp aurver syncver list_repo list_repo_equal quickcheck trap_exit usage
+readonly -f my_vercmp namever syncver list_repo list_repo_equal quickcheck trap_exit usage
 
 source /usr/share/makepkg/util.sh || exit
 
