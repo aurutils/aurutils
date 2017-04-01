@@ -47,8 +47,7 @@ list_repo_equal() {
     done
 }
 
-quickcheck() {
-    declare -ri ver=$1 geq=$2   
+quickcheck() { 
     tee "$tmp"/db | awk '{print $1}' | xargs -r aursearch -Fr | namever > "$tmp"/aur
 
     sort -k 1b,1 "$tmp"/db | join -a 1 - <(sort -k 1b,1 "$tmp"/aur) | while {
@@ -114,10 +113,8 @@ if ((cmp)); then
     list_repo_equal "${root#*://}/$db".db
 else
     if [[ -v db ]]; then
-        syncver "$db" | quickcheck "$ver" "$geq"
-    else
-        quickcheck "$ver" "$geq"
-    fi
+        syncver "$db"
+    fi | quickcheck
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
