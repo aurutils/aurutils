@@ -113,8 +113,10 @@ if ((cmp)); then
     list_repo_equal "${root#*://}/$db".db
 else
     if [[ -v db ]]; then
-        syncver "$db"
-    fi | quickcheck
+        syncver "$db" | quickcheck
+    else
+        quickcheck
+    fi
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
