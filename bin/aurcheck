@@ -8,9 +8,9 @@ declare -i geq=0 cmp=0 ver=1
 my_vercmp() {
     declare -r v_in=$1 v_cmp=$2
     
-    if [[ $v_cmp ]]; then
+    if [[ -n $v_cmp ]]; then
         if [[ $v_in != "$v_cmp" ]]; then
-            vercmp "$v_cmp" "$v_in"
+            vercmp "$v_in" "$v_cmp"
         else
             printf '%d' '0'
         fi
@@ -40,9 +40,10 @@ list_repo_equal() {
         op=$(my_vercmp "$v_in" "$v_cmp")
  
         case $op in
-          -1|2) msg2 "$pkg ${v_cmp:-0} -> $v_in"          ;;
-             0) printf '%s\n' "$pkg"                      ;;
-             1) warning "$pkg $v_cmp is newer than $v_in" ;;
+            -1) warning "$pkg $v_cmp is newer than $v_in" ;;
+             0) printf '%s\n' "$pkg" ;;
+             1) msg2 "$pkg $v_cmp -> $v_in" ;;
+             2) msg2 "$pkg N/A -> $v_in" ;;
         esac
     done
 }
@@ -66,7 +67,7 @@ quickcheck() {
                 -1) printf '%s %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
                  0) printf '%s %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
                  1) printf '%s %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-                 2) printf '%s (not available)' "$pkg"             ;;
+                 2) printf '%s (not available)' "$pkg" ;;
             esac
         fi
     done
