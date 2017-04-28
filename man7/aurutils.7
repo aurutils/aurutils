@@ -107,11 +107,11 @@ Create the repository root and database:
   $ repo-add /var/cache/pacman/custom/custom.db.tar
 
 .EE
-If packages are already available, use repose instead of repo-add:
+If packages are already available, add them to the database:
 .EX
 
   $ cd /var/cache/pacman/custom
-  $ repose -vf custom.db
+  $ repo-add -n custom.db ./*.pkg.tar.xz
 
 .EE
 Synchronize pacman:
@@ -153,15 +153,6 @@ packages. Otherwise, recreate the packages with \fIbacman\fR:
 .EE
 Results will be saved to \fIPKGDEST\fR, or to the current directory if
 this variable is not set.
-
-To keep the repository updated when building with \fImakepkg\fR, set
-\fIPKGDEST \fRto the cache and create a repose alias:
-.EX
-
-  $ sudoedit /etc/makepkg.conf
-  $ alias custom='repose -vf custom -r /var/cache/pacman/custom'
-
-.EE
 
 .SH EXAMPLES
 Examples below assume that \fIbash\fR is used as the interactive shell.
