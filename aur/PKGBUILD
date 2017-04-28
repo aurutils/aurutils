@@ -14,10 +14,9 @@ checkdepends=('shellcheck')
 makedepends=('git')
 optdepends=('devtools: systemd-nspawn support'
 	'vifm: build file interaction'
-	'aria2: alternative downloader'
-	'parallel: alternative downloader'
-	'expac: aursift'
-	'repose: database maintenance')
+	'aria2: threaded downloads'
+	'parallel: threaded downloads'
+	'expac: aursift')
 
 pkgver() {
   cd aurutils
