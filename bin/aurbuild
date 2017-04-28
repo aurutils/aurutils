@@ -170,7 +170,7 @@ while read -r -u "$fd" pkg _; do
 
     for pkg in "${pkglist[@]}"; do
         if ((sign_pkg)); then
-            gpg "${gpg_args[@]}" "$pkg" --output "$pkg".sig
+            gpg "${gpg_args[@]}" --output "$pkg".sig "$pkg"
             mv -b "$pkg" "$pkg".sig -t "$root"
         else
             mv -b "$pkg" -t "$root"
