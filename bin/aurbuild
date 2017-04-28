@@ -5,7 +5,7 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -e
 
 declare -a gpg_args=(--detach-sign --no-armor --verbose --batch)
-declare -a makechrootpkg_args=(-cnu) makepkg_args=(-Lcrs)
+declare -a makechrootpkg_args=(-cnu) makepkg_args=(-Lcrs) repo_add_args=()
 declare -i chroot=0 sign_pkg=0 force=0 no_sync=0
 
 conf_section() {
@@ -86,6 +86,14 @@ if (($#)); then
     fi
 fi
 
+if type -P xdelta3 >/dev/null; then
+    repo_add_args+=(-d)
+fi
+
+if ((sign_pkg)); then
+    repo_add_args+=(-vs)
+fi
+
 if [[ -v GPGKEY ]] && gpg --list-keys "$GPGKEY"; then
     gpg_args+=(-u "$GPGKEY")
 fi
@@ -158,32 +166,18 @@ while read -r -u "$fd" pkg _; do
         PKGDEST="$var_tmp" LC_MESSAGES=C makepkg "${makepkg_args[@]}"
     fi
 
-    cd_safe "$var_tmp"
-    pkglist=(./*)
+    pkglist=("$var_tmp"/*)
 
-    for p in "${pkglist[@]}"; do
+    for pkg in "${pkglist[@]}"; do
         if ((sign_pkg)); then
-            gpg "${gpg_args[@]}" "$p" --output "$p".sig
-            mv -b "$p" "$p".sig -t "$root"
+            gpg "${gpg_args[@]}" "$pkg" --output "$pkg".sig
+            mv -b "$pkg" "$pkg".sig -t "$root"
         else
-            mv -b "$p" -t "$root"
+            mv -b "$pkg" -t "$root"
         fi
     done
 
-    cd_safe "$root"
-
-    if type -P repose >/dev/null; then
-        LANG=C repose -fv "$database"
-    else
-        LANG=C repo-add -v "$db_path" "${pkglist[@]}"
-    fi
-
-    if ((sign_pkg)); then
-	pivot=$var_tmp/${db_path##*/}.sig
-
-        gpg "${gpg_args[@]}" --output "$pivot" "$db_path"
-        mv -b "$pivot" -t "$root"
-    fi
+    LANG=C repo-add "${repo_add_args[@]}" -- "$db_path" "${pkglist[@]}"
 
     if ((chroot)) || ((no_sync)); then
         continue
