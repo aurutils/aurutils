@@ -48,19 +48,40 @@ trap_exit() {
     fi
 }
 
-readonly -f deps base sub trap_exit
-
-if ((!$#)); then
+usage() {
     plain "usage: $argv0 pkgname..."
     exit 1
+}
+
+readonly -f deps base sub trap_exit usage
+source /usr/share/makepkg/util.sh
+
+while getopts h OPT; do
+    case $OPT in
+        *|h) usage ;;
+    esac
+done
+
+shift "$((OPTIND - 1))"
+OPTIND=1
+
+if ((!$#)); then
+    usage
+fi
+
+if [[ -t 2 ]]; then
+    colorize
 fi
 
 tmp=$(mktemp -t "$argv0".XXXXXXXX) || exit
 trap 'trap_exit' EXIT
 
 mapfile -t arg_path < <(readlink -e -- "$@")
+
 find "${arg_path[@]}" -maxdepth 1 -type f -name .SRCINFO -print0 | xargs -0 cat > "$tmp"
 
-[[ -s $tmp ]] && tsort <(deps "$tmp") | sub <(base "$tmp") - | grep -Fxf <(printf -- '%s\n' "${@##*/}") | tac
+if [[ -s "$tmp" ]]; then
+    tsort <(deps "$tmp") | sub <(base "$tmp") - | grep -Fxf <(printf -- '%s\n' "${@##*/}") | tac
+fi
 
 # vim: set et sw=4 sts=4 ft=sh:
