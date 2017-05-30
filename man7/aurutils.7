@@ -169,7 +169,7 @@ Build all packages in the \fIpkgbuilds\fR github repository:
   $ git clone https://www.github.com/Earnestly/pkgbuilds
   $ cd pkgbuilds
   $ find -maxdepth 2 -name PKGBUILD -execdir mksrcinfo \\;
-  $ aurqueue ./* > queue # Remove unwanted targets
+  $ aurqueue * > queue # Remove unwanted targets
   $ aurbuild -d custom -a queue
 
 .EE
