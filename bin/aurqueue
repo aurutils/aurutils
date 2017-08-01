@@ -11,13 +11,11 @@ deps() {
 
         printf("%s\t%s\n", pb, pb)
     } {
-        if (read && $0 ~ /^\t(make|check)?depends/) {
+        if (read && $0 ~ /^\t(make|check)?depends/)
             printf("%s\t%s\n", pb, $2)
-        }
 
-        if ($0 ~ /^$/) {
+        if ($0 ~ /^$/)
             read = 0    # split package
-        }
     }' "$@"
 }
 
@@ -26,14 +24,13 @@ base() {
     /pkgbase/ {
         pb = $2
     }
-
     /pkgname/ {
         printf("%s\t%s\n", $2, pb)
     }' "$@"
 }
 
 sub() {
-    awk 'NR == FNR {
+    awk -F'\t' 'NR == FNR {
         x[$1] = $2; next
     } {
         if ($1 in x && !(x[$1] in seen)) {
@@ -83,7 +80,7 @@ if [[ -n ${arg_path[*]} ]]; then
 fi
 
 if [[ -s "$tmp" ]]; then
-    tsort <(deps "$tmp") | sub <(base "$tmp") - | grep -Fxf <(printf -- '%s\n' "${@##*/}") | tac
+    deps "$tmp" | tsort | sub <(base "$tmp") - | grep -Fxf <(printf -- '%s\n' "${@##*/}") | tac
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
