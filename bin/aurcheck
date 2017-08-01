@@ -47,15 +47,15 @@ cmp_all() {
             continue
         fi
 
-        if ((!ver)); then
-            printf '%s\n' "$pkg"
-        else
+        if ((ver)); then
             case "$op" in
                 -1) printf -- '%s %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
                  0) printf -- '%s %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
                  1) printf -- '%s %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
                  2) printf -- '%s (not available)' "$pkg" ;;
             esac
+        else
+            printf '%s\n' "$pkg"
         fi
     done
 }
@@ -88,8 +88,8 @@ usage() {
     exit 1
 }
 
-readonly -f my_vercmp sort_join cmp_equal_or_newer cmp_all \
-         namever_aur namever_sync repo_list trap_exit usage
+readonly -f my_vercmp sort_join cmp_equal_or_newer cmp_all
+readonly -f namever_aur namever_sync repo_list trap_exit usage
 
 source /usr/share/makepkg/util.sh || exit
 
@@ -112,20 +112,18 @@ done
 shift $((OPTIND - 1))
 OPTIND=1
 
-tmp=$(mktemp -dt "$argv0".XXXXXXXX) || exit
+tmp=$(mktemp) || exit
 trap 'trap_exit' EXIT
 
 case $mode in
     aur)
         if [[ -v database ]]; then
-            namever_sync "$database" >"$tmp"/db || exit
+            namever_sync "$database" >"$tmp" || exit
         else
-            tee "$tmp"/db
+            tee >"$tmp"
         fi
 
-        if awk '{print $1}' "$tmp"/db | namever_aur >"$tmp"/aur; then
-            cmp_all "$tmp"/db "$tmp"/aur
-        fi
+        awk '{print $1}' "$tmp" | namever_aur | cmp_all "$tmp" /dev/stdin
         ;;
     repo)
         if [[ -v database ]]; then
@@ -136,12 +134,12 @@ case $mode in
             exit 1
         fi
 
-        repo_list "${root-$server}/$database".db >"$tmp"/db || exit
+        repo_list "${root-$server}/$database".db >"$tmp" || exit
 
         if ((cmp)); then
-            cmp_equal_or_newer /dev/stdin "$tmp"/db
+            cmp_equal_or_newer /dev/stdin "$tmp"
         else
-            column -t "$tmp"/db
+            column -s '\t' -t "$tmp"
         fi
 esac
 
