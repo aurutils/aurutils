@@ -26,7 +26,7 @@ sort_join() {
 }
 
 cmp_equal_or_newer() {
-    sort_join "$1" "$2" | while read -r pkg v_in v_cmp _; do
+    while read -r pkg v_in v_cmp _; do
         op=$(my_vercmp "$v_in" "$v_cmp")
 
         case $op in
@@ -40,7 +40,7 @@ cmp_equal_or_newer() {
 }
 
 cmp_all() {
-    sort_join "$1" "$2" | while read -r pkg v_in v_cmp _; do
+    while read -r pkg v_in v_cmp _; do
         op=$(my_vercmp "$v_in" "$v_cmp")
 
         if ((op == 2 && geq < 2)) || ((op > -1 && !geq)); then
@@ -61,15 +61,18 @@ cmp_all() {
 }
 
 namever_aur() {
-    xargs -r aursearch -ir | jq -er '.results[] | [.Name,.Version] | @tsv'
+    xargs -r aursearch -ir | jq -er '.results[] | [.Name, .Version] | @tsv'
 }
 
 namever_sync() {
+    declare -r repo=$1
+
     # pacsift does not error if the repo is not configured
-    pacconf --repo="$database" >/dev/null || return 1
+    pacconf --repo="$repo" >/dev/null || return 1
 
     # Use --exact as repos may have a common substring (#166)
-    pacsift --exact --repo="$1" --null <&- | xargs -0r pacman -Sddp --print-format '%n %v'
+    pacsift --exact --repo="$repo" --null <&- | \
+        xargs -0r pacman -Sddp --print-format "%n$'\t'%v"
 }
 
 repo_list() {
@@ -123,21 +126,18 @@ case $mode in
             tee >"$tmp"
         fi
 
-        awk '{print $1}' "$tmp" | namever_aur | cmp_all "$tmp" /dev/stdin
+        cut -f1 "$tmp" | namever_aur | sort_join "$tmp" - | cmp_all
         ;;
     repo)
-        if [[ -v database ]]; then
-            server=$(pacconf --single --repo="$database" Server) || exit
-            server=${server#*://}
-        else
-            error "$argv0: no repository specified"
-            exit 1
+        if [[ ! -v root ]]; then
+            root=$(pacconf --single --repo="$database" Server) || exit
+            root=${root#*://}
         fi
 
-        repo_list "${root-$server}/$database".db >"$tmp" || exit
+        repo_list "$root/$database".db >"$tmp" || exit
 
         if ((cmp)); then
-            cmp_equal_or_newer /dev/stdin "$tmp"
+            sort_join - "$tmp" | cmp_equal_or_newer
         else
             column -s '\t' -t "$tmp"
         fi
