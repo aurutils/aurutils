@@ -245,10 +245,11 @@ Print packages both in AUR and [community] and compare their versions:
 Check foreign packages for AUR updates:
 .EX
 
-  $ pacman -Qm | aurcheck
+  $ expac -Q '%n\t%v' | aurcheck
 
 .EE
-Use helpers wich honor the \fIPACMAN\fR variable or cower with a repository:
+Use helpers wich honor the \fIPACMAN\fR variable or cower with
+\fI--ignorerepo\fR:
 .EX
 
  $ PACMAN=officer pkgbuilder -Syu
