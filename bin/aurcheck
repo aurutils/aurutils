@@ -17,10 +17,13 @@ my_vercmp() {
     fi
 }
 
+sort_first() {
+    sort -k 1b,1 -t $'\t' "$1"
+}
+
 sort_join() {
     # Use (single) hyphen to fill empty fields as disallowed in pkgver/pkgname
-    join -a 2 -e - -o auto -t $'\t' <(sort -k 1b,1 -t $'\t' "$1") \
-                                    <(sort -k 1b,1 -t $'\t' "$2")
+    join -a 2 -e - -o auto -t $'\t' <(sort_first "$1") <(sort_first "$2")
 }
 
 # XXX: Use IFS=$'\t'
@@ -104,7 +107,7 @@ usage() {
     exit 1
 }
 
-readonly -f my_vercmp sort_join cmp_equal_or_newer cmp_all
+readonly -f my_vercmp sort_first sort_join cmp_equal_or_newer cmp_all
 readonly -f namever_aur namever_sync repo_list trap_exit usage
 
 source /usr/share/makepkg/util.sh || exit
