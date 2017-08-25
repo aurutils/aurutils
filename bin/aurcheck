@@ -3,56 +3,70 @@ readonly argv0=aurcheck
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
-declare -i geq=0 ver=1 cmp=0
+declare -i geq=0 ver=1 cmp=0 print_base=0
 declare    mode=aur
 
 # Optimize for the common case (version equality)
 my_vercmp() {
     declare -r v_in=$1 v_cmp=$2
 
-    if [[ $v_cmp ]]; then
-        if [[ $v_in != "$v_cmp" ]]; then
-            vercmp "$v_in" "$v_cmp"
-        else
-            printf '%d' 0
-        fi
+    if [[ $v_in != "$v_cmp" ]]; then
+        vercmp "$v_in" "$v_cmp"
     else
-        printf '%d' 2
+        printf '%d' 0
     fi
 }
 
 sort_join() {
-    sort -k 1b,1 -- "$1" | join -a 1 - <(sort -k 1b,1 -- "$2")
+    # Use (single) hyphen to fill empty fields as disallowed in pkgver/pkgname
+    join -a 2 -e - -o auto -t $'\t' <(sort -k 1b,1 -t $'\t' "$1") \
+                                    <(sort -k 1b,1 -t $'\t' "$2")
 }
 
+# XXX: Use IFS=$'\t'
 cmp_equal_or_newer() {
-    while read -r pkg v_in v_cmp _; do
-        op=$(my_vercmp "$v_in" "$v_cmp")
+    while read -r pkg v_cmp v_in _; do
+        case $v_cmp in
+             -) msg2 "$pkg N/A -> $v_in"
+                continue ;;
+             *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
+        esac
 
         case $op in
             -1) plain "$pkg $v_cmp is newer than $v_in"
                 printf -- '%s\n' "$pkg"     ;;
              0) printf -- '%s\n' "$pkg"     ;;
              1) msg2 "$pkg $v_cmp -> $v_in" ;;
-             2) msg2 "$pkg N/A -> $v_in"    ;;
         esac
     done
 }
 
+# XXX: Do not print duplicate pkgbase (assume sorted input)
+# note pkg contains '-' only with -b, as pkgbase is retrieved from RPC only
+# processing the full table may prove more efficient as no information is lost
 cmp_all() {
-    while read -r pkg v_in v_cmp _; do
-        op=$(my_vercmp "$v_in" "$v_cmp")
+    while IFS=$'\t' read -r name base v_cmp v_in; do
+        case $base in
+            # unavailable packages are printed to stderr
+            -) ((geq >= 2)) && printf >&2 -- '%s (not available)' "$name"
+               continue ;;
+            *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
+        esac
 
-        if ((op == 2 && geq < 2)) || ((op > -1 && !geq)); then
-            continue
-        fi
+        # XXX: placeholder
+        case $print_base in
+            0) pkg=$name ;;
+            1) pkg=$base ;;
+        esac
+
+        # XXX: separate continue clause for ((ver)) check
+        ((op > -1 && !geq)) && continue
 
         if ((ver)); then
             case "$op" in
                 -1) printf -- '%s %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
                  0) printf -- '%s %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
                  1) printf -- '%s %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-                 2) printf -- '%s (not available)' "$pkg" ;;
             esac
         else
             printf '%s\n' "$pkg"
@@ -61,20 +75,19 @@ cmp_all() {
 }
 
 namever_aur() {
-    xargs -r aursearch -ir | jq -er '.results[] | [.Name, .Version] | @tsv'
+    xargs -r aursearch -ir | jq -er '.results[] | [.Name, .PackageBase, .Version] | @tsv'
 }
 
 namever_sync() {
-    declare -r repo=$1
-
     # pacsift does not error if the repo is not configured
-    pacconf --repo="$repo" >/dev/null || return 1
+    pacconf --repo="$1" >/dev/null || return 1
 
     # Use --exact as repos may have a common substring (#166)
-    pacsift --exact --repo="$repo" --null <&- | \
-        xargs -0r pacman -Sddp --print-format "%n$'\t'%v"
+    pacsift --exact --repo="$1" --null <&- | \
+        xargs -0r pacman -Sddp --print-format %n$'\t'%v
 }
 
+# XXX: Use variables for name/ver/base, set base to name if not set
 repo_list() {
     bsdcat "$1" | awk '/%NAME%/    {getline; printf("%s\t", $1)}
                        /%VERSION%/ {getline; printf("%s\n", $1)}'
@@ -87,7 +100,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-aclq] [-d repository] [-r root]"
+    plain "usage: $argv0 [-abclq] [-d repository] [-r root]"
     exit 1
 }
 
@@ -101,9 +114,10 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 unset database root
-while getopts :acd:lqr: OPT; do
+while getopts :abcd:lqr: OPT; do
     case $OPT in
         a) ((geq++))        ;;
+        b) print_base=1     ;;
         q) ver=0            ;;
         d) database=$OPTARG ;;
         c) mode=repo; cmp=1 ;;
@@ -126,7 +140,7 @@ case $mode in
             tee >"$tmp"
         fi
 
-        cut -f1 "$tmp" | namever_aur | sort_join "$tmp" - | cmp_all
+        cut -f1 "$tmp" | namever_aur | sort_join - "$tmp" | cmp_all
         ;;
     repo)
         if [[ ! -v root ]]; then
@@ -136,8 +150,9 @@ case $mode in
 
         repo_list "$root/$database".db >"$tmp" || exit
 
+        # XXX: requires tabulated input, update manual/aursync
         if ((cmp)); then
-            sort_join - "$tmp" | cmp_equal_or_newer
+            sort_join "$tmp" - | cmp_equal_or_newer
         else
             column -s '\t' -t "$tmp"
         fi
