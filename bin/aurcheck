@@ -18,7 +18,7 @@ my_vercmp() {
 }
 
 sort_first() {
-    sort -k 1b,1 -t $'\t' "$1"
+    sort -k 1b,1 -t $'\t' -- "$1"
 }
 
 sort_join() {
