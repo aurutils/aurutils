@@ -46,12 +46,13 @@ cmp_equal_or_newer() {
 cmp_all() {
     while IFS=$'\t' read -r name base v_cmp v_in; do
         case $base in
-            # XXX: unavailable packages are printed to stderr, update manual
+            # XXX unavailable packages are printed to stderr, update manual
             -) printf >&2 -- '%s (not available)' "$name"
                continue ;;
             *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
         esac
 
+        # XXX Assumes sorted input on field 1 resp. 2
         case $print_base in
             0) [[ $pkg == "$name" ]] && continue
                pkg=$name ;;
@@ -59,7 +60,7 @@ cmp_all() {
                pkg=$base ;;
         esac
 
-        # XXX: separate continue clause for ((ver)) check
+        # XXX continue clause for ((ver))
         ((op > -1 && !geq)) && continue
 
         if ((ver)); then
@@ -87,7 +88,7 @@ namever_sync() {
         xargs -0r pacman -Sddp --print-format %n$'\t'%v
 }
 
-# XXX: Use variables for name/ver/base, set base to name if not set
+# XXX variables for name/ver/base, set base to name if unset
 repo_list() {
     bsdcat "$1" | awk '/%NAME%/    {getline; printf("%s\t", $1)}
                        /%VERSION%/ {getline; printf("%s\n", $1)}'
@@ -150,7 +151,7 @@ case $mode in
 
         repo_list "$root/$database".db >"$tmp" || exit
 
-        # XXX: requires tabulated input, update manual/aursync
+        # XXX requires tabulated input, update manual/aursync
         if ((cmp)); then
             sort_join "$tmp" - | cmp_equal_or_newer
         else
