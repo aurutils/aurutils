@@ -74,8 +74,8 @@ fi
 
 longopts=allan,bind:,chroot,directory:,force,ignore:,ignorearch,ignore-arch,log
 longopts+=,noconfirm,no-confirm,nover,no-ver,noview,no-view,print,rmdeps,rm-deps
-longopts+=,sign,temp,tar,repo:,root:,update,aurutils,continue
-shortopts=B:C:D:M:AcfLnprstTu
+longopts+=,nosync,no-sync,sign,temp,tar,repo:,root:,update,aurutils,continue
+shortopts=B:C:D:M:AcfLnNprstTu
 
 if TEMP=$(getopt -o "$shortopts" -l "$longopts" -n "$argv0" -- "$@"); then
     eval set -- "$TEMP"
@@ -108,6 +108,9 @@ while true; do
         -M)
             aurbuild_args+=(-M "$2")
             shift 2 ;;
+        -N|--nosync|--no-sync)
+            aurbuild_args+=(-N)
+            shift ;;
         -B|--bind)
             makechrootpkg_args+=(-d "$2")
             shift 2 ;;
