@@ -105,9 +105,14 @@ Ignore a missing or incomplete \fIarch\fR field in the build script.
 Enable logging to a text file in the build directory.
 .RE
 
-.B \-n, --no-confirm
+.B \-n, --noconfirm, --no-confirm
 .RS
 Do not wait for user input. (\fImakepkg --noconfirm\fR)
+.RE
+
+.B \-N, --nosync, --no-sync
+.RS
+Do not sync the local repository after building. (\fIaurbuild -N\fR)
 .RE
 
 .B \-r, --rmdeps
