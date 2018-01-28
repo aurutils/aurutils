@@ -52,6 +52,6 @@ else
     list_update "$aurweb/$pkglist.gz" "$pkglist" > timestamp
 fi
 
-pcregrep "$@" "$pkglist"
+pcregrep -e "$@" "$pkglist"
 
 # vim: set et sw=4 sts=4 ft=sh:
