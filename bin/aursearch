@@ -106,12 +106,12 @@ parse() { json_short; }
 by=name-desc
 sort_by=Name
 
-while getopts :imnVrRv OPT; do
+while getopts :imnk:rRv OPT; do
     case $OPT in
         i) by=none ;;
         m) by=maintainer ;;
         n) by=name ;;
-        V) sort_by=NumVotes ;;
+        k) sort_by=$OPTARG ;;
         r) parse() { tee; } ;;
         R) parse() { sed 's/^/[/; s/}{/},{/g; s/$/]/' ; } ;;
         v) parse() { json_long; } ;;
