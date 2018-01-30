@@ -34,10 +34,10 @@ dl_stdin() {
 }
 
 json_short() {
-    jq -e -r '[.results[]] | sort_by(.Name)[] | .Name,
+    jq -e -r "[.results[]] | sort_by(.$sort_by)[] | .Name,
         .Version,
         .NumVotes,
-        .Description' | while
+        .Description" | while
     {
         read -r Name
         read -r Version
@@ -50,7 +50,7 @@ json_short() {
 }
 
 json_long() {
-    jq -e -r '[.results[]] | sort_by(.Name)[] | .Name,
+    jq -e -r "[.results[]] | sort_by(.$sort_by)[] | .Name,
         .PackageBase,
         .Version,
         .Description,
@@ -60,7 +60,7 @@ json_long() {
         .OutOfDate,
         .Maintainer,
         .FirstSubmitted,
-        .LastModified' | while
+        .LastModified" | while
     {
         read -r Name
         read -r PackageBase
@@ -104,12 +104,14 @@ fi
 
 parse() { json_short; }
 by=name-desc
+sort_by=Name
 
-while getopts :imnrRv OPT; do
+while getopts :imnVrRv OPT; do
     case $OPT in
         i) by=none ;;
         m) by=maintainer ;;
         n) by=name ;;
+        V) sort_by=NumVotes ;;
         r) parse() { tee; } ;;
         R) parse() { sed 's/^/[/; s/}{/},{/g; s/$/]/' ; } ;;
         v) parse() { json_long; } ;;
