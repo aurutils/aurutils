@@ -34,23 +34,23 @@ dl_stdin() {
 }
 
 json_short() {
-    jq -e -r '[.results[]] | sort_by(.Name)[] | .Name,
+    jq -e -r "[.results[]] | sort_by(.$sort_by)[] | .Name,
         .Version,
         .NumVotes,
-        .Description' | while
+        .Description" | while
     {
         read -r Name
         read -r Version
         read -r NumVotes
         read -r Description
     }; do
-        printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s)\n    %s\n" \
+        printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s)\\n    %s\\n" \
                "$Name" "$Version" "$NumVotes" "$Description"
     done
 }
 
 json_long() {
-    jq -e -r '[.results[]] | sort_by(.Name)[] | .Name,
+    jq -e -r "[.results[]] | sort_by(.$sort_by)[] | .Name,
         .PackageBase,
         .Version,
         .Description,
@@ -60,7 +60,7 @@ json_long() {
         .OutOfDate,
         .Maintainer,
         .FirstSubmitted,
-        .LastModified' | while
+        .LastModified" | while
     {
         read -r Name
         read -r PackageBase
@@ -104,12 +104,14 @@ fi
 
 parse() { json_short; }
 by=name-desc
+sort_by=Name
 
-while getopts :imnrRv OPT; do
+while getopts :imnk:rRv OPT; do
     case $OPT in
         i) by=none ;;
         m) by=maintainer ;;
         n) by=name ;;
+        k) sort_by=$OPTARG ;;
         r) parse() { tee; } ;;
         R) parse() { sed 's/^/[/; s/}{/},{/g; s/$/]/' ; } ;;
         v) parse() { json_long; } ;;
