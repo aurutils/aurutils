@@ -44,7 +44,7 @@ json_short() {
         read -r NumVotes
         read -r Description
     }; do
-        printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s)\n    %s\n" \
+        printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s)\\n    %s\\n" \
                "$Name" "$Version" "$NumVotes" "$Description"
     done
 }
