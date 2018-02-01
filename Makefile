@@ -24,8 +24,8 @@ shellcheck:
 	@shellcheck -x lib/*
 
 install:
-	@install -Dm755 bin/*   -t $(DESTDIR)$(LIBDIR)
-	@install -Dm755 lib/*   -t $(DESTDIR)$(LIBDIR)
+	@install -Dm755 bin/*   -t $(DESTDIR)$(BINDIR)
+	@install -Dm755 lib/*   -t $(DESTDIR)$(LIBDIR)/$(PROGNM)
 	@install -Dm644 man1/*  -t $(DESTDIR)$(SHRDIR)/man/man1
 	@install -Dm644 LICENSE	-t $(DESTDIR)$(SHRDIR)/licenses/$(PROGNM)
 	@install -Dm644 THANKS README.md -t $(DESTDIR)$(SHRDIR)/doc/$(PROGNM)
