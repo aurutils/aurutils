@@ -1,6 +1,6 @@
 #!/bin/bash
 readonly argv0=aur
-readonly cmd_dir=/usr/lib/aur
+readonly cmd_dir=/usr/lib/aurutils
 readonly PATH=$cmd_dir
 readonly cmd=("$cmd_dir"/*)
 
