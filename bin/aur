@@ -10,7 +10,7 @@ if [[ -z $1 ]]; then
     exit 1
 fi
 
-if type -P -- "$1" >/dev/null; then
+if [[ -x $cmd_dir/$1 ]]; then
     exec "$cmd_dir/$1" "${@:2}"
 else
     printf >&2 -- '%s: %q is not an aur command\n' "$argv0" "$1"
