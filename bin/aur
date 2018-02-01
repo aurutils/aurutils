@@ -2,6 +2,7 @@
 readonly argv0=aur
 readonly cmd_dir=/usr/lib/aurutils
 readonly cmd=("$cmd_dir"/*)
+readonly custom_cmd_prefix='aur-'
 
 if [[ -z $1 ]]; then
     printf >&2 -- 'usage: %s [command]\n\n' "$argv0"
@@ -12,6 +13,8 @@ fi
 
 if [[ -x $cmd_dir/$1 ]]; then
     exec "$cmd_dir/$1" "${@:2}"
+elif command -v "$custom_cmd_prefix$1" > /dev/null 2>&1 ; then
+    exec "$custom_cmd_prefix$1" "${@:2}"
 else
     printf >&2 -- '%s: %q is not an aur command\n' "$argv0" "$1"
     exit 1
