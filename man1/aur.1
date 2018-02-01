@@ -1,69 +1,69 @@
 '\" t
-.TH AURUTILS 7 2016-12-25 AURUTILS
+.TH AUR 1 2016-12-25 AURUTILS
 .SH NAME
-aurutils \- helper tools for the arch user repository
+aur \- helper tool for the arch user repository
 
 .SH PROGRAMS
 The below gives a short overview; see the respective documentation for
 details.
 .P
-.BR aurbuild (1)
+.BR aur-build (1)
 .RS 4
-Build packages to a local repository
+Build packages to a local repository.
 .RE
 
 .P
-.BR aurpkglist (1)
+.BR aur-build-nspawn (1)
 .RS 4
-Print the AUR package list
+Build packages in an nspawn container.
 .RE
 
 .P
-.BR aurchain (1)
+.BR aur-pkglist (1)
 .RS 4
-Solve and order dependencies using the AUR RPC
+Print the AUR package list.
 .RE
 
 .P
-.BR aurcheck (1)
+.BR aur-rpc-deps (1)
 .RS 4
-Check packages in a given repository for AUR updates
+Solve and order dependencies using the AUR RPC.
 .RE
 
 .P
-.BR aurfetch (1)
+.BR aur-updates (1)
 .RS 4
-Download objects from an AUR repository
+Check packages in a given repository for AUR updates.
 .RE
 
 .P
-.BR aurqueue (1)
+.BR aur-fetch (1)
 .RS 4
-Order dependencies using .SRCINFO files
+Download objects from an AUR repository.
 .RE
 
 .P
-.BR aursearch (1)
+.BR aur-src-deps (1)
 .RS 4
-Search for AUR packages
+Order dependencies using .SRCINFO files.
 .RE
 
 .P
-.BR aursift (1)
+.BR aur-search (1)
 .RS 4
-Filter packages in the Arch Linux repositories
+Search for AUR packages.
 .RE
 
 .P
-.BR aursync (1)
+.BR aur-rfilter (1)
+.RS 4
+Filter packages in the Arch Linux repositories.
+.RE
+
+.P
+.BR aur-sync (1)
 .RS 4
 Download and build AUR packages automatically
-.RE
-
-.P
-.BR officer (1)
-.RS 4
-Run pacman only considering the official repositories
 .RE
 
 .SH EXIT STATUS
@@ -160,7 +160,7 @@ Examples below assume that \fIbash\fR is used as the interactive shell.
 Run actions on the dependency tree of an AUR package:
 .EX
 
-  $ aurchain foobar | while read -r pkg _; do ... done
+  $ aur rpc-deps foobar | while read -r pkg _; do ... done
 
 .EE
 Build all packages in the \fIpkgbuilds\fR github repository:
@@ -169,83 +169,77 @@ Build all packages in the \fIpkgbuilds\fR github repository:
   $ git clone https://www.github.com/Earnestly/pkgbuilds
   $ cd pkgbuilds
   $ find -maxdepth 2 -name PKGBUILD -execdir mksrcinfo \\;
-  $ aurqueue ./* > queue # Remove unwanted targets
-  $ aurbuild -d custom -a queue
+  $ aur src-deps ./* > queue # Remove unwanted targets
+  $ aur build -d custom -a queue
 
 .EE
 Print packages from the \fIcustom\fR repository that are not available
 in the AUR:
 .EX
 
-  $ grep -Fxvf <(aurpkglist) <(pacman -Slq custom)
+  $ grep -Fxvf <(aur pkglist) <(pacman -Slq custom)
 
 .EE
 As above, but for orphaned packages:
 .EX
 
-  $ pacman -Slq custom | xargs aursearch -Fr | \\
+  $ pacman -Slq custom | xargs aur search -Fr | \\
        jq -r '.[].results[] | select(.Maintainer == null)'
 
 .EE
 Print Perl modules that are both in the AUR and official repositories:
 .EX
 
-  $ aurpkglist -P '^perl-.+' > perl.txt
-  $ grep -Fxvf <(aursift < perl.txt) perl.txt
+  $ aur pkglist -P '^perl-.+' > perl.txt
+  $ grep -Fxvf <(aur rfilter < perl.txt) perl.txt
 
 .EE
 Search for packages with both 'wm' and 'git' in the name:
 .EX
 
-  $ aurpkglist -P '(?=.*wm)(?=.*git)' | xargs aursearch -i
+  $ aur pkglist -P '(?=.*wm)(?=.*git)' | xargs aur search -i
 
 .EE
 Build \fIplasma-desktop-git\fR and its dependencies in an nspawn container:
 .EX
 
-  $ aursync -c plasma-desktop-git
+  $ aur sync -c plasma-desktop-git
 
 .EE
 Build and update all AUR packages in a selected local repository:
 .EX
 
-  $ aursync -u
-
-.EE
-As above, but respect packages specified in pacman's IgnorePkg directive:
-.EX
-
-  $ aursync -u --ignore <(pacconf IgnorePkg | glob2regex.sh)
+  $ aur sync -u
 
 .EE
 Update packages from the \fIcustom\fR repository that are installed on the host:
 .EX
 
-  $ aursync --repo=custom $(grep -Fxf <(pacman -Qq) <(pacman -Slq custom))
+  $ aur sync --repo=custom $(grep -Fxf <(pacman -Qq) <(pacman -Slq custom))
 
 .EE
 Build a package for a different architecture, here i686:
 .EX
 
-  $ setarch i686 aursync -c --repo=custom_i686 tclkit
+  $ setarch i686 aur sync -c --repo=custom_i686 tclkit
 
 .EE
 Select a package matching \fIpony\fR and build the result:
 .EX
 
-  $ select a in $(aurpkglist -F pony); do aursync "$a"; break; done
+  $ select a in $(aur pkglist -F pony); do aursync "$a"; break; done
 
 .EE
 Print packages both in AUR and [community] and compare their versions:
 .EX
 
-  $ aurcheck -d community -a
+  $ aur updates -d community -a
 
 .EE
 Check foreign packages for AUR updates:
 .EX
 
-  $ expac -Q '%n\t%v' | aurcheck
+  $ expac -Q '%n\t%v' | aur updates
 
 .EE
 Repository packages can be "made foreign" by temporarily removing the

@@ -1,14 +1,15 @@
-.TH AURSIFT 1 2017-10-04 AURUTILS
+.TH AUR-RFILTER 1 2017-10-04 AURUTILS
 .SH NAME
-aursift \- filter packages in the Arch Linux repositories
+aur-rfilter \- filter packages in the Arch Linux repositories
 
 .SH SYNOPSIS
-.SY aursift
+.SY aur
+.B rfilter
 .OP -d database
 .YS
 
 .SH DESCRIPTION
-\fBaursift\fR checks if \fIpkgname\fR (provided on stdin) is in the
+\fBaur-rfilter\fR checks if \fIpkgname\fR (provided on stdin) is in the
 official Arch Linux repositories, and print it to stdout if
 not. Virtual packages, when found, are solved and printed to stderr.
 

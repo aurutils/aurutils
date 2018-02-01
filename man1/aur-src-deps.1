@@ -1,0 +1,29 @@
+.TH AUR-SRC-DEPS 1 2018-02-01 AURUTILS
+.SH NAME
+aur-src-deps \- order dependencies using .SRCINFO files
+
+.SH SYNOPSIS
+.SY aur
+.B src-deps
+.OP pkgbase
+.OP pkgbase...
+.YS
+
+.SH DESCRIPTION
+\fIaur-src-deps\fR takes the names of packages and orders the dependency chains
+using tsort.
+
+It is assumed that source directories are already available, and that
+\fIaur-src-deps\fR is used in the same directory as those source directories.
+
+.SH SEE ALSO
+.BR aur (1),
+.BR find (1),
+.BR tsort (1)
+
+.SH AUTHORS
+.MT https://github.com/AladW)
+Alad Wenter
+.ME
+
+.\" vim: set textwidth=72:

@@ -2,30 +2,30 @@ PROGNM = aurutils
 PREFIX ?= /usr/local
 SHRDIR ?= $(PREFIX)/share
 BINDIR ?= $(PREFIX)/bin
+LIBDIR ?= $(PREFIX)/lib
 
 .PHONY: check install
 
 check:
-	@bash -n bin/aursift
-	@bash -n bin/aurbuild
-	@bash -n bin/aurbuild_chroot
-	@bash -n bin/aurchain
-	@bash -n bin/aurcheck
-	@bash -n bin/aurfetch
-	@bash -n bin/aurpkglist
-	@bash -n bin/aurqueue
-	@bash -n bin/aursearch
-	@bash -n bin/aursrcver
-	@bash -n bin/aursift
-	@bash -n bin/aursync
+	@bash -n bin/aur
+	@bash -n lib/build
+	@bash -n lib/build-nspawn
+	@bash -n lib/fetch
+	@bash -n lib/pkglist
+	@bash -n lib/rfilter
+	@bash -n lib/rpc-deps
+	@bash -n lib/search
+	@bash -n lib/src-deps
+	@bash -n lib/src-ver
+	@bash -n lib/sync
+	@bash -n lib/updates
 
 shellcheck:
-	@shellcheck -x bin/*
+	@shellcheck -x lib/*
 
 install:
-	@install -Dm755 bin/*	  -t $(DESTDIR)$(BINDIR)
-	@install -Dm644 cmp/zsh/* -t $(DESTDIR)$(SHRDIR)/zsh/site-functions
-	@install -Dm644 man1/*	  -t $(DESTDIR)$(SHRDIR)/man/man1
-	@install -Dm644 man7/*	  -t $(DESTDIR)$(SHRDIR)/man/man7
-	@install -Dm644 LICENSE	  -t $(DESTDIR)$(SHRDIR)/licenses/$(PROGNM)
+	@install -Dm755 bin/*   -t $(DESTDIR)$(LIBDIR)
+	@install -Dm755 lib/*   -t $(DESTDIR)$(LIBDIR)
+	@install -Dm644 man1/*  -t $(DESTDIR)$(SHRDIR)/man/man1
+	@install -Dm644 LICENSE	-t $(DESTDIR)$(SHRDIR)/licenses/$(PROGNM)
 	@install -Dm644 THANKS README.md -t $(DESTDIR)$(SHRDIR)/doc/$(PROGNM)

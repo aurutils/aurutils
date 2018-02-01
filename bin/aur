@@ -1,0 +1,19 @@
+#!/bin/bash
+readonly argv0=aur
+readonly cmd_dir=/usr/lib/aur
+readonly PATH=$cmd_dir
+readonly cmd=("$cmd_dir"/*)
+
+if [[ -z $1 ]]; then
+    printf >&2 -- 'usage: %s [command]\n\n' "$argv0"
+    printf >&2 -- 'available commands:\n'
+    printf >&2 -- '    %q\n' "${cmd[@]##*/}"
+    exit 1
+fi
+
+if type -P -- "$1" >/dev/null; then
+    exec "$@"
+else
+    printf >&2 -- '%s: %q is not an aur command\n' "$argv0" "$1"
+    exit 1
+fi

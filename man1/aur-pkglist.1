@@ -1,15 +1,16 @@
-.TH AURPKGLIST 1 2018-01-31 AURUTILS
+.TH AUR.PKGLIST 1 2018-01-31 AURUTILS
 .SH NAME
-aurpkglist \- print the AUR packagelist
+aur-pkglist \- print the AUR packagelist
 
 .SH SYNOPSIS
-.SY aurpkglist
+.SY aur
+.B pkglist
 .OP \-bt
 .OP \-FP pattern
 .YS
 
 .SH DESCRIPTION
-\fIaurpkglist\fR prints the list of `pkgname`s that are available in the
+\fIaur-pkglist\fR prints the list of `pkgname`s that are available in the
 AUR to standard output. Optionally a pattern can be specified that is
 matched with \fIpcregrep\fR.
 
@@ -42,9 +43,9 @@ Interpret the given pattern as a Perl-compatible regular expression
 .RE
 
 .SH NOTES
-To avoid retrieving the package list on every query, \fIaurpkglist\fR uses a
+To avoid retrieving the package list on every query, \fIaur-pkglist\fR uses a
 caching logic which stores the list together with its timestamp in
-\fI$XDG_CACHE_HOME/aurpkglist\fR. New lists are generated every 5 minutes,
+\fI$XDG_CACHE_HOME/aur-pkglist\fR. New lists are generated every 5 minutes,
 thus setting a lower interval with \fI-t\fR yields no benefit. 
 
 See also:
@@ -54,10 +55,10 @@ See also:
 .UE
 
 .SH SEE ALSO
+.BR aur (1),
 .BR curl (1),
 .BR gzip (1),
-.BR pcregrep (1),
-.BR aurutils (7)
+.BR pcregrep (1)
 
 .SH AUTHORS
 .MT https://github.com/AladW

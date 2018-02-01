@@ -37,6 +37,7 @@ dl_stdin() {
     fi
 }
 
+# XXX Does not handle "too many results"
 json_short() {
     jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | .Name,
         .Version,

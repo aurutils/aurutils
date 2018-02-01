@@ -1,15 +1,16 @@
-.TH AURCHAIN 1 2017-04-14 AURUTILS
+.TH AUR-RPC-DEPS 1 2018-02-01 AURUTILS
 .SH NAME
-aurchain \- solve and order dependencies using the aur rpc
+aur-rpc-deps \- solve and order dependencies using the aur rpc
 
 .SH SYNOPSIS
-.SY aurchain
+.SY aur
+.B rpc-deps
 .OP \-at
 .OP pkgname...
 .YS
 
 .SH DESCRIPTION
-aurchain takes package names and then solves and orders the
+\fIaur-rpc-deps\fR takes package names and then solves and orders the
 dependencies for those packages using the AUR RPC interface.
 
 .SH OPTIONS
@@ -27,10 +28,10 @@ Copy retrieved JSON files to a specified directory.
 Version information is ignored for dependencies. See \fIFS#54096\fR.
 
 .SH SEE ALSO
-.BR aursearch (1),
+.BR aur (1),
+.BR aur-search (1),
 .BR jq (1),
-.BR tsort (1),
-.BR aurutils (7)
+.BR tsort (1)
 
 .SH AUTHORS
 .MT https://github.com/AladW

@@ -1,9 +1,10 @@
-.TH AURSEARCH 1 2016-05-18 AURUTILS
+.TH AUR-SEARCH 1 2018-02-01 AURUTILS
 .SH NAME
-aursearch \- search for AUR package
+aur-search \- search for AUR package
 
 .SH SYNOPSIS
-.SY aursearch
+.SY aur
+.B search
 .OP \-imnrRv
 .OP \-k key
 .I package
@@ -11,7 +12,7 @@ aursearch \- search for AUR package
 .YS
 
 .SH DESCRIPTION
-\fBaursearch\fR searches the AUR by multiple strings of packages. The
+\fBaur-search\fR searches the AUR by multiple strings of packages. The
 union of all results is returned. By default, searches are performed
 by name and description using the \fIsearchby\fR interface, and
 displayed in a brief format.
@@ -64,9 +65,9 @@ As the AUR RPC is limited to GET requests, queries are split by 150
 arguments to avoid HTTP 414 errors (FS#49089).
 
 .SH SEE ALSO
+.BR aur (1),
 .BR curl (1),
-.BR jq (1),
-.BR aurutils (7)
+.BR jq (1)
 
 .SH AUTHORS
 .MT https://github.com/AladW

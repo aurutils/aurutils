@@ -1,9 +1,10 @@
-.TH AURBUILD 1 2017-07-15 AURUTILS
+.TH AUR\-BUILD 1 2017-07-15 AURUTILS
 .SH NAME
-aurbuild \- build packages to a local repository
+aur\-build \- build packages to a local repository
 
 .SH SYNOPSIS
-.SY aurbuild
+.SY aur
+.B build
 .I \-d database
 .OP \-cfNs
 .OP \-a queue
@@ -93,12 +94,12 @@ For example:
 .EE
 
 .SH SEE ALSO
-.BR aurbuild_chroot (1),
+.BR aur (1),
+.BR aur-build-nspawn (1),
 .BR pacconf (1),
 .BR pacman (1),
 .BR makepkg.conf (5),
 .BR pacman.conf (5),
-.BR aurutils (7),
 .BR makepkg (8),
 .BR setarch (8)
 

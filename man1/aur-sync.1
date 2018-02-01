@@ -1,9 +1,10 @@
-.TH AURSYNC 1 2017-10-04 AURUTILS
+.TH AUR-SYNC 1 2018-02-01 AURUTILS
 .SH Name
-aursync \- download and build aur packages automatically
+aur-sync \- download and build aur packages automatically
 
 .SH SYNOPSIS
-.SY aursync
+.SY aur
+.B sync
 .OP \-AcDfLnprstu
 .OP \--ignore
 .OP \--no-ver
@@ -15,28 +16,28 @@ aursync \- download and build aur packages automatically
 .YS
 
 .SH DESCRIPTION
-Download and build packages automatically to a local
+\fIaur-sync\fR downloads and builds packages automatically to a local
 repository. Package names serve as arguments.
 
-If \fIvifm \fRis installed, the downloaded files are shown using vifm
+If \fIvifm\fR is installed, the downloaded files are shown using vifm
 and can be edited. If not, the files are shown in \fIless\fR, or
 \fI$PAGER\fR if configured.
 
 .SH OPTIONS
 .B \-c, --chroot
 .RS
-Build packages with makechrootpkg. (\fIaurbuild -c\fR)
+Build packages with makechrootpkg. (\fIaur-build -c\fR)
 .RE
 
 .B \-D, --directory
 .RS
-Set the container path. (\fIaurbuild -D\fR)
+Set the container path. (\fIaur-build -D\fR)
 .RE
 
 .B \-f, --force
 .RS
 Continue the build process if a package with the same name already
-exists. (\fIaurbuild -f\fR)
+exists. (\fIaur-build -f\fR)
 .RE
 
 .B \--ignore
@@ -52,7 +53,7 @@ Print target packages and their paths instead of building them.
 
 .B \-s, --sign
 .RS
-Sign built packages and the database with gpg. (\fIaurbuild -s\fR)
+Sign built packages and the database with gpg. (\fIaur-build -s\fR)
 .RE
 
 .B \-t, --tar
@@ -119,7 +120,7 @@ Remove dependencies installed by makepkg. (\fImakepkg -r\fR)
 .B AURDEST
 .RS
 Determines where build files will be cloned (default:
-\fI$XDG_CACHE_HOME/aursync\fR). This must be an absolute path.
+\fI$XDG_CACHE_HOME/aur-sync\fR). This must be an absolute path.
 .RE
 
 .B TMPDIR
@@ -134,7 +135,7 @@ than a version in the pacman database. Checks assume there are no
 mismatches between \fI.SRCINFO\fR and \fIPKGBUILD\fR files.
 
 Architecture-specific depends (as introduced with pacman 4.2) are
-merged with regular depends in RPC queries. \fBaursync \fRworkarounds
+merged with regular depends in RPC queries. \fBaur-sync\fR workarounds
 this by stripping the \fIlib32- \fRsuffix from packages and removing
 \fIgcc-multilib \fRif the i686 architecture is detected.
 
@@ -142,20 +143,19 @@ this by stripping the \fIlib32- \fRsuffix from packages and removing
 directory, in order to avoid conflicts with git.
 
 .SH SEE ALSO
-.BR aurbuild (1),
-.BR aurchain (1),
-.BR aurcheck (1),
-.BR aurfetch (1),
-.BR aursearch (1),
-.BR aursift (1),
+.BR aur (1),
+.BR aur-build (1),
+.BR aur-fetch (1),
+.BR aur-rpc-deps (1),
+.BR aur-search (1),
+.BR aur-updates (1),
 .BR git (1),
 .BR jq (1),
 .BR less (1),
 .BR pacconf (1),
 .BR parallel (1),
 .BR vifm (1),
-.BR pacman.conf (5),
-.BR aurutils (7)
+.BR pacman.conf (5)
 
 .SH AUTHORS
 .MT https://github.com/AladW
