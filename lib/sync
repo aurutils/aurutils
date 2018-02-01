@@ -164,7 +164,7 @@ while true; do
 done
 
 if ((rotate)); then
-    if { hash rot13 && target=$(aurgrep .+ | shuf -n 1); } 2>/dev/null; then
+    if { hash rot13 && target=$(aur pkglist | shuf -n 1); } 2>/dev/null; then
         exec bash -c "{ \"$argv0\" -c \"$target\" && repo-elephant | rot13; } 2>&1 | rot13"
     else
         echo '?'; exit 16 # EBUSY
@@ -208,7 +208,7 @@ cd_safe "$tmp"
 mkdir patch
 
 if ((update)); then
-    mapfile -t < <(aurcheck -d "$repo" -lr "$root" | aurcheck -q)
+    mapfile -t < <(aur updates -d "$repo" -lr "$root" | aur updates -q)
     wait "$!"
 fi
 
@@ -220,7 +220,7 @@ if ! (($#)); then
 fi
 
 msg "Resolving dependencies..."
-aurchain -t -- "$@" >pkginfo_0
+aur rpc-deps -t -- "$@" >pkginfo_0
 
 { for i in "${pkg_i[@]}"; do
       warning "'$i': ignoring package"
@@ -228,7 +228,7 @@ aurchain -t -- "$@" >pkginfo_0
   done
 
   if ((chkver)); then
-      cut -f1,3 pkginfo_0 | aurcheck -d "$repo" -r "$root" -c
+      cut -f1,3 pkginfo_0 | aur updates -d "$repo" -r "$root" -c
   fi
 } >filter
 
@@ -246,10 +246,10 @@ if ((download)); then
 
     if ((snapshot)); then
         cd_safe "$AURDEST"/snapshot
-        cut -f4 "$tmp"/pkginfo_1 | aurfetch -t
+        cut -f4 "$tmp"/pkginfo_1 | aur fetch -t
     else
         cd_safe "$AURDEST"
-        cut -f2 "$tmp"/pkginfo_1 | aurfetch -L "$tmp"/patch
+        cut -f2 "$tmp"/pkginfo_1 | aur fetch -L "$tmp"/patch
     fi
 fi
 
@@ -262,9 +262,9 @@ if ((build)); then
     aurbuild_args+=(-d "$repo" -r "$root" -a "$tmp"/queue)
 
     if ((chroot)); then
-        aurbuild "${aurbuild_args[@]}" -- "${makechrootpkg_args[@]}"
+        aur build "${aurbuild_args[@]}" -- "${makechrootpkg_args[@]}"
     else
-        aurbuild "${aurbuild_args[@]}" -- "${makepkg_args[@]}"
+        aur build "${aurbuild_args[@]}" -- "${makepkg_args[@]}"
     fi
 else
     xargs -a "$tmp"/queue printf -- "$(pwd -P)/%s\\n"

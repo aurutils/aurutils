@@ -73,7 +73,7 @@ cmp_all() {
 }
 
 namever_aur() {
-    xargs -r aursearch -ir | jq -r '.results[] |
+    xargs -r aur search -ir | jq -r '.results[] |
         [.Name, .PackageBase, .Version] | @tsv'
 }
 

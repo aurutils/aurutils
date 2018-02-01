@@ -42,7 +42,7 @@ tabulate() {
 chain() {
     declare -i num
 
-    aursearch -ir -- "$@" > json/0 || exit
+    aur search -ir -- "$@" > json/0 || exit
     num=$(count json/0)
 
     if [[ $num -lt 1 ]]; then
@@ -63,7 +63,7 @@ chain() {
 
         # XXX AUR does not support querying pkgver (#10)
         if [[ ${target[*]} ]]; then
-            aursearch -ir -- "${target[@]}" > json/$a || exit
+            aur search -ir -- "${target[@]}" > json/$a || exit
         else
             break
         fi

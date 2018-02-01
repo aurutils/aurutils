@@ -1,7 +1,6 @@
 #!/bin/bash
 readonly argv0=aur
 readonly cmd_dir=/usr/lib/aurutils
-readonly PATH=$cmd_dir
 readonly cmd=("$cmd_dir"/*)
 
 if [[ -z $1 ]]; then
@@ -12,7 +11,7 @@ if [[ -z $1 ]]; then
 fi
 
 if type -P -- "$1" >/dev/null; then
-    exec "$@"
+    exec "$cmd_dir/$1" "${@:2}"
 else
     printf >&2 -- '%s: %q is not an aur command\n' "$argv0" "$1"
     exit 1
