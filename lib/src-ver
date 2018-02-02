@@ -1,5 +1,5 @@
 #!/bin/bash
-readonly argv0=aursrcver
+readonly argv0=src-ver
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly startdir=$PWD
 

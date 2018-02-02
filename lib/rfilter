@@ -1,5 +1,5 @@
 #!/bin/bash
-readonly argv0=aursift
+readonly argv0=rfilter
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly arch_repo=(core extra testing community{,-testing} multilib{,-testing})
 

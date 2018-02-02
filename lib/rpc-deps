@@ -1,6 +1,6 @@
 #!/bin/bash
 set -o noclobber
-readonly argv0=deps-rpc
+readonly argv0=rpc-deps
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 declare mode=aur

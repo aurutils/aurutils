@@ -1,5 +1,5 @@
 #!/bin/bash
-readonly argv0=aursearch
+readonly argv0=search
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
