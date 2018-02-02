@@ -46,7 +46,7 @@ usage() {
     exit 1
 }
 
-readonly -f searchby dl_stdin json_short json_long usage
+readonly -f info search dl_stdin trap_exit usage
 
 unset by type
 while getopts :b:mt: OPT; do
@@ -69,16 +69,22 @@ readonly tmp
 trap 'trap_exit' EXIT
 
 case $type in
-    info)
-        query() { info; }                                    ;;
-    info-merged)
-        query() { info | sed 's/^/[/; s/}{/},{/g; s/$/]/'; } ;;
+    info|info-merged)
+        query() { info; } ;;
     search)
-        query() { search "${by:-name-desc}"; }               ;;
+        query() { search "${by:-name-desc}"; } ;;
     *) 
-        printf '%s: error: invalid type\n' "$argv0" >&2      ;;
+        printf '%s: error: invalid type\n' "$argv0" >&2
+        exit 1 ;;
 esac
 
-printf -- '%s\n' "$@" | jq -R -r '@uri' | query | dl_stdin
+case $type in
+    info)
+        sub() { tee; } ;;
+    info-merged)
+        sub() { sed 's/^/[/; s/}{/},{/g; s/$/]/'; } ;;
+esac
+
+printf -- '%s\n' "$@" | jq -R -r '@uri' | query | dl_stdin | sub
 
 # vim: set et sw=4 sts=4 ft=sh:
