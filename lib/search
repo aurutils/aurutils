@@ -68,7 +68,7 @@ usage() {
     exit 1
 }
 
-readonly -f searchby dl_stdin json_short json_long usage
+readonly -f json_short json_long usage
 
 source /usr/share/makepkg/util.sh || exit
 
