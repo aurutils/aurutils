@@ -18,7 +18,7 @@ deps_paired() {
     }' "$@"
 }
 
-# XXX Output of form " pkgname\tpkgbase"
+# XXX Output of form " pkgname\tpkgbase" (leading space)
 base() {
     awk -v FS='[<=>]' '
     /pkgbase/ {
@@ -46,24 +46,18 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 pkgname..."
+    printf 'usage: %s pkgname...\n' "$argv0" >&2
     exit 1
 }
 
 readonly -f deps_paired base sub trap_exit usage
-source /usr/share/makepkg/util.sh || exit
-
-if [[ -t 2 && ! -o xtrace ]]; then
-    colorize
-fi
 
 while getopts h OPT; do
     case $OPT in
         *) usage ;;
     esac
 done
-
-shift "$((OPTIND - 1))"
+shift $((OPTIND - 1))
 OPTIND=1
 
 if ((!$#)); then
@@ -76,11 +70,13 @@ trap 'trap_exit' EXIT
 mapfile -t arg_path < <(readlink -e -- "$@")
 
 if [[ -n ${arg_path[*]} ]]; then
-    find "${arg_path[@]}" -maxdepth 1 -type f -name .SRCINFO -print0 | xargs -0 cat > "$tmp"
+    find "${arg_path[@]}" -maxdepth 1 -type f -name .SRCINFO -print0 \
+        | xargs -0 cat > "$tmp"
 fi
 
 if [[ -s "$tmp" ]]; then
-    deps_paired "$tmp" | tsort | sub <(base "$tmp") - | grep -Fxf <(printf -- '%s\n' "${@##*/}") | tac
+    deps_paired "$tmp" | tsort | sub <(base "$tmp") - \
+        | grep -Fxf <(printf -- '%s\n' "${@##*/}") | tac
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:

@@ -110,7 +110,7 @@ usage() {
 readonly -f my_vercmp sort_by sort_join cmp_equal_or_newer cmp_all
 readonly -f namever_aur namever_sync repo_parse fill_empty trap_exit usage
 
-source /usr/share/makepkg/util.sh || exit
+source /usr/share/makepkg/util/message.sh || exit
 
 if [[ -t 2 && ! -o xtrace ]]; then
     colorize

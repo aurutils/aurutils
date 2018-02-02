@@ -11,7 +11,7 @@ count() {
     if num=$(jq -r '.resultcount' "$1" | awk '{s += $1} END {print s}'); then
         printf '%d' "$num"
     else
-        error "$argv0: invalid argument"
+        printf '%s: invalid argument\n' "$argv0" >&2
         exit 22
     fi
 }
@@ -46,7 +46,7 @@ chain() {
     num=$(count json/0)
 
     if [[ $num -lt 1 ]]; then
-        error "$argv0: no packages found"
+        printf '%s: no packages found\n' "$argv0" >&2
         exit 1
     fi
 
@@ -78,12 +78,12 @@ chain() {
     done
 
     if ((a > 30)); then
-        error "$argv0: total requests: $((++a)) (out of range)"
+        printf '%s: total requests: %d (out of range)\n' "$argv0" $((++a)) >&2
         exit 34
     fi
 
     if ! cut -f1,2 tsv/n | strip_version | tsort; then
-        error "$argv0: invalid argument"
+        printf '%s: invalid argument\n' "$argv0" >&2
         exit 22
     fi
  
@@ -97,17 +97,11 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-at] pkgname..."
+    printf 'usage: %s [-at] pkgname...\n' "$argv0" >&2
     exit 1
 }
 
 readonly -f count tabulate chain trap_exit usage
-
-source /usr/share/makepkg/util.sh || exit
-
-if [[ -t 2 && ! -o xtrace ]]; then
-    colorize
-fi
 
 while getopts :at OPT; do
     case $OPT in

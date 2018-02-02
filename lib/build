@@ -40,7 +40,8 @@ usage() {
 
 readonly -f conf_single db_replaces find_pkg_dupes trap_exit usage
 
-source /usr/share/makepkg/util.sh
+source /usr/share/makepkg/util/util.sh
+source /usr/share/makepkg/util/message.sh
 
 if [[ -t 2 && ! -o xtrace ]]; then
     colorize

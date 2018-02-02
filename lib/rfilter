@@ -14,17 +14,11 @@ provides() {
 }
 
 usage() {
-    plain "usage: $argv0 [-d repo]"
+    printf 'usage: %s [-d repo]\n' "$argv0" >&2
     exit 1
 }
 
 readonly -f provides usage
-
-source /usr/share/makepkg/util.sh || exit
-
-if [[ -t 2 && ! -o xtrace ]]; then
-    colorize
-fi
 
 unset repo siftargs user_repo
 while getopts d: OPT; do
@@ -40,7 +34,7 @@ if ! [[ -v user_repo ]]; then
     user_repo=("${arch_repo[@]}")
 fi
 
-readarray -t all < /dev/stdin
+mapfile -t all < /dev/stdin
 
 for p in "${all[@]}"; do
     siftargs+=("--satisfies=$p")
@@ -52,12 +46,12 @@ if [[ ${pkgset[*]} ]]; then
         siftargs+=("--repo=$p")
     done
 else
-    error "$argv0: no data available"
+    printf '%s: no data available\n' "$argv0" >&2
     exit 61
 fi
 
 # https://github.com/andrewgregory/pacutils/issues/3
-readarray -t query < <(pacsift --sync --exact "${siftargs[@]}" <&-)
+mapfile -t query < <(pacsift --sync --exact "${siftargs[@]}" <&-)
 
 if [[ ${query[*]} ]]; then
     while read -r p v; do
@@ -68,7 +62,7 @@ if [[ ${query[*]} ]]; then
         fi
 
         if [[ ${pkgset[$v]} ]]; then
-            plain "virtual dependency $v provided by $p"
+            printf 'virtual dependency %s provided by %s\n' "$v" "$p" >&2
             repo+=("$v")
         fi
     done < <(provides "${query[@]}")
