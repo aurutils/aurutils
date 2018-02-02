@@ -1,6 +1,6 @@
 #!/bin/bash
 set -o noclobber
-readonly argv0=aurchain
+readonly argv0=deps-rpc
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 declare mode=aur
@@ -42,7 +42,7 @@ tabulate() {
 chain() {
     declare -i num
 
-    aur search -ir -- "$@" > json/0 || exit
+    aur-query -t info -- "$@" > json/0 || exit
     num=$(count json/0)
 
     if [[ $num -lt 1 ]]; then
@@ -59,11 +59,11 @@ chain() {
         cut -f1 tsv/$sub >> seen
 
         # Avoid querying duplicates (#4)
-        readarray -t target < <(cut -f2 tsv/$sub | strip_version | grep -Fxvf seen)
+        mapfile -t target < <(cut -f2 tsv/$sub | strip_version | grep -Fxvf seen)
 
         # XXX AUR does not support querying pkgver (#10)
         if [[ ${target[*]} ]]; then
-            aur search -ir -- "${target[@]}" > json/$a || exit
+            aur-query -t info -- "${target[@]}" > json/$a || exit
         else
             break
         fi

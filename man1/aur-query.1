@@ -1,0 +1,32 @@
+.TH AUR-SEARCH 1 2018-02-02 AURUTILS
+.SH NAME
+aur-query \- send GET requests to aurweb
+
+.SH SYNOPSIS
+.SY aur-query
+.OP \-t type
+.OP \-b by
+.OP \-m
+.I package
+.OP package...
+.YS
+
+.SH DESCRIPTION
+
+.SH OPTIONS
+
+.SH NOTES
+As the AUR RPC is limited to GET requests, queries are split by 150
+arguments to avoid HTTP 414 errors (FS#49089).
+
+.SH SEE ALSO
+.BR aria2c (1),
+.BR curl (1),
+.BR parallel (1)
+
+.SH AUTHORS
+.MT https://github.com/AladW
+Alad Wenter
+.ME
+
+.\" vim: set textwidth=72:

@@ -4,40 +4,9 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
 declare by=name-desc
+declare format=brief
 declare sort_key=Name
-parse() { json_short "$1"; }
 
-searchby() {
-    declare -r aurweb='https://aur.archlinux.org'
-
-    if [[ $1 != none ]]; then
-        awk -v rpc="$aurweb/rpc/?v=5&type=search&by=$1&arg" '{
-            printf "%s=%s\n", rpc, $0
-        }'
-    else
-        awk -v rpc="$aurweb/rpc/?v=5&type=info" '{
-            if (NR == 1)
-                printf "%s&arg[]=%s", rpc, $0
-            else if (NR % 150 == 0)
-                printf "\n%s&arg[]=%s", rpc, $0
-            else if (NR > 1)
-                printf "&arg[]=%s", $0
-        } END {
-            printf "\n"
-        }'
-    fi
-}
-
-dl_stdin() {
-    if type -P parallel >/dev/null 2>&1; then
-        parallel --will-cite -X -j +8 --nice 10 --halt soon,fail=1 -r \
-            curl -fgLsS --compressed --cert-status {}
-    else
-        xargs -r curl -fgLsS --compressed --cert-status
-    fi
-}
-
-# XXX Does not handle "too many results"
 json_short() {
     jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | .Name,
         .Version,
@@ -107,16 +76,14 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-while getopts :imnk:rRv OPT; do
+while getopts :imnk:v OPT; do
     case $OPT in
-        i) by=none ;;
-        m) by=maintainer ;;
-        n) by=name ;;
-        k) sort_key=$OPTARG ;;
-        r) parse() { tee; } ;;
-        R) parse() { sed 's/^/[/; s/}{/},{/g; s/$/]/' ; } ;;
-        v) parse() { json_long "$1"; } ;;
-        *) usage ;;
+        i) type=info                  ;;
+        m) type=search; by=maintainer ;;
+        n) type=search; by=name       ;;
+        k) sort_key=$OPTARG           ;;
+        v) format=verbose             ;;
+        *) usage                      ;;
     esac
 done
 shift $((OPTIND - 1))
@@ -126,6 +93,13 @@ if ((!$#)); then
     usage
 fi
 
-printf -- '%s\n' "$@" | jq -R -r '@uri' | searchby "$by" | dl_stdin | parse "$sort_key"
+case $format in
+    brief)
+        parse() { json_short "$sort_key"; } ;;
+    verbose)
+        parse() { json_long  "$sort_key"; } ;;
+esac
+
+aur-query "$type" "$by" | parse
 
 # vim: set et sw=4 sts=4 ft=sh:

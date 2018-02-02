@@ -1,0 +1,84 @@
+#!/bin/bash
+# aur-query - send GET requests to aurweb
+# https://bugs.archlinux.org/task/49089
+readonly argv0=query
+readonly PS4='+(${BASH_SOURCE}:${LINENO}):${FUNCNAME[0]:+${FUNCNAME[0]}(): }' readonly aurweb='https://aur.archlinux.org/rpc/?v=5'
+
+info() {
+    awk -v rpc="$aurweb/&type=info" '{
+        if (NR == 1)
+            printf "%s&arg[]=%s", rpc, $0
+        else if (NR % 150 == 0)
+            printf "\n%s&arg[]=%s", rpc, $0
+        else if (NR > 1)
+            printf "&arg[]=%s", $0
+    } END {
+        printf "\n"
+    }'
+}
+
+search() {
+    awk -v rpc="$aurweb/&type=search&by=$1&arg" '{
+        printf "%s=%s\n", rpc, $0
+    }'
+}
+
+dl_stdin() {
+    if type -P parallel >/dev/null 2>&1; then
+        parallel --will-cite -X -j +8 --nice 10 --halt soon,fail=1 -r \
+            curl -fgLsS --compressed --cert-status {}
+    elif type -P aria2c >/dev/null 2>&1; then
+        aria2c --download-result=hide --console-log-level=error --stderr=true \
+            -d "$tmp"/aria2 -i - && cat "$tmp"/aria2/*
+    else
+        xargs -r curl -fgLsS --compressed --cert-status
+    fi
+}
+
+trap_exit() {
+    if ! [[ -o xtrace ]]; then
+        rm -rf "$tmp"
+    fi
+}
+
+usage() {
+    printf >&2 'usage: %s [-t type] [-b by] [-m] package [package...]\n' "$argv0"
+    exit 1
+}
+
+readonly -f searchby dl_stdin json_short json_long usage
+
+unset by type
+while getopts :b:mt: OPT; do
+    case $OPT in
+        b) by=$OPTARG       ;;
+        m) type=info-merged ;;
+        t) type=$OPTARG     ;;
+        *) usage            ;;
+    esac
+done
+shift $((OPTIND - 1))
+OPTIND=1
+
+if ((!$#)); then
+    usage
+fi
+
+tmp=$(mktemp -dt "$argv0".XXXXXXXX) || exit
+readonly tmp
+trap 'trap_exit' EXIT
+
+case $type in
+    info)
+        query() { info; }                                    ;;
+    info-merged)
+        query() { info | sed 's/^/[/; s/}{/},{/g; s/$/]/'; } ;;
+    search)
+        query() { search "${by:-name-desc}"; }               ;;
+    *) 
+        printf '%s: error: invalid type\n' "$argv0" >&2      ;;
+esac
+
+printf -- '%s\n' "$@" | jq -R -r '@uri' | query | dl_stdin
+
+# vim: set et sw=4 sts=4 ft=sh:
