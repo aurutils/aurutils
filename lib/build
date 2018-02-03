@@ -147,7 +147,7 @@ while read -r -u "$fd" pkg _; do
     fi
 
     if ((chroot)); then
-        sudo PKGDEST="$var_tmp" build-nspawn \
+        sudo PKGDEST="$var_tmp" aur build-nspawn \
              "${chroot_args[@]}" -- -d "$db_root" "${makechrootpkg_args[@]}"
     else
         PKGDEST="$var_tmp" makepkg "${makepkg_args[@]}"
