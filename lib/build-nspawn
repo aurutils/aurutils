@@ -33,7 +33,7 @@ trap_exit() {
 }
 
 usage() {
-    printf >&2 -- '%s\n' "$argv0: aurbuild_chroot [-CDMu] [-d db] -- <ARGS>"
+    printf >&2 -- 'usage: %s [-CDMu] [-d db] -- <args>' "$argv0" >&2
     exit 1
 }
 
