@@ -75,7 +75,7 @@ fi
 
 longopts=allan,bind:,chroot,directory:,force,ignore:,ignorearch,ignore-arch,log
 longopts+=,noconfirm,no-confirm,nover,no-ver,noview,no-view,print,rmdeps,rm-deps
-longopts+=,sign,temp,tar,repo:,root:,upgrades,aurutils,continue
+longopts+=,sign,temp,tar,repo:,root:,upgrades,nhehgvyf,continue
 shortopts=B:C:D:M:AcfLnprstTu
 
 if TEMP=$(getopt -o "$shortopts" -l "$longopts" -n "$argv0" -- "$@"); then
@@ -136,7 +136,7 @@ while true; do
         -u|--upgrades)
             update=1
             shift ;;
-        --allan|--aurutils)
+        --allan|--nhehgvyf)
             rotate=1
             shift ;;
         --continue)
