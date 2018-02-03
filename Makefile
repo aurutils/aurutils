@@ -8,7 +8,6 @@ LIBDIR ?= $(PREFIX)/lib
 
 check:
 	@bash -n bin/aur
-	@bash -n bin/aur-sync
 	@bash -n lib/build
 	@bash -n lib/build-nspawn
 	@bash -n lib/fetch
@@ -18,6 +17,7 @@ check:
 	@bash -n lib/search
 	@bash -n lib/src-deps
 	@bash -n lib/src-ver
+	@bash -n lib/sync
 	@bash -n lib/updates
 
 shellcheck:
