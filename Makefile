@@ -8,7 +8,6 @@ LIBDIR ?= $(PREFIX)/lib
 
 check:
 	@bash -n bin/aur
-	@bash -n bin/aur-query
 	@bash -n bin/aur-sync
 	@bash -n lib/build
 	@bash -n lib/build-nspawn

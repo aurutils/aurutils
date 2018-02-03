@@ -1,6 +1,7 @@
 #!/bin/bash
 set -o noclobber
 readonly argv0=rpc-deps
+readonly PATH=/usr/lib/aurutils:$PATH
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 declare mode=aur
@@ -42,7 +43,7 @@ tabulate() {
 chain() {
     declare -i num
 
-    aur-query -t info -- "$@" > json/0 || exit
+    query -t info -- "$@" > json/0 || exit
     num=$(count json/0)
 
     if [[ $num -lt 1 ]]; then
@@ -63,7 +64,7 @@ chain() {
 
         # XXX AUR does not support querying pkgver (#10)
         if [[ ${target[*]} ]]; then
-            aur-query -t info -- "${target[@]}" > json/$a || exit
+            query -t info -- "${target[@]}" > json/$a || exit
         else
             break
         fi

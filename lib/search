@@ -1,5 +1,6 @@
 #!/bin/bash
 readonly argv0=search
+readonly PATH=/usr/lib/aurutils:$PATH
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
@@ -100,6 +101,6 @@ case $format in
         parse() { json_long  "$sort_key"; } ;;
 esac
 
-aur-query "$type" "$by" | parse
+query "$type" "$by" | parse
 
 # vim: set et sw=4 sts=4 ft=sh:

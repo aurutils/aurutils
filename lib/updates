@@ -1,5 +1,6 @@
 #!/bin/bash
 readonly argv0=updates
+readonly PATH=/usr/lib/aurutils:$PATH
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
@@ -73,7 +74,7 @@ cmp_all() {
 }
 
 namever_aur() {
-    xargs -r aur-query -t info | jq -r '.results[] |
+    xargs -r query -t info | jq -r '.results[] |
         [.Name, .PackageBase, .Version] | @tsv'
 }
 

@@ -1,12 +1,12 @@
 # Maintainer: Alad Wenter <https://github.com/AladW>
 pkgname=aurutils-git
-pkgver=1.5.3.r287.g029360c
+pkgver=1.5.3.r309.g5524d92
 pkgrel=1
 pkgdesc='helper tools for the arch user repository'
 url='https://github.com/AladW/aurutils'
 arch=('any')
 license=('custom:ISC')
-source=('git+https://github.com/AladW/aurutils')
+source=('git+https://github.com/AladW/aurutils#branch=lib-move')
 sha256sums=('SKIP')
 conflicts=('aurutils')
 provides=('aurutils')
