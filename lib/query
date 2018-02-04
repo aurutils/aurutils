@@ -2,7 +2,8 @@
 # aur-query - send GET requests to aurweb
 # https://bugs.archlinux.org/task/49089
 readonly argv0=query
-readonly PS4='+(${BASH_SOURCE}:${LINENO}):${FUNCNAME[0]:+${FUNCNAME[0]}(): }' readonly aurweb='https://aur.archlinux.org/rpc/?v=5'
+readonly PS4='+(${BASH_SOURCE}:${LINENO}):${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+readonly aurweb='https://aur.archlinux.org/rpc/?v=5'
 
 info() {
     awk -v rpc="$aurweb/&type=info" '{
