@@ -1,7 +1,7 @@
 #!/bin/bash
-# aur-query - send GET requests to aurweb
+# aur-rpc - send GET requests to aurweb
 # https://bugs.archlinux.org/task/49089
-readonly argv0=query
+readonly argv0=rpc
 readonly PS4='+(${BASH_SOURCE}:${LINENO}):${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly aurweb='https://aur.archlinux.org/rpc/?v=5'
 
@@ -80,10 +80,10 @@ case $type in
 esac
 
 case $type in
-    info)
-        sub() { tee; } ;;
     info-merged)
         sub() { sed 's/^/[/; s/}{/},{/g; s/$/]/'; } ;;
+    *)
+        sub() { tee; } ;;
 esac
 
 printf -- '%s\n' "$@" | jq -R -r '@uri' | query | dl_stdin | sub

@@ -6,6 +6,7 @@ set -o pipefail
 declare by=name-desc
 declare format=brief
 declare sort_key=Name
+declare type=search
 
 json_short() {
     jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | .Name,
@@ -100,6 +101,6 @@ case $format in
         parse() { json_long  "$sort_key"; } ;;
 esac
 
-aur query -t "$type" -b "$by" | parse
+aur rpc -t "$type" -b "$by" "$@" | parse
 
 # vim: set et sw=4 sts=4 ft=sh:
