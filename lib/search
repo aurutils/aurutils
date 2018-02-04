@@ -100,6 +100,6 @@ case $format in
         parse() { json_long  "$sort_key"; } ;;
 esac
 
-aur query "$type" "$by" | parse
+aur query -t "$type" -b "$by" | parse
 
 # vim: set et sw=4 sts=4 ft=sh:
