@@ -2,16 +2,28 @@
 readonly argv0=aur
 readonly cmd_dir=/usr/lib/aurutils
 readonly cmd=("$cmd_dir"/*)
+readonly usrcmd_prefix='aur-'
+readonly usrcmd=($(compgen -c $usrcmd_prefix))
 
 if [[ -z $1 ]]; then
     printf >&2 -- 'usage: %s [command]\n\n' "$argv0"
     printf >&2 -- 'available commands:\n'
-    printf >&2 -- '    %q\n' "${cmd[@]##*/}"
+    printf -- '%q\n' "${cmd[@]##*/}" | column 1>&2
+
+    if [[ ${#usrcmd[@]} -gt 0 ]]; then
+        printf >&2 -- '\navailable user commands:\n'
+        #ignore user commands that clash with official ones.
+        sort <(printf -- "%q\n" ${usrcmd[@]#aur-}) \
+             <(printf -- "%q\n" ${cmd[@]##*/}) \
+             <(printf -- "%q\n" ${cmd[@]##*/}) | uniq -u | column 1>&2
+    fi
     exit 1
 fi
 
 if [[ -x $cmd_dir/$1 ]]; then
     exec "$cmd_dir/$1" "${@:2}"
+elif command -v "$usrcmd_prefix$1" > /dev/null 2>&1 ; then
+    exec "$usrcmd_prefix$1" "${@:2}"
 else
     printf >&2 -- '%s: %q is not an aur command\n' "$argv0" "$1"
     exit 1
