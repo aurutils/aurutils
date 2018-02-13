@@ -4,7 +4,6 @@
 readonly argv0=rpc
 readonly aurweb='https://aur.archlinux.org/rpc/?v=5'
 readonly PS4='+(${BASH_SOURCE}:${LINENO}):${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-shopt -s nullglob
 
 info() {
     awk -v rpc="$aurweb/&type=info" '{
@@ -27,19 +26,22 @@ search() {
 }
 readonly -f search
 
+cat_ifne() {
+    if [[ -n $* && -r $1 ]]; then
+        cat -- "$@"
+    fi
+}
+readonly -f cat_ifne
+
 dl_stdin() {
     if type -P aria2c >/dev/null; then
-        aria2c -d "$tmp"/aria2 -i - \
-            --console-log-level=error \
-            --download-result=hide \
+        aria2c -d "$tmp"/aria2 -i -      \
+            --console-log-level=error    \
+            --download-result=hide       \
             --show-console-readout=false \
             --stderr=true || return
 
-        files=("$tmp"/aria2/*)
-
-        if [[ ${files[*]} ]]; then
-            cat "${files[@]}"
-        fi
+        cat_ifne "$tmp"/aria2/*
     else
         wget --quiet -i - -O -
     fi
