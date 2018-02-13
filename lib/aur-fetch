@@ -1,67 +1,58 @@
 #!/bin/bash
 readonly argv0=fetch
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-readonly aurweb='https://aur.archlinux.org'
-readonly urlpath='/cgit/aur.git/snapshot'
 set -o errexit
 
-declare    logdir=/dev/null
-declare -i snapshot=0 default_path=1
+declare logdir=/dev/null
+declare mode=git
 
 clone() {
-    declare -r remote=$1 logdir=$2
+    declare -r log_dir=$1
 
     while IFS= read -r; do
+        declare git_dir=${REPLY##*/}     # strip path
+        declare git_dir=${git_dir%%.git} # strip .git suffix
+
         # Avoid issues with exotic file system layouts (#274)
-        git_wrap() { git --work-tree="$REPLY" --git-dir="$REPLY"/.git "$@"; }
+        git_wrap() { git --work-tree="$git_dir" --git-dir="$git_dir"/.git "$@"; }
         
-        if [[ -d $REPLY/.git ]]; then
+        if [[ -d $git_dir/.git ]]; then
             # returns 0 even if nothing was fetched
             git_wrap fetch -v
 
             if [[ $(git_wrap rev-parse HEAD) != $(git_wrap rev-parse '@{upstream}') ]]; then
-                if [[ -d $logdir ]]; then
+                if [[ -d $log_dir ]]; then
                     git_wrap --no-pager log --patch --stat '..@{upstream}' \
-                        >> "$logdir/$REPLY".patch
+                        >> "$log_dir/$git_dir".patch
                 fi
 
                 git_wrap reset --hard HEAD
                 git_wrap merge
             fi
         else
-            git clone "$remote/$REPLY".git
+            git clone "$REPLY"
         fi
     done
 }
 readonly -f clone
 
 usage() {
-    printf '%s\n' "usage: $argv0 [-L logdir] [-t]" >&2
+    printf '%s\n' "usage: $argv0 [-L log_dir] [-t]" >&2
     exit 1
 }
 readonly -f usage
 
-while getopts :L:Pt OPT; do
+while getopts :L:t OPT; do
     case $OPT in
-        L) logdir=$OPTARG ;;
-        P) default_path=0 ;;
-        t) snapshot=1     ;;
-        *) usage          ;;
+        L) log_dir=$OPTARG ;;
+        t) mode=tar        ;;
+        *) usage           ;;
     esac
 done
 
-# XXX allow to take full URIs? (cf. aur-fetch-snapshot)
-if ((snapshot)); then
-    if ((default_path)); then
-        # stdin: pkgname
-        xargs -I{} printf '%s%s/%s.tar.gz\n' "$aurweb" "$urlpath" {}
-    else
-        # stdin: URLPath (AurJson)
-        xargs -I{} printf '%s%s\n' "$aurweb" {}
-    fi | \
-        aur fetch-snapshot -L "$logdir"
-else
-    clone "$aurweb" "$logdir"
-fi
+case $mode in
+    tar) aur fetch-snapshot -L "$log_dir" ;;
+    aur) clone "$log_dir"                 ;;
+esac
 
 # vim: set et sw=4 sts=4 ft=sh:
