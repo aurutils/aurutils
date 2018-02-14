@@ -1,0 +1,43 @@
+.TH AUR-FETCH 1 2018-02-14 AURUTILS
+.SH NAME
+aur-fetch \- fetches packages from a location
+
+.SH SYNOPSIS
+.SY aur
+.B fetch
+.OP -L log_dir
+.OP -m mode
+.YS
+
+.SH DESCRIPTION
+\fBaur-fetch\fR accepts package names from stdin, and attempts to
+download them. It understands two \fImodes\fR of operation; \fIgit\fR
+and \fItar\fR.
+
+\fIgit\fR attempts to download the package from a git repository.
+
+\fItar\fR attempts to downloade the tar archive with
+\fIaur-fetch-snapshot\fR.
+
+.SH OPTIONS
+.B \-L
+.RS
+The location of where the package should be downloaded.
+.RE
+
+.B \-m
+.RS
+Mode of operation, either \fIgit\fR or \fItar\fR.
+.RE
+
+.SH SEE ALSO
+.BR git (1),
+.BR aur-fetch-snapshot (1),
+.BR aur (1)
+
+.SH AUTHORS
+.MT https://github.com/AladW
+Alad Wenter
+.ME
+
+.\" vim: set textwidth=72:
