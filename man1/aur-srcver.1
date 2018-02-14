@@ -1,0 +1,28 @@
+.TH AUR-SRC-VER 1 2018-02-01 AURUTILS
+.SH NAME
+aur-src-ver \- lists version of VCS packages
+
+.SH SYNOPSIS
+.SY aur
+.B src-ver
+.OP pkgbase
+.OP pkgbase...
+.YS
+
+.SH DESCRIPTION
+\fIaur-src-ver\fR takes the names of packages and lists the current
+\fIpkgver\fR of VCS packages. This is achieved by running \fImakepkg
+--skipinteg --noprepare -od\fR and parsing the output.
+
+It is assumed that source directories are already available, and that
+\fIaur-src-ver\fR is used in the same directory as those source directories.
+
+.SH SEE ALSO
+.BR aur (1)
+
+.SH AUTHORS
+.MT https://github.com/AladW
+Alad Wenter
+.ME
+
+.\" vim: set textwidth=72:
