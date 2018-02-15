@@ -2,11 +2,11 @@
 # aur-rpc - send GET requests to aurweb
 # https://bugs.archlinux.org/task/49089
 readonly argv0=rpc
-readonly aurweb='https://aur.archlinux.org/rpc/?v=5'
+readonly AURURI=${AURURI:-https://aur.archlinux.org}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}):${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 info() {
-    awk -v rpc="$aurweb/&type=info" '{
+    awk -v rpc="$AURURI/rpc/?v=5&type=info" '{
         if (NR == 1)
             printf "%s&arg[]=%s", rpc, $0
         else if (NR % 150 == 0)
@@ -20,14 +20,14 @@ info() {
 readonly -f info
 
 search() {
-    awk -v rpc="$aurweb/&type=search&by=$1&arg" '{
+    awk -v rpc="$AURURI/rpc/?v=5&type=search&by=$1&arg" '{
         printf "%s=%s\n", rpc, $0
     }'
 }
 readonly -f search
 
 cat_ifne() {
-    if [[ -n $* && -r $1 ]]; then
+    if [[ -n $* && -e $1 ]]; then
         cat -- "$@"
     fi
 }
