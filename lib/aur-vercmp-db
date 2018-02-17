@@ -1,0 +1,36 @@
+#!/bin/bash
+readonly argv0=vercmp-db
+readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+namever_db() {
+    awk '/%NAME%/    { getline; printf("%s\t", $1) }
+         /%VERSION%/ { getline; printf("%s\n", $1) }'
+}
+readonly -f namever_db
+
+namever_sync() {
+    xargs -0r pacman -Sddp --print-format "$(printf '%%n\t%%v')"
+}
+readonly -f namever_sync
+
+parse_db() {
+    bsdcat "$1" | namever_db | awk '{print} END {
+        if (!NR) printf("-\t-\n")
+    }'
+}
+readonly -f parse_db
+
+parse_sync() {
+    pacsift --exact --repo="$1" --null <&- | namever_sync
+}
+readonly -f parse_sync
+
+# XXX error handling, -c should not take an argument (filter)
+while getopts :lS:D:c: OPT; do
+    case $OPT in
+        S) parse_sync "$OPTARG" | aur vercmp ;;
+        D) parse_db   "$OPTARG" | aur vercmp ;;
+        l) parse_db   "$OPTARG" ;;
+        c) aur vercmp -cp <(parse_db "$OPTARG") ;;
+    esac
+done

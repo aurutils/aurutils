@@ -3,64 +3,48 @@ readonly argv0=vercmp
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
-declare -i geq=0 ver=1 cmp=0 pkg_key=1
-declare mode=aur
+declare with=aur format=brief
 
-cmp_equal_or_newer() {
-    while IFS=$'\t' read -r pkg v_cmp v_in; do
-        case $v_cmp in
-             -) msg2 "$pkg N/A -> $v_in"
-                continue ;;
-             *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
-        esac
-
-        case $op in
-            -1) plain "$pkg $v_cmp is newer than $v_in"
-                printf -- '%s\n' "$pkg"     ;;
-             0) printf -- '%s\n' "$pkg"     ;;
-             1) msg2 "$pkg $v_cmp -> $v_in" ;;
-        esac
-    done
+parse_aur() {
+    aur rpc -t info | jq -r '.results[] |
+        [.Name, .Version] | @tsv'
 }
-readonly -f cmp_equal_or_newer
+readonly -f parse_aur
 
-cmp_all() {
-    while IFS=$'\t' read -r pkg v_cmp v_in; do
-        case $v_cmp in
-            -) printf >&2 -- '%s (not available)\n' "$pkg"
-               continue ;;
-            *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
-        esac
+fmt_equal_or_newer() {
+    declare -r op=$1 pkg=$2 v_cmp=$3 v_in=$4
 
-        if ((op > -1 && !geq)); then
-            continue
-        fi
-
-        if ((ver)); then
-            case "$op" in
-                -1) printf -- '%s %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-                 0) printf -- '%s %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
-                 1) printf -- '%s %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-            esac
-        else
-            printf '%s\n' "$pkg"
-        fi
-    done
+    case $op in
+        2) msg2 "$pkg: N/A -> $v_in"    ;;
+        1) msg2 "$pkg: $v_cmp -> $v_in" ;;
+        0) printf -- '%s\n' "$pkg" ;;
+       -1) plain "$pkg: $v_cmp is newer than $v_in"
+           printf -- '%s\n' "$pkg" ;;
+    esac
 }
-readonly -f cmp_all
+readonly -f fmt_equal_or_newer
 
-db_namever() {
-    awk '/%NAME%/    { getline; printf("%s\t", $1) }
-         /%VERSION%/ { getline; printf("%s\n", $1) }'
+fmt_checkupdates() {
+    declare -r op=$1 pkg=$2 v_cmp=$3 v_in=$4
+
+    case $op in
+        2) printf -- '%s: (not available)\n' "$pkg" >&2 ;;
+        1) printf -- '%s: %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+        0) printf -- '%s: %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
+       -1) printf -- '%s: %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+    esac
 }
-readonly -f db_namever
 
-key_sort() {
-    sort -k 1b,1 -t $'\t'
+# XXX allow "1" case or switch arguments(cmp_loop)
+fmt_brief() {
+    declare -r op=$1 pkg=$2 v_cmp=$3 v_in=$4
+
+    case $op in
+        -1) printf -- '%s: %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+    esac
 }
-readonly -f key_sort
+readonly -f fmt_brief
 
-# optimize for the common case (version equality)
 my_vercmp() {
     if [[ $1 != "$2" ]]; then
         vercmp "$1" "$2"
@@ -70,29 +54,29 @@ my_vercmp() {
 }
 readonly -f my_vercmp
 
-parse_aur() {
-    aur rpc -t info | jq -r '.results[] |
-        [.Name, .Version] | @tsv' | key_sort
-}
-readonly -f parse_aur
+cmp_loop() {
+    declare -f "$1" >/dev/null || return 1
 
-parse_db() {
-    bsdcat "$1" | db_namever | key_sort | awk '{print} END {
-        if (!NR) printf("-\t-\n")
-    }'
-}
-readonly -f parse_db
+    while IFS=$'\t' read -r pkg v_cmp v_in _; do
+        case $v_cmp in
+            -) op=2                             ;;
+            *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
+        esac
 
-parse_sync() {
-    pacsift --exact --repo="$1" --null <&- | \
-        xargs -0r pacman -Sddp --print-format %n$'\t'%v
+        "$1" "$op" "$pkg" "$v_cmp" "$v_in"
+    done
 }
-readonly -f parse_sync
+readonly -f cmp_loop
 
 join_auto() {
     join -a 2 -e - -o auto -t $'\t' "$1" "$2"
 }
 readonly -f join_auto
+
+key_sort() {
+    sort -k 1b,1 -t $'\t'
+}
+readonly -f key_sort
 
 trap_exit() {
     if [[ ! -o xtrace ]]; then
@@ -102,7 +86,7 @@ trap_exit() {
 readonly -f trap_exit
 
 usage() {
-    plain "usage: $argv0 [-aclq] [-r root]"
+    plain "usage: $argv0 [-p file] [-ac]"
     exit 1
 }
 readonly -f usage
@@ -113,17 +97,14 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-unset database repo root
-while getopts :acd:lr:q OPT; do
+unset aux_p
+while getopts :p:ac OPT; do
     case $OPT in
-        a) geq=1        ;;
-        c) mode=db_cmp  ;;
-        d) mode=aur_db
-           repo=$OPTARG ;;
-        l) mode=db_list ;;
-        r) root=$OPTARG ;;
-        q) ver=0        ;;
-        *) usage        ;;
+        p) with=file
+           aux_p=$OPTARG ;;
+        a) format=cupds  ;; # XXX option names, expose defaults
+        c) format=equal  ;;
+        *) usage         ;;
     esac
 done
 shift $((OPTIND - 1))
@@ -132,20 +113,23 @@ OPTIND=1
 tmp=$(mktemp) || exit
 trap 'trap_exit' EXIT
 
-case $mode in
-    aur)
-        [[ -t 0 ]] && plain 'repository not specified, assuming stdin'
-        key_sort >"$tmp"
-        cut -f1 "$tmp" | parse_aur | join_auto - "$tmp" | cmp_all  ;;
-    aur_db)
-        pacconf --repo="$repo" >/dev/null || exit
-        parse_sync "$repo" | key_sort >"$tmp"
-        cut -f1 "$tmp" | parse_aur | join_auto - "$tmp" | cmp_all ;;
-    db_cmp)
-        key_sort >"$tmp"
-        parse_db "$root" | join_auto - "$tmp" | cmp_equal_or_newer ;;
-    db_list)
-        parse_db "$root" ;;
+# set input file
+key_sort > "$tmp"
+
+# set filters (1)
+case $with in
+     aur) get() { cut -f1 "$tmp" | parse_aur | key_sort; } ;;
+    file) get() { key_sort < "$aux_p"; } ;;
 esac
+
+# set filters (2)
+case $format in
+    cupds) cmp() { cmp_loop fmt_checkupdates;   } ;;
+    equal) cmp() { cmp_loop fmt_equal_or_newer; } ;;
+    brief) cmp() { cmp_loop fmt_brief;          } ;;
+esac
+
+# pipeline
+get | join_auto - "$tmp" | cmp
 
 # vim: set et sw=4 sts=4 ft=sh:

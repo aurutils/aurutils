@@ -3,7 +3,7 @@ readonly argv0=fetch
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o errexit
 
-declare logdir=/dev/null
+declare log_dir=/dev/null
 declare mode=git
 
 clone() {
@@ -37,7 +37,7 @@ clone() {
 readonly -f clone
 
 usage() {
-    printf '%s\n' "usage: $argv0 [-L log_dir] [-t]" >&2
+    printf 'usage: %s [-L log_dir] [-t]\n' "$argv0" >&2
     exit 1
 }
 readonly -f usage
@@ -49,6 +49,8 @@ while getopts :L:t OPT; do
         *) usage           ;;
     esac
 done
+shift $((OPTIND - 1))
+OPTIND=1
 
 case $mode in
     tar) aur fetch-snapshot -L "$log_dir" ;;

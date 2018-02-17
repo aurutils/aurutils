@@ -222,7 +222,7 @@ mkdir patch
   fi
 
   if ((update)); then
-      aur vercmp -r "$root/$repo".db -l | aur vercmp -q
+      aur vercmp-db -D "$root/$repo".db
   fi
 } >argv
 
@@ -239,7 +239,7 @@ fi
   fi
 
   if ((chkver)); then
-      cut -f1,3 pkginfo_0 | aur vercmp -r "$root/$repo".db -c
+      cut -f1,3 pkginfo_0 | aur vercmp-db -c "$root/$repo".db
   fi
 } >filter
 
