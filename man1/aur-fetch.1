@@ -6,28 +6,23 @@ aur-fetch \- fetches packages from a location
 .SY aur
 .B fetch
 .OP -L log_dir
-.OP -m mode
+.OP -t
 .YS
 
 .SH DESCRIPTION
-\fIaur-fetch\fR accepts package names from stdin, and attempts to
-download them. It understands two \fImodes\fR of operation; \fIgit\fR
-and \fItar\fR.
-
-\fIgit\fR attempts to download the package from a git repository.
-
-\fItar\fR attempts to downloade the tar archive with
-\fIaur-fetch-snapshot\fR.
+\fBaur-fetch\fR accepts package names from stdin, and attempts to
+download them.
 
 .SH OPTIONS
 .B \-L
 .RS
-The location of where the package should be downloaded.
+The location of where to store the diff loggs of previously unpacked
+archives.
 .RE
 
-.B \-m
+.B \-t
 .RS
-Mode of operation, either \fIgit\fR or \fItar\fR.
+Downloads the package as a \fItar\fR archive with \fIaur-fetch-snapshot\fR
 .RE
 
 .SH SEE ALSO
