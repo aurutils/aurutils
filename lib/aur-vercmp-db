@@ -25,12 +25,14 @@ parse_sync() {
 }
 readonly -f parse_sync
 
-# XXX error handling, -c should not take an argument (filter)
-while getopts :lS:D:c: OPT; do
+# XXX * error handling
+#     * -c / -l should not take an argument (filter)
+#     * aur-vercmp -a
+while getopts :ld:p:c: OPT; do
     case $OPT in
-        S) parse_sync "$OPTARG" | aur vercmp ;;
-        D) parse_db   "$OPTARG" | aur vercmp ;;
-        l) parse_db   "$OPTARG" ;;
         c) aur vercmp -cp <(parse_db "$OPTARG") ;;
+        d) parse_sync "$OPTARG" | aur vercmp ;;
+        p) parse_db   "$OPTARG" | aur vercmp ;;
+        l) parse_db   "$OPTARG" ;;
     esac
 done

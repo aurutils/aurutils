@@ -222,7 +222,7 @@ mkdir patch
   fi
 
   if ((update)); then
-      aur vercmp-db -D "$root/$repo".db
+      aur vercmp-db -p "$root/$repo".db
   fi
 } >argv
 
