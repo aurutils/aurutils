@@ -12,6 +12,12 @@ aur-rpc \- send GET requests to aurweb
 
 .SH OPTIONS
 
+.SH ENVIRONMENT
+.B AURURI
+.RS
+Sets the default URI when fetching packages.
+.RE
+
 .SH NOTES
 As the AUR RPC is limited to GET requests, queries are split by 150
 arguments to avoid HTTP 414 errors (FS#49089).
