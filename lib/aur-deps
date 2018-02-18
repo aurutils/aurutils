@@ -1,0 +1,5 @@
+#!/bin/bash
+readonly argv0=deps
+readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+# XXX argument wrapper around deps-rpc and deps-src
