@@ -102,7 +102,7 @@ while getopts :p:ac OPT; do
     case $OPT in
         p) with=file
            aux_p=$OPTARG ;;
-        a) format=cupds  ;; # XXX option names, expose defaults
+        a) format=all    ;; # XXX expose defaults
         c) format=equal  ;;
         *) usage         ;;
     esac
@@ -124,9 +124,8 @@ esac
 
 # set filters (2)
 case $format in
-    cupds) cmp() { cmp_loop fmt_checkupdates;   } ;;
+      all) cmp() { cmp_loop fmt_checkupdates;   } ;;
     equal) cmp() { cmp_loop fmt_equal_or_newer; } ;;
-    brief) cmp() { cmp_loop fmt_brief;          } ;;
 esac
 
 # pipeline

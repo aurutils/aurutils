@@ -9,7 +9,8 @@ set   -o errexit -o pipefail -o noclobber
 shopt -s nullglob
 
 declare -a makepkg_args=(-cs) makechrootpkg_args=(-cu) aurbuild_args=()
-declare -i chroot=0 view=1 chkver=1 update=0 snapshot=0 rotate=0 build=1 download=1
+declare -i chroot=0 update=0 snapshot=0 rotate=0 list=0
+declare -i build=1 download=1 view=1 chkver=1
 
 viewer() {
     if hash 2>/dev/null vifm; then
@@ -40,6 +41,19 @@ conf_file_repo() {
         }'
 }
 readonly -f conf_file_repo
+
+db_namever() {
+    awk '/%NAME%/    { getline; printf("%s\t", $1) }
+         /%VERSION%/ { getline; printf("%s\n", $1) }'
+}
+readonly -f db_namever
+
+db_extract() {
+    bsdcat "$1" | db_namever | awk '{print} END {
+        if (!NR) printf("-\t-\n")
+    }'
+}
+readonly -f db_extract
 
 uniq_by() {
     awk -F'\t' -v "i=$1" -v "j=$2" '
@@ -80,8 +94,8 @@ fi
 
 longopts=allan,bind:,chroot,directory:,force,ignore:,ignorearch,ignore-arch,log
 longopts+=,noconfirm,no-confirm,nover,no-ver,noview,no-view,print,rmdeps,rm-deps
-longopts+=,sign,temp,tar,repo:,root:,upgrades,nhehgvyf,continue
-shortopts=B:C:D:M:AcfLnprstTu
+longopts+=,sign,temp,tar,repo:,root:,upgrades,nhehgvyf,continue,list
+shortopts=B:C:D:M:AcflLnprstTu
 
 if TEMP=$(getopt -o "$shortopts" -l "$longopts" -n "$argv0" -- "$@"); then
     eval set -- "$TEMP"
@@ -125,6 +139,9 @@ while true; do
             shift ;;
         -L|--log)
             makepkg_args+=(-L)
+            shift ;;
+        -l|--list)
+            list=1
             shift ;;
         -n|--noconfirm|--no-confirm)
             makepkg_args+=(--noconfirm)
@@ -177,11 +194,6 @@ if ((rotate)); then
     fi
 fi
 
-if ! (($# + update)); then
-    error "$argv0: no targets specified"
-    exit 1
-fi
-
 if [[ -v repo ]]; then
     server=$(pacconf --single --repo="$repo" Server)
     server=${server#*://}
@@ -197,6 +209,11 @@ else
            printf -- '%s\t%s\n' "${conf[@]}" | column -t >&2
            exit 2 ;;
     esac
+fi
+
+if ! (($# + update + list)); then
+    error "$argv0: no targets specified"
+    exit 1
 fi
 
 msg2 "Using [$repo] repository"
@@ -217,12 +234,19 @@ chmod -c 700 "$AURDEST" "$AURDEST_SNAPSHOT"
 cd_safe "$tmp"
 mkdir patch
 
+db_extract "$root/$repo".db >db_info
+
+if ((list)); then
+    column -JN pkgname,pkgver -n "$repo" db_info
+    exit
+fi
+
 { if (($#)); then
       printf -- '%s\n' "$@"
   fi
 
   if ((update)); then
-      aur vercmp-db -p "$root/$repo".db
+      aur vercmp <db_info | cut -d: -f1
   fi
 } >argv
 
@@ -239,7 +263,7 @@ fi
   fi
 
   if ((chkver)); then
-      cut -f1,3 pkginfo_0 | aur vercmp-db -c "$root/$repo".db
+      cut -f1,3 pkginfo_0 | aur vercmp -p db_info -c
   fi
 } >filter
 
