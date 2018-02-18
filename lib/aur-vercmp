@@ -124,11 +124,11 @@ esac
 
 # set filters (2)
 case $format in
-      all) cmp() { cmp_loop fmt_checkupdates;   } ;;
-    equal) cmp() { cmp_loop fmt_equal_or_newer; } ;;
+      all) compare() { cmp_loop fmt_checkupdates;   } ;;
+    equal) compare() { cmp_loop fmt_equal_or_newer; } ;;
 esac
 
 # pipeline
-get | join_auto - "$tmp" | cmp
+get | join_auto - "$tmp" | compare
 
 # vim: set et sw=4 sts=4 ft=sh:
