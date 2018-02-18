@@ -50,7 +50,7 @@ trap_exit() {
 readonly -f trap_exit
 
 usage() {
-    printf 'usage: %s pkgname...\n' "$argv0" >&2
+    printf 'usage: %s path [path...]\n' "$argv0" >&2
     exit 1
 }
 readonly -f usage
