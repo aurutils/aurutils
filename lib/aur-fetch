@@ -10,6 +10,10 @@ print() {
 readonly -f print
 
 usage() {
+    base64 -d <<EOF
+ICAgICAgICAgICAgIC4tLX5+LF9fCjotLi4uLiwtLS0tLS0tYH5+Jy5fLicKIGAtLCwsICAsXyAg
+ICAgIDsnflUnCiAgXywtJyAsJ2AtX187ICctLS4KIChfLyd+fiAgICAgICcnJycoOwoK
+EOF
     printf -- 'usage: %s [-gt] [-L log_dir] pkgname [pkgname...]\n' "$argv0" >&2
     exit 1
 }

@@ -3,6 +3,7 @@ readonly argv0=fetch-git
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o errexit
 
+# XXX split up in some smaller functions
 clone() {
     declare -r log_dir=$1
 
