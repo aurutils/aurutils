@@ -7,6 +7,7 @@ aur-fetch \- fetches packages from a location
 .B fetch
 .OP -L log_dir
 .OP -t
+.OP -g
 .YS
 
 .SH DESCRIPTION
@@ -26,9 +27,14 @@ archives.
 Downloads the package as a \fItar\fR archive with \fIaur-fetch-snapshot\fR.
 .RE
 
+.B \-g
+.RS
+Downloads the package as a \fIgit\fR repository with \fIaur-fetch-git\fR.
+.RE
+
 .SH SEE ALSO
 .BR git (1),
-.BR aur-fetch-snapshot (1),
+.BR tar (1),
 .BR aur (1)
 
 .SH AUTHORS
