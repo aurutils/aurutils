@@ -15,7 +15,7 @@ readonly -f parse_sync
 # XXX parse_local()
 #     parse_sync_any()
 
-while getopts :ld:p:c: OPT; do
+while getopts :d: OPT; do
     case $OPT in
         d) parse_sync "$OPTARG" | aur vercmp ;;
     esac
