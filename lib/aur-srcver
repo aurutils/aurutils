@@ -1,5 +1,5 @@
 #!/bin/bash
-readonly argv0=src-ver
+readonly argv0=srcver
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly startdir=$PWD
 
@@ -23,11 +23,21 @@ find_pkgbuild_path() {
 }
 readonly -f find_pkgbuild_path
 
-makepkg_log=$(mktemp -t makepkg.XXXXXXXX) || exit
-trap 'rm $makepkg_log' EXIT
+usage() {
+    printf 'usage: %s path [path...]\n' "$argv0" >&2
+    exit 1
+}
+readonly -f usage
+
+if ((!$#)); then
+    usage
+fi
 
 # trickery for hyphen and absolute path arguments
 mapfile -t arg_path < <(readlink -e -- "$@")
+
+makepkg_log=$(mktemp -t makepkg.XXXXXXXX) || exit
+trap 'rm $makepkg_log' EXIT
 
 find_pkgbuild_path "${arg_path[@]}" | while read -r; do
     cd "$REPLY"
