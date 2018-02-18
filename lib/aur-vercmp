@@ -12,6 +12,12 @@ parse_aur() {
 }
 readonly -f parse_aur
 
+parse_sync() {
+    pacconf --repo="$1" >/dev/null || return
+    pacsift --repo="$1" --exact <&- | expac -S '%n\t%v' -
+}
+readonly -f parse_sync
+
 fmt_equal_or_newer() {
     declare -r op=$1 pkg=$2 v_cmp=$3 v_in=$4
 
@@ -98,9 +104,10 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-unset aux_p
-while getopts :p:abc opt; do
+unset aux_p repo
+while getopts :d:p:abc opt; do
     case $opt in
+        d) repo=$OPTARG  ;;
         p) with=file
            aux_p=$OPTARG ;;
         a) format=all    ;;
@@ -116,7 +123,14 @@ tmp=$(mktemp) || exit
 trap 'trap_exit' EXIT
 
 # set input file
-key_sort > "$tmp"
+if [[ -v repo ]]; then
+    parse_sync "$repo" | key_sort >"$tmp"
+else
+    if [[ -t 0 ]]; then
+        plain 'repository not specified, assuming stdin'
+    fi
+    key_sort >"$tmp"
+fi
 
 # set filters (1)
 case $with in
