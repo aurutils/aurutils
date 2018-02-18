@@ -10,19 +10,20 @@ aur-fetch \- fetches packages from a location
 .YS
 
 .SH DESCRIPTION
-\fBaur-fetch\fR accepts package names from stdin, and attempts to
-download them.
+\fBaur-fetch\fR accepts URIs to packages from stdin, and attempts to
+download them. It's capable of handling \fItar\fR archives and \fIgit\fR
+repositories.
 
 .SH OPTIONS
 .B \-L
 .RS
-The location of where to store the diff loggs of previously unpacked
+The location of where to store the diffs of previously unpacked
 archives.
 .RE
 
 .B \-t
 .RS
-Downloads the package as a \fItar\fR archive with \fIaur-fetch-snapshot\fR
+Downloads the package as a \fItar\fR archive with \fIaur-fetch-snapshot\fR.
 .RE
 
 .SH SEE ALSO
