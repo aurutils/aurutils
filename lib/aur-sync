@@ -43,8 +43,14 @@ conf_file_repo() {
 readonly -f conf_file_repo
 
 db_namever() {
-    awk '/%NAME%/    { getline; printf("%s\t", $1) }
-         /%VERSION%/ { getline; printf("%s\n", $1) }'
+    awk '/%NAME%/ {
+        getline
+        printf("%s\t", $1)
+    }
+    /%VERSION%/ {
+        getline
+        printf("%s\n", $1)
+    }'
 }
 readonly -f db_namever
 
