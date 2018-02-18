@@ -58,8 +58,9 @@ trap_exit() {
 }
 readonly -f trap_exit
 
-while getopts :L: OPT; do
-    case $OPT in
+unset logdir
+while getopts :L: opt; do
+    case $opt in
         L) logdir=$OPTARG ;;
         *) usage ;;
     esac
@@ -67,10 +68,7 @@ done
 shift $((OPTIND - 1))
 OPTIND=1
 
-if tmp=$(mktemp -dt "$argv0".XXXXXXXX); then
-    extract "$tmp" "${logdir:-/dev/null}"
-else
-    exit 1
-fi
+tmp=$(mktemp -dt "$argv0".XXXXXXXX)
+extract "$tmp" "${logdir:-/dev/null}"
 
 # vim: set et sw=4 sts=4 ft=sh:

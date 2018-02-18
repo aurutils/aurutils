@@ -99,8 +99,8 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 unset aux_p
-while getopts :p:abc OPT; do
-    case $OPT in
+while getopts :p:abc opt; do
+    case $opt in
         p) with=file
            aux_p=$OPTARG ;;
         a) format=all    ;;

@@ -42,8 +42,8 @@ usage() {
 readonly -f usage
 
 unset database
-while getopts :C:D:M:d:u OPT; do
-    case $OPT in
+while getopts :C:D:M:d:u opt; do
+    case $opt in
         C) pacman_conf=$OPTARG  ;;
         D) directory=$OPTARG    ;;
         M) makepkg_conf=$OPTARG ;;

@@ -105,8 +105,8 @@ usage() {
 }
 readonly -f usage
 
-while getopts :at OPT; do
-    case $OPT in
+while getopts :at opt; do
+    case $opt in
         a) mode=all ;;
         t) mode=tab ;;
         *) usage    ;;

@@ -55,8 +55,8 @@ usage() {
 }
 readonly -f usage
 
-while getopts h OPT; do
-    case $OPT in
+while getopts h opt; do
+    case $opt in
         *) usage ;;
     esac
 done
@@ -70,6 +70,7 @@ fi
 tmp=$(mktemp -t "$argv0".XXXXXXXX) || exit
 trap 'trap_exit' EXIT
 
+# XXX take file names from stdin (null-separated?) -> aur-deps wrapper
 mapfile -t arg_path < <(readlink -e -- "$@")
 
 if [[ -n ${arg_path[*]} ]]; then

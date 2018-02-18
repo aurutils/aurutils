@@ -51,8 +51,8 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 unset database db_root queue
-while getopts a:d:r:C:D:M:cfNs OPT; do
-    case $OPT in
+while getopts a:d:r:C:D:M:cfNs opt; do
+    case $opt in
         a) queue=$OPTARG    ;;
         c) chroot=1         ;;
         d) database=$OPTARG ;;

@@ -78,8 +78,8 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-while getopts :imnk:v OPT; do
-    case $OPT in
+while getopts :imnk:v opt; do
+    case $opt in
         i) type=info                  ;;
         m) type=search; by=maintainer ;;
         n) type=search; by=name       ;;

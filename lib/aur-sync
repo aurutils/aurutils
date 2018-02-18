@@ -103,8 +103,8 @@ longopts+=,noconfirm,no-confirm,nover,no-ver,noview,no-view,print,rmdeps,rm-deps
 longopts+=,sign,temp,tar,repo:,root:,upgrades,nhehgvyf,continue,list
 shortopts=B:C:D:M:AcflLnprstTu
 
-if TEMP=$(getopt -o "$shortopts" -l "$longopts" -n "$argv0" -- "$@"); then
-    eval set -- "$TEMP"
+if optstring=$(getopt -o "$shortopts" -l "$longopts" -n "$argv0" -- "$@"); then
+    eval set -- "$optstring"
 else
     usage
 fi
@@ -287,14 +287,14 @@ if ((snapshot)); then
 
     if ((download)); then
         cut -f4 "$tmp"/pkginfo_1 | xargs -I{} printf '%s%s\n' "$AURURI" {} \
-            | aur fetch -L "$tmp"/patch -t
+            | aur fetch-snapshot -L "$tmp"/patch
     fi
 else
     cd_safe "$AURDEST"
 
     if ((download)); then
         cut -f2 "$tmp"/pkginfo_1 | xargs -I{} printf '%s/%s.git\n' "$AURURI" {} \
-            | aur fetch -L "$tmp"/patch
+            | aur fetch-git -L "$tmp"/patch
     fi
 fi
 

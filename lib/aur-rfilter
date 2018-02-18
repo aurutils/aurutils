@@ -21,8 +21,8 @@ usage() {
 readonly -f usage
 
 unset repo siftargs user_repo
-while getopts d: OPT; do
-    case $OPT in
+while getopts d: opt; do
+    case $opt in
         d) user_repo+=("$OPTARG") ;;
         *) usage ;;
     esac

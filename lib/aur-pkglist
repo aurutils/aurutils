@@ -42,8 +42,8 @@ readonly -f usage
 # default to any match
 pcre_opt=('.*')
 
-while getopts :btF:P: OPT; do
-    case "$OPT" in
+while getopts :btF:P: opt; do
+    case "$opt" in
         b) pkglist=pkgbase                ;;
         t) delay=$OPTARG                  ;;
         F) pcre_opt=('-e' "$OPTARG" '-F') ;;

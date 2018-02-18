@@ -62,8 +62,8 @@ usage() {
 readonly -f usage
 
 unset by type
-while getopts :b:t: OPT; do
-    case $OPT in
+while getopts :b:t: opt; do
+    case $opt in
         b) by=$OPTARG   ;;
         t) type=$OPTARG ;;
         *) usage        ;;
