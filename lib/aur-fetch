@@ -1,60 +1,39 @@
 #!/bin/bash
 readonly argv0=fetch
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-set -o errexit
-
-declare log_dir=/dev/null
 declare mode=git
+declare log_dir=/dev/null
 
-clone() {
-    declare -r log_dir=$1
-
-    while IFS= read -r; do
-        declare git_dir=${REPLY##*/}     # strip path
-        declare git_dir=${git_dir%%.git} # strip .git suffix
-
-        # Avoid issues with exotic file system layouts (#274)
-        git_wrap() { git --work-tree="$git_dir" --git-dir="$git_dir"/.git "$@"; }
-        
-        if [[ -d $git_dir/.git ]]; then
-            # returns 0 even if nothing was fetched
-            git_wrap fetch -v
-
-            if [[ $(git_wrap rev-parse HEAD) != $(git_wrap rev-parse '@{upstream}') ]]; then
-                if [[ -d $log_dir ]]; then
-                    git_wrap --no-pager log --patch --stat '..@{upstream}' \
-                        >> "$log_dir/$git_dir".patch
-                fi
-
-                git_wrap reset --hard HEAD
-                git_wrap merge
-            fi
-        else
-            git clone "$REPLY"
-        fi
-    done
+print() {
+    printf -- '%s\n' "$@"
 }
-readonly -f clone
+readonly -f print
 
 usage() {
-    printf 'usage: %s [-L log_dir] [-t]\n' "$argv0" >&2
+    printf -- 'usage: %s [-gt] [-L log_dir] pkgname [pkgname...]\n' "$argv0" >&2
     exit 1
 }
 readonly -f usage
 
-while getopts :L:t OPT; do
-    case $OPT in
+# XXX add recursive mode (aur-deps-rpc)
+while getopts :gtL: opt; do
+    case $opt in
         L) log_dir=$OPTARG ;;
-        t) mode=tar        ;;
-        *) usage           ;;
+        g) mode=git ;;
+        t) mode=tar ;;
+        *) usage    ;;
     esac
 done
-shift $((OPTIND - 1))
+shift $((OPTIND -1))
 OPTIND=1
 
-case $mode in
-    tar) aur fetch-snapshot -L "$log_dir" ;;
-    git) clone "$log_dir"                 ;;
-esac
+if ((!$#)); then
+    usage
+fi
 
-# vim: set et sw=4 sts=4 ft=sh:
+case $mode in
+    git) print "$@" | aur-fetch-git      -L "$log_dir" ;;
+    tar) print "$@" | aur-fetch-snapshot -L "$log_dir" ;;
+      *) print "$argv0: invalid argument" >&2
+         exit 22 ;;
+esac

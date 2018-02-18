@@ -1,0 +1,54 @@
+#!/bin/bash
+readonly argv0=fetch-git
+readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+set -o errexit
+
+clone() {
+    declare -r log_dir=$1
+
+    while IFS= read -r; do
+        declare git_dir=${REPLY##*/}     # strip path
+        declare git_dir=${git_dir%%.git} # strip .git suffix
+
+        # Avoid issues with exotic file system layouts (#274)
+        git_wrap() { git --work-tree="$git_dir" --git-dir="$git_dir"/.git "$@"; }
+        
+        if [[ -d $git_dir/.git ]]; then
+            # returns 0 even if nothing was fetched
+            git_wrap fetch -v
+
+            if [[ $(git_wrap rev-parse HEAD) != $(git_wrap rev-parse '@{upstream}') ]]; then
+                if [[ -d $log_dir ]]; then
+                    git_wrap --no-pager log --patch --stat '..@{upstream}' \
+                        >> "$log_dir/$git_dir".patch
+                fi
+
+                git_wrap reset --hard HEAD
+                git_wrap merge
+            fi
+        else
+            git clone "$REPLY"
+        fi
+    done
+}
+readonly -f clone
+
+usage() {
+    printf -- 'usage: %s [-L log_dir]\n' "$argv0" >&2
+    exit 1
+}
+readonly -f usage
+
+unset log_dir
+while getopts :L: opt; do
+    case $opt in
+        L) log_dir=$OPTARG ;;
+        *) usage           ;;
+    esac
+done
+shift $((OPTIND - 1))
+OPTIND=1
+
+clone "${log_dir:-/dev/null}"
+
+# vim: set et sw=4 sts=4 ft=sh:
