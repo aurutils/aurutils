@@ -3,7 +3,8 @@ readonly argv0=vercmp
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
-declare with=aur format=brief
+declare with=aur
+declare format=brief
 
 parse_aur() {
     aur rpc -t info | jq -r '.results[] |
@@ -98,11 +99,12 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 unset aux_p
-while getopts :p:ac OPT; do
+while getopts :p:abc OPT; do
     case $OPT in
         p) with=file
            aux_p=$OPTARG ;;
-        a) format=all    ;; # XXX expose defaults
+        a) format=all    ;;
+        b) format=brief  ;;
         c) format=equal  ;;
         *) usage         ;;
     esac
@@ -120,12 +122,17 @@ key_sort > "$tmp"
 case $with in
      aur) get() { cut -f1 "$tmp" | parse_aur | key_sort; } ;;
     file) get() { key_sort < "$aux_p"; } ;;
+       *) error "$argv0: invalid argument"
+          exit 22 ;;
 esac
 
 # set filters (2)
 case $format in
       all) compare() { cmp_loop fmt_checkupdates;   } ;;
+    brief) compare() { cmp_loop fmt_brief;          } ;;
     equal) compare() { cmp_loop fmt_equal_or_newer; } ;;
+        *) error "$argv0: invalid argument"
+           exit 22 ;;
 esac
 
 # pipeline
