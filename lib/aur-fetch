@@ -2,19 +2,18 @@
 # For default values, see:
 # https://git.archlinux.org/aurweb.git/tree/conf/config.proto
 readonly argv0=fetch
-readonly AUR_LOCATION=${AUR_LOCATION:-https://aur.archlinux.org}
-readonly SNAPSHOT_URI=${SNAPSHOT_URI:-/cgit/aur.git/snapshot}
+readonly aur_location='https://aur.archlinux.org'
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 declare mode=git
 declare log_dir=/dev/null
 
 fmt_snapshot() {
-    printf -- '%s%s/%s.tar.gz\n' "$AUR_LOCATION" "$SNAPSHOT_URI" "$@"
+    printf -- "$aur_location/cgit/aur.git/snapshot/%s.tar.gz\n" "$@"
 }
 readonly -f fmt_snapshot
 
 fmt_git_clone() {
-    printf -- '%s/%s.git\n' "$AUR_LOCATION" "$@"
+    printf -- "$aur_location/%s.git\n" "$@"
 }
 readonly -f fmt_git_clone
 
