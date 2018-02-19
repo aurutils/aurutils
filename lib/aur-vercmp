@@ -3,57 +3,39 @@ readonly argv0=vercmp
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
-declare with=aur
-declare format=brief
+declare    format=all with=aur
+declare -i leq=1
 
-cmp_loop() {
-    declare -f "$1" >/dev/null || return 1
+cmp_equal_or_newer() {
+    while read -r pkg v_cmp v_in; do
+        op=$(my_vercmp "$v_in" "$v_cmp") || return
 
-    while read -r pkg v_cmp v_in _; do
-        case $v_cmp in
-            -) op=2                             ;;
-            *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
+        case $op in
+            1) msg2 "$pkg: $v_cmp -> $v_in" ;;
+            0) printf -- '%s\n' "$pkg" ;;
+           -1) plain "$pkg: $v_cmp is newer than $v_in"
+               printf -- '%s\n' "$pkg" ;;
         esac
-
-        "$1" "$op" "$pkg" "$v_cmp" "$v_in"
     done
 }
-readonly -f cmp_loop
+readonly -f cmp_equal_or_newer
 
-# XXX breaks on sparse input (#273)
-fmt_equal_or_newer() {
-    declare -r op=$1 pkg=$2 v_cmp=$3 v_in=$4
+cmp_checkupdates() {
+    while read -r pkg v_cmp v_in; do
+        op=$(my_vercmp "$v_in" "$v_cmp") || return
 
-    case $op in
-        2) msg2 "$pkg: N/A -> $v_in"    ;;
-        1) msg2 "$pkg: $v_cmp -> $v_in" ;;
-        0) printf -- '%s\n' "$pkg" ;;
-       -1) plain "$pkg: $v_cmp is newer than $v_in"
-           printf -- '%s\n' "$pkg" ;;
-    esac
+        if (($1)) && ((op > -1)); then
+            continue
+        fi
+
+        case $op in
+            1) printf -- '%s: %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+            0) printf -- '%s: %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
+           -1) printf -- '%s: %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+        esac
+    done
 }
-readonly -f fmt_equal_or_newer
-
-fmt_checkupdates() {
-    declare -r op=$1 pkg=$2 v_cmp=$3 v_in=$4
-
-    case $op in
-        2) printf -- '%s: (not available)\n' "$pkg" >&2 ;;
-        1) printf -- '%s: %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-        0) printf -- '%s: %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
-       -1) printf -- '%s: %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-    esac
-}
-
-# XXX allow "1" case or switch arguments(cmp_loop)
-fmt_brief() {
-    declare -r op=$1 pkg=$2 v_cmp=$3 v_in=$4
-
-    case $op in
-        -1) printf -- '%s: %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-    esac
-}
-readonly -f fmt_brief
+readonly -f cmp_checkupdates
 
 my_vercmp() {
     if [[ $1 != "$2" ]]; then
@@ -64,14 +46,8 @@ my_vercmp() {
 }
 readonly -f my_vercmp
 
-join_auto() {
-    join -a 2 -e - -o auto -- "$1" "$2"
-}
-readonly -f join_auto
-
 parse_aur() {
-    aur rpc -t info | jq -r '.results[] |
-        [.Name, .Version] | @tsv'
+    aur rpc -t info | jq -r '.results[] | [.Name, .Version] | @tsv'
 }
 readonly -f parse_aur
 
@@ -105,11 +81,11 @@ fi
 unset aux_p repo
 while getopts :d:p:ac opt; do
     case $opt in
+        a) leq=0         ;;
+        c) format=equal  ;;
         d) repo=$OPTARG  ;;
         p) with=file
            aux_p=$OPTARG ;;
-        a) format=all    ;;
-        c) format=equal  ;;
         *) usage         ;;
     esac
 done
@@ -133,20 +109,15 @@ fi
 case $with in
      aur) get() { awk '{print $1}' "$tmp" | parse_aur; } ;;
     file) get() { awk '{print $0}' "$aux_p";           } ;;
-       *) error "$argv0: invalid argument"
-          exit 22 ;;
 esac
 
 # set filters (2)
 case $format in
-      all) compare() { cmp_loop fmt_checkupdates;   } ;;
-    brief) compare() { cmp_loop fmt_brief;          } ;;
-    equal) compare() { cmp_loop fmt_equal_or_newer; } ;;
-        *) error "$argv0: invalid argument"
-           exit 22 ;;
+      all) compare() { cmp_checkupdates;   } ;;
+    equal) compare() { cmp_equal_or_newer; } ;;
 esac
 
 # pipeline
-get | sort -k 1b,1 | join_auto - "$tmp" | compare
+get | sort -k 1b,1 | join -a 1 - "$tmp" | compare
 
 # vim: set et sw=4 sts=4 ft=sh:
