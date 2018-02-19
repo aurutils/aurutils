@@ -4,7 +4,7 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set -o pipefail
 
 declare    format=all with=aur
-declare -i leq=1
+declare -i leq=0
 
 cmp_equal_or_newer() {
     while read -r pkg v_cmp v_in; do
@@ -81,7 +81,7 @@ fi
 unset aux_p repo
 while getopts :d:p:ac opt; do
     case $opt in
-        a) leq=0         ;;
+        a) leq=1         ;;
         c) format=equal  ;;
         d) repo=$OPTARG  ;;
         p) with=file
