@@ -47,6 +47,4 @@ fi
 case $mode in
     git) fmt_git_clone "$@" | aur fetch-git      -L "$log_dir" ;;
     tar) fmt_snapshot  "$@" | aur fetch-snapshot -L "$log_dir" ;;
-      *) print "$argv0: invalid argument" >&2
-         exit 22 ;;
 esac

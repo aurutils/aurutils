@@ -37,9 +37,6 @@ case $mode in
     rpc)
         printf -- '%s\n' "$@" | aur deps-rpc
         ;;
-    *)
-        printf -- '%s: invalid argument\n' "$argv0" >&2
-        exit 22 ;;
 esac
 
 
