@@ -7,7 +7,8 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 set   -o errexit -o pipefail -o noclobber
 shopt -s nullglob
 
-declare -a makepkg_args=(-cs) makechrootpkg_args=(-cu) aurbuild_args=()
+declare -a makepkg_args=(-cs) aurbuild_args=()
+declare -a makechrootpkg_args=(-cu) makechrootpkg_makepkg_args=()
 declare -i chroot=0 update=0 snapshot=0 rotate=0 list=0
 declare -i build=1 download=1 view=1 chkver=1
 
@@ -142,6 +143,7 @@ while true; do
             shift ;;
         -A|--ignorearch|--ignore-arch)
             makepkg_args+=(-A)
+            makechrootpkg_makepkg_args+=(-A)
             shift ;;
         -L|--log)
             makepkg_args+=(-L)
@@ -306,7 +308,8 @@ if ((build)); then
     aurbuild_args+=(-d "$repo" -r "$root" -a "$tmp"/queue)
 
     if ((chroot)); then
-        aur build "${aurbuild_args[@]}" -- "${makechrootpkg_args[@]}"
+        aur build "${aurbuild_args[@]}" -- "${makechrootpkg_args[@]}" \
+            -- "${makechrootpkg_makepkg_args[@]}"
     else
         aur build "${aurbuild_args[@]}" -- "${makepkg_args[@]}"
     fi
