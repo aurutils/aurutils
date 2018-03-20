@@ -26,8 +26,8 @@ json_short() {
         read -r OutOfDate
         read -r Description
     }; do
-        [[ "$OutOfDate" ]] && OutOfDate="(Out-of-date: $(date -d @"$OutOfDate" '+%d %B %Y'))"
-        [[ "$Maintainer" == "" ]] && Maintainer="(Orphaned)" || Maintainer=""
+        [[ -n "$OutOfDate" ]] && OutOfDate="(Out-of-date: $(date -d @"$OutOfDate" '+%d %B %Y'))"
+        [[ -z "$Maintainer" ]] && Maintainer="(Orphaned)" || Maintainer=""
         printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s) ${RED}%s %s${ALL_OFF}\\n    %s\\n" \
                "$Name" "$Version" "$NumVotes" "$Maintainer" "$OutOfDate" "$Description"
     done
