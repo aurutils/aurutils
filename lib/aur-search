@@ -31,7 +31,6 @@ json_short() {
         printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s) ${RED}%s %s${ALL_OFF}\\n    %s\\n" \
                "$Name" "$Version" "$NumVotes" "$Maintainer" "$OutOfDate" "$Description"
     done
-
 }
 
 # XXX Add additional info fields: make/check/depends, license, keyword (#207)
