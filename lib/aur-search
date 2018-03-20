@@ -15,16 +15,23 @@ json_short() {
     jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | .Name,
         .Version,
         .NumVotes,
+        .Maintainer,
+        .OutOfDate,
         .Description' | while
     {
         read -r Name
         read -r Version
         read -r NumVotes
+        read -r Maintainer
+        read -r OutOfDate
         read -r Description
     }; do
-        printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s)\\n    %s\\n" \
-               "$Name" "$Version" "$NumVotes" "$Description"
+        [[ "$OutOfDate" == "null" ]] && OutOfDate="" || OutOfDate="(Out-of-date: $(date -d @"$OutOfDate" '+%d %B %Y'))"
+        [[ "$Maintainer" != "null" ]] && Maintainer="" || Maintainer="(Orphaned)"
+        printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s) ${RED}%s %s${ALL_OFF}\\n    %s\\n" \
+               "$Name" "$Version" "$NumVotes" "$Maintainer" "$OutOfDate" "$Description"
     done
+
 }
 
 # XXX Add additional info fields: make/check/depends, license, keyword (#207)
