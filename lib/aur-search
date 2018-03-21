@@ -9,6 +9,33 @@ query_type=search
 search_by=name-desc
 sort_key=Name
 
+fold_column() {
+    local prefix=$1 offset=${#1}
+    local columns
+    columns=$(tput cols)
+
+    if ((columns < offset)); then
+        printf -- >&2 'offset too large\n'
+        return 1
+    fi
+
+    fold -sw "$((columns - offset))" | while IFS= read -r; do
+        if ((!counter)); then
+            printf -- '%s%s\n' "$prefix" "$REPLY"
+        else
+            printf -- '%*s'  "$offset"
+            printf -- '%s\n' "$REPLY"
+        fi
+        ((counter++))
+    done
+}
+
+fold_column_str() {
+    local prefix=$1 string=$2
+    
+    printf -- '%s\n' "$string" | fold_columns "$prefix"
+}
+
 json_short() {
     local Name Version NumVotes Maintainer OutOfDate Description
 
@@ -34,18 +61,19 @@ json_short() {
     done
 }
 
-# XXX Add additional info fields: make/check/depends, license, keyword (#207)
 json_long() {
-    local Name PackageBase Version Description URL NumVotes Popularity
-    local OutOfDate Maintainer FirstSubmitted LastModified License Keywords
+    local Name PackageBase Version Description URL Keywords License Depends MakeDepends
+    local NumVotes Popularity OutOfDate Maintainer FirstSubmitted LastModified
 
     jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | .Name,
         .PackageBase,
         .Version,
         .Description,
         .URL,
-        (.Keywords // ["(null)"] | join(" ")),
-        (.License  // ["(null)"] | join(" ")),
+        (.Keywords    // ["(null)"] | join(" ")),
+        (.License     // ["(null)"] | join(" ")),
+        (.Depends     // ["(null)"] | join(" ")),
+        (.MakeDepends // ["(null)"] | join(" ")),
         .NumVotes,
         .Popularity,
         .OutOfDate,
@@ -60,6 +88,8 @@ json_long() {
         read -r URL
         read -r Keywords
         read -r License
+        read -r Depends
+        read -r MakeDepends
         read -r NumVotes
         read -r Popularity
         read -r OutOfDate
@@ -67,19 +97,24 @@ json_long() {
         read -r FirstSubmitted
         read -r LastModified
     }; do
-        printf -- 'Name:            %s\n' "$Name"
-        printf -- 'Base:            %s\n' "$PackageBase"
-        printf -- 'Version:         %s\n' "$Version"
-        printf -- 'Description:     %s\n' "$Description"
-        printf -- 'URL:             %s\n' "$URL"
-        printf -- 'Keywords:        %s\n' "$Keywords"
-        printf -- 'License:         %s\n' "$License"
-        printf -- 'Votes:           %s\n' "$NumVotes"
-        printf -- 'Popularity:      %s\n' "$Popularity"
-        printf -- 'Out Of Date:     %s\n' "$OutOfDate"
-        printf -- 'Maintainer:      %s\n' "$Maintainer"
-        printf -- 'First Submitted: %s\n' "$(date -d @"$FirstSubmitted" '+%c')"
-        printf -- 'Last Modified:   %s\n' "$(date -d @"$LastModified" '+%c')"
+        # long fields
+        find_column_str 'Name          : ' "$Name"
+        find_column_str 'Base          : ' "$PackageBase"
+        find_column_str 'Version       : ' "$Version"
+        find_column_str 'Description   : ' "$Description"
+        find_column_str 'URL           : ' "$URL"
+        fold_column_str 'Keywords      : ' "$Keywords"
+        fold_column_str 'License       : ' "$License"
+        fold_column_str 'Depends On    : ' "$Depends"
+        find_column_str 'Makedepends   : ' "$MakeDepends"
+
+        # short fields
+        printf -- 'Votes         : %s\n' "$NumVotes"
+        printf -- 'Popularity    : %s\n' "$Popularity"
+        printf -- 'Out Of Date   : %s\n' "$OutOfDate"
+        printf -- 'Maintainer    : %s\n' "$Maintainer"
+        printf -- 'Submitted     : %s\n' "$(date -d @"$FirstSubmitted" '+%c')"
+        printf -- 'Last Modified : %s\n' "$(date -d @"$LastModified" '+%c')"
         printf '\n'
     done
 }
