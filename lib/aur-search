@@ -33,7 +33,7 @@ fold_column() {
 fold_column_str() {
     local prefix=$1 string=$2
     
-    printf -- '%s\n' "$string" | fold_columns "$prefix"
+    printf -- '%s\n' "$string" | fold_column "$prefix"
 }
 
 json_short() {
