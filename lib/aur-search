@@ -9,63 +9,51 @@ query_type=search
 search_by=name-desc
 sort_key=Name
 
-json_short() {
-    local Name Version NumVotes Maintainer OutOfDate Description
-
-    jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | .Name,
+parse_short() {
+    jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | [
+        .Name,
         .Version,
         .NumVotes,
-        .Maintainer // "",
-        .OutOfDate  // "",
-        .Description' | while
-    {
-        read -r Name
-        read -r Version
-        read -r NumVotes
-        read -r Maintainer
-        read -r OutOfDate
-        read -r Description
-    }; do
-        [[ "$OutOfDate"  ]] && OutOfDate="(Out-of-date: $(date -d @"$OutOfDate" '+%d %B %Y'))"
-        [[ "$Maintainer" ]] && unset Maintainer
+        .Maintainer   // "-",
+        .OutOfDate    // "-",
+        .Description
+        ] | @tsv'
+}
 
+output_short() {
+    local Name Version NumVotes Maintainer OutOfDate Description
+
+    while IFS=$'\t' read -r Name Version NumVotes Maintainer OutOfDate Description ; do
+        [[ "$OutOfDate"  == "-" ]] && OutOfDate=""  || OutOfDate="(Out-of-date: $(date -d @"$OutOfDate" '+%d %B %Y'))"
+        [[ "$Maintainer" != "-" ]] && Maintainer="" || Maintainer="(Orphaned)"
         printf "${BLUE}aur/${ALL_OFF}${BOLD}%s ${GREEN}%s ${ALL_OFF}(%s) ${RED}%s %s${ALL_OFF}\\n    %s\\n" \
-               "$Name" "$Version" "$NumVotes" "${Maintainer+(Orphaned)}" "$OutOfDate" "$Description"
+               "$Name" "$Version" "$NumVotes" "$Maintainer" "$OutOfDate" "$Description"
     done
 }
 
-json_long() {
-    local Name PackageBase Version Description URL Keywords License
-    local NumVotes Popularity OutOfDate Maintainer FirstSubmitted LastModified
-
-    jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | .Name,
+parse_long() {
+    jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | [
+        .Name,
         .PackageBase,
         .Version,
         .Description,
         .URL,
-        (.Keywords // ["(null)"] | join(" ")),
-        (.License  // ["(null)"] | join(" ")),
+        (.Keywords       // ["-"] | join(" ")),
+        (.License        // ["-"] | join(" ")),
         .NumVotes,
         .Popularity,
-        .OutOfDate,
-        .Maintainer,
+        .OutOfDate       // "-",
+        .Maintainer      // "-",
         .FirstSubmitted,
-        .LastModified' | while
-    {
-        read -r Name
-        read -r PackageBase
-        read -r Version
-        read -r Description
-        read -r URL
-        read -r Keywords
-        read -r License
-        read -r NumVotes
-        read -r Popularity
-        read -r OutOfDate
-        read -r Maintainer
-        read -r FirstSubmitted
-        read -r LastModified
-    }; do
+        .LastModified
+        ] | @tsv'
+}
+
+output_long() {
+    local Name PackageBase Version Description URL Keywords License
+    local NumVotes Popularity OutOfDate Maintainer FirstSubmitted LastModified
+
+    while IFS=$'\t' read -r Name PackageBase Version Description URL Keywords License NumVotes Popularity OutOfDate Maintainer FirstSubmitted LastModified ; do
         printf -- 'Name:          %s\n' "$Name"
         printf -- 'Base:          %s\n' "$PackageBase"
         printf -- 'Version:       %s\n' "$Version"
@@ -121,13 +109,43 @@ case $query_type in
     search) format=${format-short} ;;
 esac
 
-# set filters
+# set parsers
 case $format in
-     long) parse() { json_long  "$sort_key"; } ;;
-    short) parse() { json_short "$sort_key"; } ;;
+     long) parse() { parse_long  "$sort_key"; } ;;
+    short) parse() { parse_short "$sort_key"; } ;;
 esac
 
+# set output
+case $format in
+     long) output() { output_long;  } ;;
+    short) output() { output_short; } ;;
+esac
+
+# prepare for execution
+
+trap_exit() {
+    if [[ ! -o xtrace ]]; then
+        rm -rf "$tmp"
+    fi
+}
+
+tmp=$(mktemp -dt "$argv0".XXXXXXXX)
+trap 'trap_exit' EXIT
+
+source /usr/share/makepkg/util/util.sh
+cd_safe "$tmp"
+
 # pipeline
-printf -- '%s\n' "$@" | aur rpc -t "$query_type" -b "$search_by" | parse
+for query in "$@"; do
+    printf -- '%s\n' "$query" | aur rpc -t "$query_type" -b "$search_by" | parse > query_results
+    if [[ -f query_results_combined ]]; then
+        mv query_results_combined query_results_prev
+        grep -Fxf query_results query_results_prev > query_results_combined
+    else
+        mv query_results query_results_combined
+    fi
+done
+
+output <query_results_combined
 
 # vim: set et sw=4 sts=4 ft=sh:
