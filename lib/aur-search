@@ -11,12 +11,12 @@ sort_key=Name
 
 parse_short() {
     jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | [
-        .Name         // "-",
-        .Version      // "-",
-        .NumVotes     // "-",
+        .Name,
+        .Version,
+        .NumVotes,
         .Maintainer   // "-",
         .OutOfDate    // "-",
-        .Description  // "-"
+        .Description
         ] | @tsv'
 }
 
@@ -33,19 +33,19 @@ output_short() {
 
 parse_long() {
     jq -r --arg key "$1" '[.results[]] | sort_by(.[$key])[] | [
-        .Name            // "-",
-        .PackageBase     // "-",
-        .Version         // "-",
-        .Description     // "-",
-        .URL             // "-",
+        .Name,
+        .PackageBase,
+        .Version,
+        .Description,
+        .URL,
         (.Keywords       // ["-"] | join(" ")),
         (.License        // ["-"] | join(" ")),
-        .NumVotes        // "-",
-        .Popularity      // "-",
+        .NumVotes,
+        .Popularity,
         .OutOfDate       // "-",
         .Maintainer      // "-",
-        .FirstSubmitted  // "-",
-        .LastModified    // "-"
+        .FirstSubmitted,
+        .LastModified
         ] | @tsv'
 }
 
