@@ -9,13 +9,14 @@ get_pkgbuild_info() {
     env -C "$1" -i bash -c '
         PATH= source PKGBUILD
 
-        if [[ -v epoch ]]; then
-            fullver=$epoch:$pkgver-$pkgrel
-        else
-            fullver=$pkgver-$pkgrel
-        fi
+        source="${source#*::}"                           # remove custom name of a source
+        source="${source#*+}"                            # keep only one protocol (TODO: do we need many?)
 
-        printf %s\\t%s\\n "${pkgbase:-$pkgname}" "$fullver"
+        branch="${source#*#branch=}"                     # detect custom branch if it is specified
+        source="${source%#*}"                            # remove branch from the source string
+        [[ "$branch" == "$source" ]] && branch="HEAD"    # use HEAD if custom branch is not specified
+
+        printf "%s\\t%s\\t%s\\n" "${pkgbase:-$pkgname}" "$source" "$branch"
     '
 }
 
@@ -35,22 +36,11 @@ fi
 # XXX trickery for hyphen and absolute path arguments
 mapfile -t arg_path < <(readlink -e -- "$@")
 
-makepkg_log=$(mktemp -t makepkg.XXXXXXXX) || exit
-trap 'rm $makepkg_log' EXIT
-
 find_pkgbuild_path "${arg_path[@]}" | while read -r; do
-    cd "$REPLY" || exit
-
-    if makepkg --skipinteg --noprepare -od >"$makepkg_log" 2>&1; then
-        get_pkgbuild_info "$REPLY"
-    else
-        makepkg_exit=$?
-        printf >&2 '%s: error on package %s\n' "$argv0" "$REPLY"
-        printf >&2 '8<----\n'
-
-        cat  "$makepkg_log"
-        exit "$makepkg_exit"
-    fi
+    get_pkgbuild_info "$REPLY" | while IFS=$'\t' read -r pkgname source branch; do
+        latest="$(git ls-remote "$source" "$branch" | awk '{print $1}')"
+        printf "%s\\t%s\\n" "$pkgname" "$latest"
+    done
 done
 
 # vim: set et sw=4 sts=4 ft=sh:
