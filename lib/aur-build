@@ -182,6 +182,10 @@ while read -r -u "$fd" pkg _; do
     fi
 done
 
+if ((chroot)) && ! ((no_sync)); then
+    sudo pacman -Sy
+fi
+
 exec {fd}<&-
 
 # vim: set et sw=4 sts=4 ft=sh:

@@ -93,7 +93,7 @@ prompts, \fBsudoers\fR(5) can be used instead.
 For example:
 .EX
 
-  %build localhost = (root) NOPASSWD: SETENV: /usr/bin/aur build-nspawn *
+  %build localhost = (root) NOPASSWD: SETENV: /usr/bin/pacman -Sy, /usr/bin/aur build-nspawn *
 
 .EE
 
