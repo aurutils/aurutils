@@ -42,7 +42,10 @@ db_replaces() {
 }
 
 find_pkg_dupes() {
-    xargs -I{} find "$1" -maxdepth 1 -name '{}*' | grep -Exv '.+(~|_namcap\.log|\.part|\.sig)$' -
+    # This function uses the extended --packagelist introduced with
+    # pacman 5.1. It assumes that PKGEXT does not change between
+    # invoking --packagelist and makepkg in the later build process.
+    makepkg --packagelist | xargs -I{} find "$1" -maxdepth 1 -name '{}'
 }
 
 trap_exit() {
@@ -156,7 +159,7 @@ while IFS= read -ru "$fd" path; do
     cd_safe "$path"
 
     if ((!overwrite)); then
-        mapfile -t mark < <(makepkg --packagelist | find_pkg_dupes "$db_root")
+        mapfile -t mark < <(find_pkg_dupes "$db_root")
 
         if [[ ${mark[*]} ]]; then
             warning "$argv0: skipping built package (use -f to overwrite)"
@@ -196,8 +199,6 @@ while IFS= read -ru "$fd" path; do
     # count a package as processed if built and added to the repo
     basename "$path" >&"$fd_done"
 
-    # https://git.archlinux.org/pacman.git/commit/?id=c0a5884b
-    find . -maxdepth 1 -type l -xtype f -lname "$var_tmp*" -delete
     cd_safe "$startdir"
 
     if ((chroot)) || ((no_sync)); then
