@@ -6,6 +6,7 @@ readonly argv0=sync
 readonly XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 readonly AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/$argv0}
 readonly AURDEST_SNAPSHOT=${AURDEST_SNAPSHOT:-$XDG_CACHE_HOME/aurutils/snapshot}
+readonly AURVCS=${AURVCS:-.*-(bzr|git|hg|svn)$}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default arguments
@@ -19,7 +20,7 @@ makepkg_args=(-cs)
 build=1 chkver=1 download=1 view=1
 
 # default options (disabled)
-chroot=0 list=0 rotate=0 snapshot=0 update=0 provides=0 repo_list=0
+chroot=0 list=0 rotate=0 snapshot=0 update=0 provides=0 repo_list=0 devel=0
 
 viewer() {
     if type -P vifm >/dev/null; then
@@ -107,7 +108,7 @@ fi
 longopts=allan,bind:,chroot,directory:,force,ignore:,ignorearch,ignore-arch,log
 longopts+=,noconfirm,no-confirm,nover,no-ver,noview,no-view,print,rmdeps,rm-deps
 longopts+=,sign,temp,tar,repo:,database:,root:,upgrades,nhehgvyf,continue,list,git
-longopts+=,makepkg-conf,pacman-conf,provides,repo-list
+longopts+=,makepkg-conf,pacman-conf,provides,repo-list,devel
 shortopts=d:D:AcfglLnprstTu
 
 if optstring=$(getopt -o "$shortopts" -l "$longopts" -n "$argv0" -- "$@"); then
@@ -178,6 +179,9 @@ while true; do
             shift ;;
         -u|--upgrades)
             update=1
+            shift ;;
+        --devel)
+            devel=1
             shift ;;
         --allan|--nhehgvyf)
             rotate=1
@@ -269,6 +273,10 @@ mkdir patch
 
 bsdcat "$root/$repo".db | db_namever | db_fill_empty >db_info
 
+if ((devel)); then
+  cut -f1 db_info | grep -E "$AURVCS" | xargs -I{} find "$aur_workdir" -maxdepth 1 -type d -name {} | xargs -r aur srcver >vcs_info || true
+fi
+
 if ((list)); then
     column -JN pkgname,pkgver -n "$repo" db_info
     exit
@@ -283,6 +291,12 @@ fi
 
   if ((update)); then
       aur vercmp <db_info | cut -d: -f1
+      if ((devel)); then
+        # At this point, mark **all** VCS packages for a potential update:
+        # - if `chkver` is used, all up-to-date packages will be filtered out, and user will only be presented with obsolete packages
+        # - if `chkver` is not used, we will not check versions and present all VCS packages for an update
+        cut -f1 vcs_info
+      fi
   fi
 } >argv
 
@@ -298,17 +312,32 @@ fi
       printf -- '%s\n' "${pkg_i[@]}"
   fi
 
-  if ((chkver)); then
-      cut -f1,3 pkginfo | aur vercmp -p db_info -c
-  fi
-
   if ((provides)); then
       # note: this uses pacman's copy of the repo (as used by makepkg -s)
       cut -f1 pkginfo | complement argv | aur rfilter -d "$repo"
   fi
 } >filter
 
-cut -f1 pkginfo | lib32 | complement filter >queue_0
+{ if ((chkver)); then
+      # 1. Unconditionally sync new packages (both regular and vcs) that are not in the repo yet (not in `db_info`)
+      cut -f1 pkginfo | grep -Fxvf <(cut -f1 db_info) || true
+
+      # 2. Sync packages (both regular and vcs) that are already in the repo, that are outdated according to AUR RPC
+      #    (whose current versions in `db_info` are older than versions in `pkginfo`)
+      #
+      #    vcs packages can be marked here as outdated if maintainer updates the static pkgver in PKGBUILD.
+      #    We expect that maintainers will do that for any major changes in PKGBUILD (such as changing source or build commands).
+      aur vercmp -p <(cut -f1,3 pkginfo) <db_info | cut -d: -f1
+
+      # 3. Sync vcs packages that are already in the repo, that are outdated according to aur-srcver
+      #    (whose current versions in `db_info` are older than versions in `vcs_info` - not in `pkginfo`)
+      ((devel)) && aur vercmp -p vcs_info <db_info | cut -d: -f1
+  else
+      cut -f1 pkginfo
+  fi
+} >pkgs_to_sync
+
+lib32 <pkgs_to_sync | complement filter >queue_0
 
 if [[ -s queue_0 ]]; then
     select_pkgbase queue_0 pkginfo | cut -f2 >queue
