@@ -1,0 +1,58 @@
+#!/bin/bash
+set -e
+readonly XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+readonly AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
+readonly AURVCS=${AURVCS:-.*-(bzr|git|hg|svn)$}
+readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+trap_exit() {
+    if [[ ! -o xtrace ]]; then
+        rm -rf "$tmp"
+    fi
+}
+
+db_tsv() {
+    jq -r '.[][] | [.pkgname, .pkgver] | @tsv'
+}
+
+db_join() {
+    grep -E "$1" | xargs -I{} find "$2" -maxdepth 1 -type d -name {}
+}
+
+ifne() {
+    xargs -r "$@"
+}
+
+devel=0
+while true; do
+    case $1 in
+        --devel)
+            devel=1
+            shift ;;
+        *)
+            break ;;
+    esac
+done
+
+tmp=$(mktemp -d)
+trap 'trap_exit' EXIT
+cd "$tmp"
+
+# get repo contents
+aur sync --list | db_tsv >db_info
+
+# detect outdated packages according to AurJson
+aur vercmp <db_info | cut -d: -f1 >to_update
+
+if ((devel)); then
+    # checkout latest revision for existing pkgbuilds
+    # this sources the pkgbuilds assuming they have been viewed priorly
+    cut -f1 db_info | db_join "$AURVCS" "$AURDEST" | ifne aur srcver >vcs_info
+
+    # detect outdated VCS packages according to aur-srcver
+    aur vercmp -p vcs_info < db_info | cut -d: -f1 >>to_update
+fi
+
+# sync all outdated packages.
+# AurJson information may be outdated and is thus disabled
+xargs -r -a to_update aur sync --no-ver
