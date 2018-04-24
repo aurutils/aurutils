@@ -39,7 +39,7 @@ trap 'trap_exit' EXIT
 cd "$tmp"
 
 # get repo contents
-/usr/bin/aur sync --list | db_tsv >db_info
+aur sync --list | db_tsv >db_info
 
 # detect outdated packages according to AurJson
 aur vercmp <db_info | cut -d: -f1 >to_update
