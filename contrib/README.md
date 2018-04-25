@@ -14,5 +14,5 @@ You can build upon these scripts to fit your own workflow. For example, you can 
 
 # sync VCS packages that are outdated according to aur-vercmp-devel
 # sync all packages that are outdated according to AurJson (--upgrades)
-aur vercmp-devel "$@" | cut -d: -f1 | xargs -r aur sync --no-ver-shallow --upgrades "$@"
+aur vercmp-devel "$@" | cut -d: -f1 | xargs aur sync --no-ver-shallow --upgrades "$@"
 ```
