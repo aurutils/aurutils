@@ -347,7 +347,7 @@ if ((view)); then
     elif type -P vifm >/dev/null; then
         find -L . -maxdepth 2 -mindepth 1 | vifm - '+view!'
     else
-        find -L . -maxdepth 2 -mindepth 1 | command -- ${PAGER:-less}
+        { printf '%s\n\n' "$tmp_view"; find -L . -maxdepth 2 -mindepth 1 -printf '%P\n'; } | command -- ${PAGER:-less}
     fi
 
     cd_safe -
