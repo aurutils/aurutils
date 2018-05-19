@@ -47,7 +47,7 @@ tmp=$(mktemp -dt "$argv0".XXXXXXXX) || exit
 trap 'trap_exit' EXIT
 
 cd "$tmp" || exit
-parallel --will-cite --nice 10 -j +2 --joblog makepkg_log --results '{#}_makepkg' \
+parallel --nice 10 -j +2 --joblog makepkg_log --results '{#}_makepkg' \
   'cd {}; makepkg --skipinteg --noprepare -od' >/dev/null 2>&1 ::: "${arg_path[@]}"
 parallel_exit=$?
 

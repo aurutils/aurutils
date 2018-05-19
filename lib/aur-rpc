@@ -23,22 +23,8 @@ search() {
     }'
 }
 
-cat_ifne() {
-    if [[ -n $* ]] && [[ -e $1 ]]; then
-        cat -- "$@"
-    fi
-}
-
 dl_stdin() {
-    if type -P aria2c >/dev/null; then
-        if aria2c -d "$tmp"/aria2 -i - -q --no-conf=true --stderr; then
-            cat_ifne "$tmp"/aria2/*
-        else
-            return
-        fi
-    else
-        wget -i - -O - -q
-    fi
+    parallel -j +8 --halt soon,fail=1 wget -qi - -O -
 }
 
 trap_exit() {

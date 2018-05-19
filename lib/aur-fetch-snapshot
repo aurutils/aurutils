@@ -9,11 +9,7 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 log=stdout
 
 dl_stdin() {
-    if type -P aria2c >/dev/null; then
-        aria2c --no-conf=true --stderr=true -i -
-    else
-        wget -i -
-    fi
+    parallel -j +5 --halt soon,fail=1 wget -i -
 }
 
 tar_no_mode_diff() {

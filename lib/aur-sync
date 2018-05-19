@@ -336,11 +336,11 @@ else
 fi
 
 if ((download)); then
-    xargs -a "$tmp"/queue aur fetch "${fetch_args[@]}"
+    parallel -X aur fetch "${fetch_args[@]}" :::: "$tmp"/queue
 fi
 
 # link build files in the queue (absolute links)
-xargs -a "$tmp"/queue printf "$(pwd -P)/%s\\0" | xargs -0 ln -st "$tmp_view"
+parallel -Xj1 ln -s "$(pwd -P)"/{} "$tmp_view" :::: "$tmp"/queue
 
 if ((view)); then
     cd_safe "$tmp_view"
@@ -360,7 +360,7 @@ if ((build)); then
     build_args+=(-d "$repo" -r "$root" -a "$tmp"/queue)
 
     # check if dependency graph is valid
-    printf '%s\0' "$tmp_view"/*/.SRCINFO | xargs -0 aur graph >/dev/null
+    aur graph "$tmp_view"/*/.SRCINFO >/dev/null
 
     if ((chroot)); then
         aur build "${build_args[@]}" -- "${makechrootpkg_args[@]}" \
@@ -369,7 +369,7 @@ if ((build)); then
         aur build "${build_args[@]}" -- "${makepkg_args[@]}"
     fi
 else
-    xargs -a "$tmp"/queue printf "$(pwd -P)/%s\\n"
+    parallel -Xj1 printf '%s\n' "$(pwd -P)"/{} :::: "$tmp"/queue
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
