@@ -63,7 +63,7 @@ parse_aur() {
 }
 
 parse_sync() {
-    pacman -Slq "$1" | parallel -rXj1 pacman -Sddp --print-format '%n %v' "$1"/{}
+    pacman -Slq "$1" | aur jobs -rXj1 pacman -Sddp --print-format '%n %v' "$1"/{}
 }
 
 trap_exit() {

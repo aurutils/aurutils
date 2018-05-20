@@ -24,7 +24,7 @@ search() {
 }
 
 dl_stdin() {
-    parallel -j +8 --halt soon,fail=1 wget -qi - -O -
+    aur jobs -j +8 --halt soon,fail=1 wget -qi - -O -
 }
 
 trap_exit() {

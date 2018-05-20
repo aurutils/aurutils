@@ -34,8 +34,6 @@ trap_exit() {
     fi
 }
 
-command -V parallel >/dev/null || exit
-
 if ((!$#)); then
     usage
 fi
@@ -47,20 +45,20 @@ tmp=$(mktemp -dt "$argv0".XXXXXXXX) || exit
 trap 'trap_exit' EXIT
 
 cd "$tmp" || exit
-parallel --nice 10 -j +2 --joblog makepkg_log --results '{#}_makepkg' \
+aur jobs --nice 10 -j +2 --joblog makepkg_log --results '{#}_makepkg' \
   'cd {}; makepkg --skipinteg --noprepare -od' >/dev/null 2>&1 ::: "${arg_path[@]}"
-parallel_exit=$?
+jobs_exit=$?
 
-if ((parallel_exit > 101)); then
-    printf >&2 '%s: error running "parallel", exit code %d\n' "$argv0" "$parallel_exit"
-    exit "$parallel_exit"
+if ((jobs_exit > 101)); then
+    printf >&2 '%s: error running "parallel", exit code %d\n' "$argv0" "$jobs_exit"
+    exit "$jobs_exit"
 fi
 
-if ((parallel_exit > 0)); then
-    printf >&2 '%s: failed to update %s packages\n' "$argv0" "$parallel_exit"
+if ((jobs_exit > 0)); then
+    printf >&2 '%s: failed to update %s packages\n' "$argv0" "$jobs_exit"
 
-    while IFS=$'\t' read -r seq _ _ _ _ _ job_exit _ command; do
-        if ((job_exit)); then
+    while IFS=$'\t' read -r seq _ _ _ _ _ makepkg_exit _ command; do
+        if ((makepkg_exit)); then
             printf >&2 '8<----\n'
             printf >&2 '%s\n' "$command"
 
@@ -71,7 +69,7 @@ if ((parallel_exit > 0)); then
         fi
     done < makepkg_log
 
-    exit "$parallel_exit"
+    exit "$jobs_exit"
 fi
 
 find_pkgbuild_path "${arg_path[@]}" | while IFS= read -d $'\0' -r; do

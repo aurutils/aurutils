@@ -336,11 +336,11 @@ else
 fi
 
 if ((download)); then
-    parallel -X aur fetch "${fetch_args[@]}" :::: "$tmp"/queue
+    aur jobs -X aur fetch "${fetch_args[@]}" :::: "$tmp"/queue
 fi
 
 # link build files in the queue (absolute links)
-parallel -Xj1 ln -s "$(pwd -P)"/{} "$tmp_view" :::: "$tmp"/queue
+aur jobs -Xj1 ln -s "$(pwd -P)"/{} "$tmp_view" :::: "$tmp"/queue
 
 if ((view)); then
     cd_safe "$tmp_view"
@@ -369,7 +369,7 @@ if ((build)); then
         aur build "${build_args[@]}" -- "${makepkg_args[@]}"
     fi
 else
-    parallel -Xj1 printf '%s\n' "$(pwd -P)"/{} :::: "$tmp"/queue
+    aur jobs -Xj1 printf '%s\n' "$(pwd -P)"/{} :::: "$tmp"/queue
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
