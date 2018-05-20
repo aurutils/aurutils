@@ -1,15 +1,17 @@
-.TH AUR-CHROOT 2018-04-27 AURUTILS
+.TH AUR-CHROOT 2018-05-20 AURUTILS
 .SH NAME
-aur\-chroot \- build packages inside a chroot
+aur\-chroot \- build packages with systemd-nspawn
 
 .SH SYNOPSIS
 .SY "aur chroot"
-.OP \-C pacman_conf
+.OP \-d database
 .OP \-D directory
 .OP \-M makepkg_conf
-.OP \-d database
-.OP \-u
-.OP \--
+.OP \-C pacman_conf
+.OP \-L pacman_conf
+.OP \-B
+.OP \-P
+.OP \-\-
 .RI [ "makechrootpkg args" ]
 .YS
 
@@ -21,19 +23,25 @@ repository.
 All arguments after \-\- are passed to \fBmakechrootpkg\fR.
 
 .TP
-.BI "\-C " pacman_conf
-The \fIpacman.conf\fR file to be used in the container. Defaults to
-\fIpacman-extra.conf\fR from devtools.
-
-.TP
 .BI "\-D " directory
 The base directory for containers. This directory usually contains a
 \fB/root\fR subdirectory that serves as template for user containers
 (named after \fI$SUDO_USER\fR, or \fB/copy\fR if unset).
 
 .SY Note:
-If the \fB\-T\fR parameter is specified to \fBmakechrootpkg\fR, the 
+If the \fB\-T\fR parameter is specified to \fBmakechrootpkg\fR, the
 user container has a random name and is removed on build completion.
+
+.TP
+.BI "\-C " pacman_conf
+The \fIpacman.conf\fR file to be used in the container. Defaults to
+\fIpacman-extra.conf\fR from devtools. If a local repository name is
+specified with \fB\-d\fR, its configuration is appended to this file.
+
+.TP
+.BI "\-L " pacman_conf
+The \fBpacman.conf\fR file where local repositories are queried
+from. Defaults to \fI/etc/pacman.conf\fR.
 
 .TP
 .BI "\-M " makepkg_conf
@@ -41,18 +49,30 @@ The makepkg.conf file to be used in the container. Defaults to
 \fImakepkg\-<machine>.conf\fR from devtools.
 
 .TP
-.BI "\-d " database
-Check if the specified repository is configured in the /root container.
-Only effective for \fB-u\fR.
+.B \-B
+Update or create the /root copy of the container; do not build a
+package.
 
 .TP
-.B \-u
-Update or create the /root copy of the container; do not build a package.
+.B \-P
+Build a package, to not update the container.
+
+.TP
+.B \-d
+The used local repository in the container, see \fB\-C\fR. It is
+assumed this repository is stored in a secondary pacman cache
+directory (\fBCacheDir\fR) such as \fI/var/cache/pacman/custom\fR. See
+the \fBAccessing the local repository\fR section for details.
 
 .SH ENVIRONMENT
-Packages are placed in the directory specified in \fBPKGDEST\fR. If not
-set, the current directory (\fI$PWD\fR) is used. See also
+Packages are placed in the directory specified in \fBPKGDEST\fR. If
+not set, the current directory (\fI$PWD\fR) is used. See also
 \fBmakepkg.conf\fR(5).
+
+.B AUR_REPO
+.RS
+The default local repository, see \fB\-\fR.
+.RE
 
 .SH NOTES
 .SS Building with \fBmakechrootpkg\fR
@@ -61,20 +81,68 @@ container to the local system. Packages must be installed and updated
 separately, typically through \fBpacman \-Syu \fIpackage_name\fR.
 
 Package conflicts inside the container must be solved manually, as
-\fBmakechrootpkg\fR uses \fBmakepkg \-\-confirm \-s\fR internally. For
-example, to replace \fIgcc\fR with \fIgcc-multilib\fR, run \fBarch\-nspawn
-/var/lib/aurbuild/root pacman \-S gcc\-multilib\fR as root.
-
-Signature verification requires that \fBgpg2\fR(1) configuration is
-stored in \fI~/.gnupg\fR. See Github issue #151 for details.
+\fBmakechrootpkg\fR uses \fBmakepkg \-\-confirm \-s\fR internally.
+For example, to replace \fIgcc\fR with \fIgcc-multilib\fR, run
+\fBarch\-nspawn /var/lib/aurbuild/root pacman \-S gcc\-multilib\fR as
+root.
 
 .SS Building for a different architecture
 To build packages for a different architecture, prepend \fBsetarch
 \fIarch\fR to the aurbuild command line. The target architecture must
-both be supported by the current system (run \fBsetarch \-\-list\fR for an
-approximation) and have a respective \fImakepkg.conf\fR file available
-in \fI/usr/share/devtools\fR (such as
+both be supported by the current system (run \fBsetarch \-\-list\fR
+for an approximation) and have a respective \fImakepkg.conf\fR file
+available in \fI/usr/share/devtools\fR (such as
 \fI/usr/share/devtools/makepkg\-i686.conf\fR for \fIi686\fR).
+
+.SS Accessing the local repository
+To install packages from the local repository (for example, on
+dependency resolution with \fImakepkg -s\fR), the container requires
+at least read-only access to the host directory where it is
+located. This can be ensured through a \fIbind mount\fR.
+
+The following describes this procedure in \fBdevtools\fR programs.
+
+.SY \fBmkarchroot\fR
+.IP \(bu 2
+This calls \fBpacstrap -GMcd\fR, which in turn calls \fIpacman -r
+<directory/root> -Sy\fR which uses the host system's
+configuration. No bind mounts are required. Reference:
+
+.UR https://git.archlinux.org/pacman.git/commit/?id=fae33a1f
+.UE
+
+\fBarch-nspawn\fR is only run with \fBlocale-gen\fR.
+
+.SY \fBarch-nspawn\fR
+.IP \(bu 2
+Without \fB\-c\fR, \fBCacheDir\fR paths on the host are determined
+with \fBpacman -v\fR. Any found paths are split on whitespace and
+mounted as follows:
+.RS
+.TP
+.B Read\-write access
+The first path, typically \fI/var/cache/pacman/pkg\fR on the host
+filesystem.
+.TP
+.B Read\-only access
+Any other defined \fBCacheDirs\fR.
+.RE
+
+.IP \(bu 2
+With \fB\-c\fR, the specified path is mounted read-write and used as
+\fIsole\fR \fBCacheDir\fR in the container configuration
+(\fBpacman.conf\fR).
+
+Paths may also be mounted in the container through the \fB\-\-bind\fR
+and \fB\-\-bind\-ro\fR arguments, which are passed directly to
+\fBsystemd\-nspawn\fR(1).
+
+.SY \fBmakechrootpkg\fR
+.IP \(bu 2
+This calls \fIarch-nspawn <directory/copy> pacman -Syu\fR, thus the
+above rules on \fBCacheDir\fR without \fB-c\fR apply. Additional
+paths may be specified with \fB\-d\fR (read-write) or \fB\-D\fR
+(read-only).
 
 .SH SEE ALSO
 .BR aur (1),

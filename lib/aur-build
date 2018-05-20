@@ -74,10 +74,11 @@ while getopts a:d:r:C:D:M:cfNRsv opt; do
     case $opt in
         a) queue=$OPTARG    ;;
         c) chroot=1         ;;
-        d) database=$OPTARG ;;
         f) overwrite=1      ;;
         N) no_sync=1        ;;
         r) db_root=$OPTARG  ;;
+        d) database=$OPTARG
+           chroot_args+=(-d "$OPTARG") ;;
         C) chroot_args+=(-C "$OPTARG") ;;
         D) chroot_args+=(-D "$OPTARG") ;;
         M) chroot_args+=(-M "$OPTARG") ;;
@@ -168,7 +169,7 @@ while IFS= read -ru "$fd" path; do
     m_err=0
     if ((chroot)); then
         PKGDEST="$var_tmp" aur chroot -P "${chroot_args[@]}" \
-            -- -d "$db_root" "${makechrootpkg_args[@]}" || m_err=$?
+            -- "${makechrootpkg_args[@]}" || m_err=$?
     else
         PKGDEST="$var_tmp" makepkg "${makepkg_args[@]}" || m_err=$?
     fi
@@ -195,9 +196,8 @@ while IFS= read -ru "$fd" path; do
     # count a package as processed if built and added to the repo
     basename "$path" >&"$fd_done"
 
-    # fixed by: https://git.archlinux.org/pacman.git/commit/?id=c0a5884b
+    # https://git.archlinux.org/pacman.git/commit/?id=c0a5884b
     find . -maxdepth 1 -type l -xtype f -lname "$var_tmp*" -delete
-
     cd_safe "$startdir"
 
     if ((chroot)) || ((no_sync)); then

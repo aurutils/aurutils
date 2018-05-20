@@ -1,42 +1,27 @@
 #!/bin/bash
-# aur-chroot - build packages using systemd-nspawn
+# aur-chroot - build packages with systemd-nspawn
 set -o errexit
 readonly argv0=chroot
 readonly PATH=/bin:/usr/bin
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
 machine=$(uname -m)
 readonly machine
 
 # default arguments
 directory=/var/lib/aurbuild/$machine
 makechrootpkg_args=(-cu)
-makepkg_conf=/usr/share/devtools/makepkg-$machine.conf
-pacman_conf=/usr/share/devtools/pacman-extra.conf
 
 # default options
 prepare=1 build=1
 
-conf_options() {
-    printf '[options]\n'
-    pacconf --config="$1" --options --raw
+get_repo_config() {
+    printf '[%s]\n' "$2"
+    pacconf --config="$1" --repo="$2"
 }
 
-conf_repo() {
-    while IFS= read -r; do
-        printf '[%s]\n' "$REPLY"
-        pacconf --config="$1" --raw --repo="$REPLY"
-    done
-}
-
-conf_devtools() {
-    # print pacman options from devtools
-    conf_options "$1"
-
-    # https://git.archlinux.org/devtools.git/tree/mkarchroot.in#n54
-    printf '#CacheDir=\n'
-
-    # print pacman repos from host
-    pacconf --repo-list | conf_repo '/etc/pacman.conf'
+get_cachedir() {
+    pacconf --config="$1" CacheDir
 }
 
 trap_exit() {
@@ -46,15 +31,19 @@ trap_exit() {
 }
 
 usage() {
-    printf >&2 'usage: %s [-CDM <path>] [-BP] -- <makechrootpkg args>' "$argv0"
+    printf >&2 'usage: %s [-CDLM <path>] [-d <repo>] [-BP] -- <makechrootpkg args>' "$argv0"
     exit 1
 }
 
-while getopts :BPC:D:M: opt; do
+unset pacman_conf makepkg_conf local_repo local_conf
+while getopts :BPd:r:C:D:L:M: opt; do
+    # FIXME possibly extend -d to multiple local repos
     case $opt in
+        d) local_repo=$OPTARG   ;;
+        L) local_conf=$OPTARG   ;;
         C) pacman_conf=$OPTARG  ;;
-        D) directory=$OPTARG    ;;
         M) makepkg_conf=$OPTARG ;;
+        D) directory=$OPTARG    ;;
         B) build=0   ;;
         P) prepare=0 ;;
         *) usage     ;;
@@ -63,6 +52,7 @@ done
 shift $((OPTIND - 1))
 OPTIND=1
 
+# reset default makechrootpkg arguments
 if (($#)); then
     makechrootpkg_args=("$@")
 fi
@@ -70,23 +60,41 @@ fi
 trap 'trap_exit' EXIT
 tmp=$(mktemp -d)
 
+# baseline container configuration
+pacman_conf=${pacman_conf-/usr/share/devtools/pacman-extra.conf}
+makepkg_conf=${makepkg_conf-/usr/share/devtools/makepkg-$machine.conf}
+local_repo_conf=${local_repo_conf-/etc/pacman.conf}
+
+if [[ ${local_repo=$AUR_REPO} ]]; then
+    get_repo_config "$local_repo_conf" "$local_repo"
+fi >"$tmp"/custom.conf
+
+# FIXME the following assumes the local repo is contained in a pacman
+# CacheDir (different from /var/cache/pacman/pkg), such that it is
+# bind-mounted (readonly) by arch-nspawn and mkarchroot. When not, the
+# directory should be mounted manually with --bind-ro (arch-nspawn) or
+# -D (makechrootpkg). mkarchroot uses pacstrap which in turn uses the
+# host configuration (pacman 5.0.2).
 if ((prepare)); then
-    conf_devtools "$pacman_conf" >"$tmp"/pacman.conf
+    cat "$pacman_conf" "$tmp"/custom.conf >"$tmp"/pacman.conf
 
     if [[ -f $directory/root/.arch-chroot ]]; then
         # locking is done by systemd-nspawn
-        sudo arch-nspawn -C "$tmp"/pacman.conf -M "$makepkg_conf" "$directory"/root pacman -Syu --noconfirm
+        sudo arch-nspawn -C "$tmp"/pacman.conf -M "$makepkg_conf" \
+             "$directory"/root pacman -Syu --noconfirm
     else
-        # XXX parent path is not created by mkarchroot
         if [[ ! -d $directory ]]; then
+            # parent path is not created by mkarchroot (#371)
             sudo install -d "$directory" -m 755 -v
         fi
-        sudo mkarchroot  -C "$tmp"/pacman.conf -M "$makepkg_conf" "$directory"/root base-devel
+        sudo mkarchroot  -C "$tmp"/pacman.conf -M "$makepkg_conf" \
+             "$directory"/root base-devel
     fi
 fi
 
 if ((build)); then
-    sudo PKGDEST="${PKGDEST:-$PWD}" makechrootpkg -r "$directory" "${makechrootpkg_args[@]}"
+    sudo PKGDEST="${PKGDEST:-$PWD}" makechrootpkg -r "$directory" \
+         "${makechrootpkg_args[@]}"
 else
     printf >&2 'container path: %q\n' "$directory"
     exit 0
