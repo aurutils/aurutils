@@ -11,6 +11,8 @@ readonly machine
 # default arguments
 directory=/var/lib/aurbuild/$machine
 makechrootpkg_args=(-cu)
+makechrootpkg_bindmounts_ro=()
+bindmounts_ro=()
 
 # default options
 prepare=1 build=1
@@ -35,12 +37,11 @@ usage() {
     exit 1
 }
 
-unset pacman_conf makepkg_conf local_repo local_conf
+unset pacman_conf makepkg_conf host_repo host_conf server
 while getopts :BPd:r:C:D:L:M: opt; do
-    # FIXME possibly extend -d to multiple local repos
     case $opt in
-        d) local_repo=$OPTARG   ;;
-        L) local_conf=$OPTARG   ;;
+        d) host_repo=$OPTARG    ;;
+        L) host_conf=$OPTARG    ;;
         C) pacman_conf=$OPTARG  ;;
         M) makepkg_conf=$OPTARG ;;
         D) directory=$OPTARG    ;;
@@ -57,31 +58,38 @@ if (($#)); then
     makechrootpkg_args=("$@")
 fi
 
+# baseline configuration
+readonly pacman_conf=${pacman_conf-/usr/share/devtools/pacman-extra.conf}
+readonly makepkg_conf=${makepkg_conf-/usr/share/devtools/makepkg-$machine.conf}
+readonly host_conf=${host_conf-/etc/pacman.conf}
+
 trap 'trap_exit' EXIT
 tmp=$(mktemp -d)
 
-# baseline container configuration
-pacman_conf=${pacman_conf-/usr/share/devtools/pacman-extra.conf}
-makepkg_conf=${makepkg_conf-/usr/share/devtools/makepkg-$machine.conf}
-local_repo_conf=${local_repo_conf-/etc/pacman.conf}
-
-if [[ ${local_repo=$AUR_REPO} ]]; then
-    get_repo_config "$local_repo_conf" "$local_repo"
+# FIXME possibly extend -d to multiple local repos
+if [[ ${host_repo=$AUR_REPO} ]]; then
+    get_repo_config "$host_conf" "$host_repo"
 fi >"$tmp"/custom.conf
 
-# FIXME the following assumes the local repo is contained in a pacman
-# CacheDir (different from /var/cache/pacman/pkg), such that it is
-# bind-mounted (readonly) by arch-nspawn and mkarchroot. When not, the
-# directory should be mounted manually with --bind-ro (arch-nspawn) or
-# -D (makechrootpkg). mkarchroot uses pacstrap which in turn uses the
-# host configuration (pacman 5.0.2).
+# FIXME custom.conf may contain (besides http:// or others) multiple
+# file:// entries for a single local repo
+server=$(pacini --section="$host_repo" "$tmp"/custom.conf Server | grep -Em1 '^file://')
+server=${server#file://}
+
+if [[ $server ]]; then
+    bindmounts_ro+=("--bind-ro=$server")
+    makechrootpkg_bindmounts_ro+=('-D' "$server")
+fi
+
+# Note: any CacheDir entries are bind-mounted by arch-nspawn (bind-rw
+# for the first entry, bind-ro for any others)
 if ((prepare)); then
     cat "$pacman_conf" "$tmp"/custom.conf >"$tmp"/pacman.conf
 
     if [[ -f $directory/root/.arch-chroot ]]; then
         # locking is done by systemd-nspawn
         sudo arch-nspawn -C "$tmp"/pacman.conf -M "$makepkg_conf" \
-             "$directory"/root pacman -Syu --noconfirm
+             "$directory"/root "${bindmounts_ro[@]}" pacman -Syu --noconfirm
     else
         if [[ ! -d $directory ]]; then
             # parent path is not created by mkarchroot (#371)
@@ -94,7 +102,7 @@ fi
 
 if ((build)); then
     sudo PKGDEST="${PKGDEST:-$PWD}" makechrootpkg -r "$directory" \
-         "${makechrootpkg_args[@]}"
+         "${makechrootpkg_bindmounts_ro[@]}" "${makechrootpkg_args[@]}"
 else
     printf >&2 'container path: %q\n' "$directory"
     exit 0

@@ -59,10 +59,10 @@ Build a package, to not update the container.
 
 .TP
 .B \-d
-The used local repository in the container, see \fB\-C\fR. It is
-assumed this repository is stored in a secondary pacman cache
-directory (\fBCacheDir\fR) such as \fI/var/cache/pacman/custom\fR. See
-the \fBAccessing the local repository\fR section for details.
+The used local repository in the container, see \fB\-C\fR. The first
+\fBServer\fR directive starting in \fBfile://\fR is bind mounted
+(read-only) in the container. See the \fBAccessing the local
+repository\fR section for details.
 
 .SH ENVIRONMENT
 Packages are placed in the directory specified in \fBPKGDEST\fR. If
