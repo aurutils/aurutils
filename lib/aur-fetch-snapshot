@@ -67,6 +67,7 @@ for a in ./*.tar.gz; do
     x=${a%%.tar.gz}
 
     if tar_no_mode_diff "$a" "$startdir"; then
+        # FIXME show diff to PKGBUILD first, '-S' is weird (skips files), see #400
         diff -ur "$startdir/$x" "$x" | diff_log "$x"
     fi
 
