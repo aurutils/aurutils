@@ -10,9 +10,15 @@ log=stdout
 merge_upstream() {
     git fetch -v >&2
 
+    # default to showing PKGBUILD diffs first (#399)
+    if [[ ! -s ${GIT_WORK_TREE:-$PWD}/git.orderfile ]]; then
+        echo PKGBUILD > "${GIT_WORK_TREE:-$PWD}"/git.orderfile
+    fi
+
     if [[ $(git rev-parse HEAD) != $(git rev-parse '@{upstream}') ]]; then
         # only print log on upstream changes
-        git --no-pager log -O <(echo 'PKGBUILD') --patch --stat '..@{upstream}' >> "${1:-/dev/stdout}"
+        git --no-pager log -O "${GIT_WORK_TREE:-$PWD}"/git.orderfile \
+            --patch --stat '..@{upstream}' >> "${1:-/dev/stdout}"
 
         # discard any local changes (#349)
         git reset --hard HEAD@{upstream} >&2
