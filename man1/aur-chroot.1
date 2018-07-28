@@ -23,26 +23,28 @@ All arguments after \-\- are passed to \fBmakechrootpkg\fR.
 
 .TP
 .BI "\-D " directory
-The base directory for containers. This directory usually contains a
-\fB/root\fR subdirectory that serves as template for user containers
-(named after \fI$SUDO_USER\fR, or \fB/copy\fR if unset).
+The base directory for containers.
+This directory usually contains a \fB/root\fR subdirectory that serves
+as template for user containers (named after \fI$SUDO_USER\fR, or
+\fB/copy\fR if unset).
 
-.SY Note:
+.SY Note :
 If the \fB\-T\fR parameter is specified to \fBmakechrootpkg\fR, the
 user container has a random name and is removed on build completion.
 
 .TP
 .BI "\-C " pacman_conf
-The \fIpacman.conf\fR file to be used in the container. Defaults to
-\fIpacman-extra.conf\fR from devtools. This file is processed with
-\fBpacconf\fR(1) to include necessary information from the host, such
-as mirrors. If a local repository name is specified with \fB\-d\fR,
-its configuration is appended to this file.
+The \fIpacman.conf\fR file to be used in the container.
+Defaults to \fIpacman-extra.conf\fR from devtools.
+This file is processed with \fBpacconf\fR(1) to include necessary
+information from the host, such as mirrors.
+If a local repository name is specified with \fB\-d\fR, its
+configuration is appended to this file.
 
 .TP
 .BI "\-M " makepkg_conf
-The makepkg.conf file to be used in the container. Defaults to
-\fImakepkg\-<machine>.conf\fR from devtools.
+The makepkg.conf file to be used in the container.
+Defaults to \fImakepkg\-<machine>.conf\fR from devtools.
 
 .TP
 .B \-B
@@ -55,14 +57,14 @@ Build a package, to not update the container.
 
 .TP
 .B \-d
-The used local repository in the container, see \fB\-C\fR. The first
-\fBServer\fR directive starting in \fBfile://\fR is bind mounted
-(read-only) in the container.
+The used local repository in the container, see \fB\-C\fR.
+The first \fBServer\fR directive starting in \fBfile://\fR is bind
+mounted (read-only) in the container.
 
 .SH ENVIRONMENT
-Packages are placed in the directory specified in \fBPKGDEST\fR. If
-not set, the current directory (\fI$PWD\fR) is used. See also
-\fBmakepkg.conf\fR(5).
+Packages are placed in the directory specified in \fBPKGDEST\fR.
+If not set, the current directory (\fI$PWD\fR) is used.
+See also \fBmakepkg.conf\fR(5).
 
 .B AUR_REPO
 .RS
@@ -72,8 +74,9 @@ The default local repository, see \fB\-\fR.
 .SH NOTES
 .SS Building with \fBmakechrootpkg\fR
 Changes to the pacman database are \fInot\fR propagated from the
-container to the local system. Packages must be installed and updated
-separately, typically through \fBpacman \-Syu \fIpackage_name\fR.
+container to the local system.
+Packages must be installed and updated separately, typically through
+\fBpacman \-Syu \fIpackage_name\fR.
 
 Package conflicts inside the container must be solved manually, as
 \fBmakechrootpkg\fR uses \fBmakepkg \-\-confirm \-s\fR internally.
@@ -83,25 +86,26 @@ root.
 
 .SS Building for a different architecture
 To build packages for a different architecture, prepend \fBsetarch
-\fIarch\fR to the aurbuild command line. The target architecture must
-both be supported by the current system (run \fBsetarch \-\-list\fR
-for an approximation) and have a respective \fImakepkg.conf\fR file
-available in \fI/usr/share/devtools\fR (such as
+\fIarch\fR to the aurbuild command line.
+The target architecture must both be supported by the current system
+(run \fBsetarch \-\-list\fR for an approximation) and have a respective
+\fImakepkg.conf\fR file available in \fI/usr/share/devtools\fR (such as
 \fI/usr/share/devtools/makepkg\-i686.conf\fR for \fIi686\fR).
 
 .SS Accessing the local repository
 To install packages from the local repository (for example, on
 dependency resolution with \fImakepkg \-s\fR), the container requires
 at least read-only access to the host directory where it is
-located. This is ensured through a \fIbind mount\fR.
+located.
+This is ensured through a \fIbind mount\fR.
 
 .SH SEE ALSO
-.BR aur (1),
-.BR aur\-build (1),
-.BR pacconf (1),
-.BR pacman (1),
-.BR makepkg.conf (5),
-.BR pacman.conf (5),
+.BR aur (1) ,
+.BR aur\-build (1) ,
+.BR pacconf (1) ,
+.BR pacman (1) ,
+.BR makepkg.conf (5) ,
+.BR pacman.conf (5) ,
 .BR setarch (8)
 
 .SH AUTHORS

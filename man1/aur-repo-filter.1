@@ -11,14 +11,14 @@ aur\-repo\-filter \- filter packages in the Arch Linux repositories
 .SH DESCRIPTION
 \fBaur\-repo\-filter\fR checks if \fIpkgname\fR (provided on
 \fIstdin\fR) is in the official Arch Linux repositories, and print it to
-\fIstdout\fR if not. Virtual packages, when found, are solved and
-printed to stderr.
+\fIstdout\fR if not.
+Virtual packages, when found, are solved and printed to stderr.
 
 .SH OPTIONS
 .TP
 .BI "\-d " database
-Check a given repository instead of those from Arch Linux. Multiple
-repositories can be specified by repeating \fB\-d\fR.
+Check a given repository instead of those from Arch Linux.
+Multiple repositories can be specified by repeating \fB\-d\fR.
 
 .TP
 .BI "\-o"
@@ -26,9 +26,9 @@ Use the JSON interface for the official repositories to query
 packages.
 
 .SH SEE ALSO
-.BR aur (1),
-.BR expac (1),
-.BR jq (1),
+.BR aur (1) ,
+.BR expac (1) ,
+.BR jq (1) ,
 .BR pacsift (1)
 
 .SH AUTHORS

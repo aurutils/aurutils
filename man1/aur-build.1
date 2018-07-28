@@ -25,8 +25,8 @@ All arguments after \-\- are passed to \fBmakepkg\fR(8), or
 
 .TP
 .BI "\-a " queue
-A text file with directories containing a PKGBUILD. If none is
-specified, the current directory is assumed.
+A text file with directories containing a PKGBUILD.
+If none is specified, the current directory is assumed.
 
 .TP
 .B \-c
@@ -39,8 +39,8 @@ The name of the pacman database.
 .TP
 .B \-f
 Continue the build process if a package with the same name is found
-(ignoring the extension). Existing packages will be moved with a
-\fI~\fR suffix.
+(ignoring the extension).
+Existing packages will be moved with a \fI~\fR suffix.
 
 .TP
 .B \-N
@@ -48,15 +48,16 @@ Do not sync the local repository after building.
 
 .TP
 .BI "\-r " root
-The root for the repository. The \fIroot\fR is the location for the
-pacman database (\fIfoo.db\fR), built packages, and secondary files
-such as the files database (\fIfoo.files\fR). This defaults to the
-\fIServer\fR value of the configured repository.
+The root for the repository.
+The \fIroot\fR is the location for the pacman database (\fIfoo.db\fR),
+built packages, and secondary files such as the files database
+(\fIfoo.files\fR).
+This defaults to the \fIServer\fR value of the configured repository.
 
-.SY Note:
+.SY Note :
 The \fIServer\fR value configured in \fBpacman.conf\fR is used for
-\fBpacman\fR sync operations regardless of this setting. See also
-\fB\-N\fR.
+\fBpacman\fR sync operations regardless of this setting.
+See also \fB\-N\fR.
 
 .TP
 .B \-R
@@ -66,35 +67,37 @@ database (\fBrepo\-add \-R\fR).
 .TP
 .B \-s
 Sign built packages and the database (\fBrepo\-add \-s\fR) with
-\fBgpg\fR(1).  To use another key than the default, the \fBGPGKEY\fR
-environment variable can be set to the appopriate key identifier.
+\fBgpg\fR(1).
+To use another key than the default, the \fBGPGKEY\fR environment
+variable can be set to the appopriate key identifier.
 
 .TP
 .B \-v
-Verify the PGP signature of the database before
-updating. (\fBrepo\-add \-v\fR).
+Verify the PGP signature of the database before updating.
+(\fBrepo\-add \-v\fR).
 
 .SH NOTES
 When building locally (outside a container), \fBpacman \-Syu\fR is run
-while restricted to a local repository. This is comparable to
-\fBmakepkg \-i\fR, but without subsequent package installation (if a
-package was installed before, it is updated to the latest available
-version). An interesting side-effect is that pacman considers packages
-inside the official repositories "local", and warns if they are newer
-than any custom counterpart. Packages which define a \fIreplaces\fR
-field are ignored if the target package is installed on the local
-system.
+while restricted to a local repository.
+This is comparable to \fBmakepkg \-i\fR, but without subsequent
+package installation (if a package was installed before, it is updated
+to the latest available version).
+An interesting side-effect is that pacman considers packages inside
+the official repositories "local", and warns if they are newer than
+any custom counterpart.
+Packages which define a \fIreplaces\fR field are ignored if the target
+package is installed on the local system.
 
 Databases are built with \fBLANG=C\fR to avoid libalpm from skipping
-entries if the locale is not set (FS#49342). Packages are signed
-manually with \fBgpg \-\-batch \-\-detach\-sign \-\-no\-armor\fR
-(FS#49946).
+entries if the locale is not set (FS#49342).
+Packages are signed manually with \fBgpg \-\-batch \-\-detach\-sign
+\-\-no\-armor\fR (FS#49946).
 
 .SS Avoiding password prompts
 \fBmakepkg\fR(8) must be run as a regular user as of version 4.2, with
-privileged operations done via \fBsudo\fR(8). As such,
-\fBaur\-build\fR(1) can not be run directly as root. To avoid password
-prompts, \fBsudoers\fR(5) can be used instead.
+privileged operations done via \fBsudo\fR(8).
+As such, \fBaur\-build\fR(1) can not be run directly as root.
+To avoid password prompts, \fBsudoers\fR(5) can be used instead.
 
 For example:
 .EX
@@ -104,19 +107,19 @@ For example:
 
 .EE
 
-.SY Note:
-If the rule should only apply to certain hosts, replace \fBALL\fR with 
+.SY Note :
+If the rule should only apply to certain hosts, replace \fBALL\fR with
 the respective \fIhostname\fR.
 
 .SH SEE ALSO
-.BR aur (1),
-.BR aur\-chroot (1),
-.BR pacconf (1),
-.BR pacman (1),
-.BR makepkg.conf (5),
-.BR pacman.conf (5),
-.BR makepkg (8),
-.BR repo-add (8),
+.BR aur (1) ,
+.BR aur\-chroot (1) ,
+.BR pacconf (1) ,
+.BR pacman (1) ,
+.BR makepkg.conf (5) ,
+.BR pacman.conf (5) ,
+.BR makepkg (8) ,
+.BR repo-add (8) ,
 .BR setarch (8)
 
 .SH AUTHORS

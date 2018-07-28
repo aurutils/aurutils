@@ -19,23 +19,27 @@ aur\-sync \- download and build aur packages automatically
 
 .SH DESCRIPTION
 \fBaur\-sync\fR downloads and builds packages automatically to a local
-repository. Package names serve as arguments.
+repository.
+Package names serve as arguments.
 
 If \fBvifm\fR(1) is installed, the downloaded files are shown using vifm
-and can be edited. If not, the files are shown in \fBless\fR(1), or
-\fI$PAGER\fR if configured.
+and can be edited.
+If not, the files are shown in \fBless\fR(1), or \fI$PAGER\fR if
+configured.
 
 .SH OPTIONS
 .SS Build options
 .TP
 .BR \-f ", " \-\-force
 Continue the build process if a package with the same name exists
-already. (\fBaur build \-f\fR)
+already.
+(\fBaur build \-f\fR)
 
 .TP
 .B \-\-ignore=\fIPACKAGE\fR
-Ignore a package upgrade. Multiple packages can be specified by
-separating them with a comma, or by repeating the \fB\-\-ignore\fR option.
+Ignore a package upgrade.
+Multiple packages can be specified by separating them with a comma, or
+by repeating the \fB\-\-ignore\fR option.
 
 .TP
 .BR \-\-nover ", " \-\-no\-ver
@@ -44,8 +48,8 @@ Disable version checking for packages in the queue.
 .TP
 .BR \-\-nover\-shallow ", " \-\-no\-ver\-shallow
 Disable version checking for packages specified on the command line or
-upgrade candidates from \-\-upgrades. Version checks for dependencies
-remain enabled.
+upgrade candidates from \-\-upgrades.
+Version checks for dependencies remain enabled.
 
 .TP
 .BR \-p ", " \-\-print
@@ -53,27 +57,30 @@ Print target packages and their paths instead of building them.
 
 .TP
 .BR \-s ", " \-\-sign
-Sign built packages and verify the database with gpg. (\fBaur build \-sv\fR)
+Sign built packages and verify the database with gpg.
+(\fBaur build \-sv\fR)
 
 .SS Container options
 .TP
 .BR \-c ", " \-\-chroot
-Build packages with makechrootpkg. (\fBaur build \-c\fR)
+Build packages with makechrootpkg.
+(\fBaur build \-c\fR)
 
 .TP
 .BR \-\-pacman\-conf=\fIFILE\fR
-Set the \fIpacman.conf\fR file to be used in the container. (\fBaur
-build \-C\fR)
+Set the \fIpacman.conf\fR file to be used in the container.
+(\fBaur build \-C\fR)
 .RE
 
 .TP
 .BR \-\-makepkg\-conf=\fIFILE\fR
-Set the \fImakepkg.conf\fR file to be used in the container. (\fBaur
-build \-M\fR)
+Set the \fImakepkg.conf\fR file to be used in the container.
+(\fBaur build \-M\fR)
 
 .TP
 .BR "\-D \fIDIR\fR" ", " \-\-directory=\fIDIR\fR
-Set the container path to \fIDIR\fR. (\fBaur build \-D\fR)
+Set the container path to \fIDIR\fR.
+(\fBaur build \-D\fR)
 
 .SS Download options
 .TP
@@ -110,22 +117,24 @@ file paths.
 .TP
 .B \-\-provides
 Take virtual dependencies (\fBprovides\fR) in the local repository into
-account. Packages specified on the command line or available upgrades
-are considered regardless of this setting.
+account.
+Packages specified on the command line or available upgrades are
+considered regardless of this setting.
 
 Note: Ensure the local repository is propagated to \fBpacman\fR(8)
 before using this option, for example with \fBpacsync\fR(1).
 
 .TP
 .B \-d \fINAME\fR ", " \-\-database=\fINAME\fR ", " \-\-repo=\fINAME\fR
-Use the \fINAME\fR repository. If this option is not specified,
-\fBaur\-sync\fR defaults to the first \fIfile://\fR repository in
-\fBpacman.conf\fR(5), or aborts if multiple are available.
+Use the \fINAME\fR repository.
+If this option is not specified, \fBaur\-sync\fR defaults to the first
+\fIfile://\fR repository in \fBpacman.conf\fR(5), or aborts if multiple
+are available.
 
 .TP
 .B \-\-root=\fIDIR\fR
-The location of the repository root. Defaults to the \fIServer\fR
-value of the configured repository.
+The location of the repository root.
+Defaults to the \fIServer\fR value of the configured repository.
 
 .TP
 .BR \-u ", " \-\-upgrades
@@ -141,37 +150,44 @@ Ignore a missing or incomplete \fIarch\fR field in the build script.
 
 .TP
 .BR \-L ", " \-\-log
-Enable logging to a text file in the build directory. (\fBmakepkg
-\-L\fR)
+Enable logging to a text file in the build directory.
+(\fBmakepkg \-L\fR)
 
 .TP
 .BR \-\-noconfirm ", " \-\-no\-confirm
-Do not wait for user input. (\fBmakepkg \-\-noconfirm\fR)
+Do not wait for user input.
+(\fBmakepkg \-\-noconfirm\fR)
 
 .TP
 .BR \-r ", " \-\-rmdeps
-Remove dependencies installed by makepkg. (\fBmakepkg \-r\fR)
+Remove dependencies installed by makepkg.
+(\fBmakepkg \-r\fR)
 
 .SS makechrootpkg
-The default set of options is \fBmakechrootpkg \-cu\fR. For more information 
+The default set of options is \fBmakechrootpkg \-cu\fR.
+For more information 
 about building in containers, see \fBaur\-chroot\fR(1).
 
 .TP
 .B \-\-bind=\fIDIR\fR
-Bind a directory read-only. (\fBmakechrootpkg \-D\fR)
+Bind a directory read-only.
+(\fBmakechrootpkg \-D\fR)
 
 .TP
 .B \-\-bind-rw=\fIDIR\fR
-Bind a directory read-write. (\fBmakechrootpkg \-d\fR)
+Bind a directory read-write.
+(\fBmakechrootpkg \-d\fR)
 
 .TP
 .BR \-T ", " \-\-temp
-Build in a temporary container. (\fBmakechrootpkg \-T\fR)
+Build in a temporary container.
+(\fBmakechrootpkg \-T\fR)
 
 .SH ENVIRONMENT
 .B AURDEST
 .RS
-Determines where build files will be cloned. This must be an absolute path.
+Determines where build files will be cloned.
+This must be an absolute path.
 
 Default: \fI$XDG_CACHE_HOME/aurutils/sync\fR
 .RE
@@ -179,49 +195,54 @@ Default: \fI$XDG_CACHE_HOME/aurutils/sync\fR
 .B AURDEST_SNAPSHOT
 .RS
 Determines where build files will be copied when using snapshots
-(\fBaur sync \-t\fR). This must be an absolute path.
+(\fBaur sync \-t\fR).
+This must be an absolute path.
 
 Default: \fI$XDG_CACHE_HOME/aurutils/snapshot\fR
 .RE
 
 .B AUR_PAGER
 .RS
-The file manager used to view and edit build files. This variable is
+The file manager used to view and edit build files.
+This variable is
 split on white space, allowing \fIAUR_PAGER="program -option"\fR.
 .RE
 
 .B AUR_REPO
 .RS
-The repository used for building packages. The entry must be a valid
-\fBfile://\fR repository configured in \fBpacman.conf\fR(5).
+The repository used for building packages.
+The entry must be a valid \fBfile://\fR repository configured in
+\fBpacman.conf\fR(5).
 .RE
 
 .SH NOTES
 When version checks are enabled (\fB\-\-no\-ver\fR is not specified),
 build files are only retrieved if the remote (RPC) version is newer
-than a version in the pacman database. Checks assume there are no
-mismatches between \fB.SRCINFO\fR and \fBPKGBUILD\fR files.
+than a version in the pacman database.
+Checks assume there are no mismatches between \fB.SRCINFO\fR and
+\fBPKGBUILD\fR files.
 
 Architecture-specific depends (as introduced with pacman 4.2) are
-merged with regular depends in RPC queries. \fBaur\-sync\fR works around
-this by stripping the \fIlib32\-\fR prefix from packages and removing
-\fIgcc\-multilib\fR if the i686 architecture is detected.
+merged with regular depends in RPC queries.
+\fBaur\-sync\fR works around this by stripping the \fIlib32\-\fR prefix
+from packages and removing \fIgcc\-multilib\fR if the i686 architecture
+is detected.
 
 \fItar\fR snapshots are extracted to the \fI$AURDEST_SNAPSHOT\fR
 directory, in order to avoid conflicts with \fBgit\fR(1).
 
 .SH SEE ALSO
-.BR aur (1),
-.BR aur\-build (1),
-.BR aur\-fetch (1),
-.BR aur\-rpc (1),
-.BR aur\-repo\-filter (1),
-.BR aur\-deps\-rpc (1),
-.BR aur\-updates (1),
-.BR jq (1),
-.BR less (1),
-.BR pacconf (1),
-.BR vifm (1),
+.BR aur (1) ,
+.BR aur\-build (1) ,
+.BR aur\-fetch (1) ,
+.BR aur\-rpc (1) ,
+.BR aur\-repo\-filter (1) ,
+.BR aur\-deps\-rpc (1) ,
+.BR aur\-updates (1) ,
+.BR jq (1) ,
+.BR less (1) ,
+.BR pacconf (1) ,
+.BR vifm (1) ,
 .BR pacman.conf (5)
 
 .SH AUTHORS

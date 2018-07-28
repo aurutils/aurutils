@@ -126,13 +126,14 @@ Synchronize pacman:
   $ sudo pacman -Syu
 
 .EE
-.SY Note:
+.SY Note :
 It is recommended to use a pacman cache directory (\fBCacheDir\fR) as
-the package pool. This avoids checksum mismatches between built
-packages and any cached versions.
+the package pool.
+This avoids checksum mismatches between built packages and any cached
+versions.
 .YS
 
-.SY Tip:
+.SY Tip :
 Consider separate repositories for different purposes, such as
 version control packages.
 .YS
@@ -142,16 +143,17 @@ If built packages are available, follow the instructions in
 \fBCreating a local repository\fR and move the packages to the new
 location.
 
-Missing packages may be recreated from system files. Before doing so,
-it is recommended to check for mismatches between the pacman database
-and the local filesystem:
+Missing packages may be recreated from system files.
+Before doing so, it is recommended to check for mismatches between the
+pacman database and the local filesystem:
 .EX
 
   $ pacman -Qqm | paccheck --md5sum --quiet
 
 .EE
 If mismatches occur, consider rebuilding the respective
-packages. Otherwise, recreate the packages with \fBbacman\fR:
+packages.
+Otherwise, recreate the packages with \fBbacman\fR:
 .EX
 
   $ pacman -Qqm | xargs -L1 bacman
@@ -250,8 +252,9 @@ Check foreign packages for AUR updates:
 
 .EE
 Repository packages can be "made foreign" by temporarily removing the
-repository from the pacman configuration. This can be used with programs
-that only check foreign packages for AUR updates.
+repository from the pacman configuration.
+This can be used with programs that only check foreign packages for AUR
+updates.
 
 For example, create the following script in
 \fI/usr/local/bin/mypacman\fR:

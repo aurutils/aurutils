@@ -8,13 +8,14 @@ aur\-graph \- package/dependency directed graph
 
 .SH DESCRIPTION
 \fBaur-graph\fR takes package information from \fB.SRCINFO\fR files
-and prints them as \fIpkgbase<TAB>dependency\fR pairs. Any
-dependencies are converted from \fBpkgname\fR to \fBpkgbase\fR or
+and prints them as \fIpkgbase<TAB>dependency\fR pairs.
+Any dependencies are converted from \fBpkgname\fR to \fBpkgbase\fR or
 skipped if absent from the input.
 
 .SH EXAMPLES
 The paired output is suitable as input for \fBtsort(1)\fR, provided no
-cycles are present. For example:
+cycles are present.
+For example:
 .EX
 
   cd ~/.cache/aurutils/sync
@@ -30,9 +31,9 @@ performance:
 
 .EE
 
-\fBprovides\fR and versioned dependencies are fully supported. This
-can be used to verify dependency chains from \fBaur-depends\fR(1). For
-example:
+\fBprovides\fR and versioned dependencies are fully supported.
+This can be used to verify dependency chains from \fBaur-depends\fR(1).
+For example:
 .EX
 
   aur sync --print <package> | xargs printf '%s/.SRCINFO\n' | xargs aur graph

@@ -6,12 +6,12 @@ aurhosting \- host pacman repositories using git
 .SH ADVANTAGES
 .SS Atomic changesets
 
-Each revision can be viewed as a single set of packages. This provides
-a way for every commit to be an atomic operation allowing for mirrors
-to synchronise consistently. Each mirror can then make a shallow
-clone of the repository while still only recovering changed packages
-reducing bandwidth while maintaining atomicity without additional
-scripting or tooling.
+Each revision can be viewed as a single set of packages.
+This provides a way for every commit to be an atomic operation allowing
+for mirrors to synchronise consistently.
+Each mirror can then make a shallow clone of the repository while still
+only recovering changed packages reducing bandwidth while maintaining
+atomicity without additional scripting or tooling.
 
 .SS Changeset based roll back
 

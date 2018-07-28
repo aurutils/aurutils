@@ -9,9 +9,10 @@ aur\-pkglist \- print the AUR packagelist
 .YS
 
 .SH DESCRIPTION
-\fBaur\-pkglist\fR prints the list of \fIpkgname\fRs that are available in the
-AUR to standard output. Optionally a pattern can be specified that is
-matched with \fBpcregrep\fR(1).
+\fBaur\-pkglist\fR prints the list of \fIpkgname\fRs that are available
+in the AUR to standard output.
+Optionally a pattern can be specified that is matched with
+\fBpcregrep\fR(1).
 
 This list is available at:
 .UR https://aur.archlinux.org/packages.gz
@@ -38,10 +39,11 @@ Interpret the given pattern as a Perl-compatible regular expression
 (PCRE).
 
 .SH NOTES
-To avoid retrieving the package list on every query, \fBaur\-pkglist\fR uses a
-caching logic which stores the list together with its timestamp in
-\fI$XDG_CACHE_HOME/aur\-pkglist\fR. New lists are generated every 5 minutes,
-thus setting a lower interval with \fB\-t\fR yields no benefit.
+To avoid retrieving the package list on every query, \fBaur\-pkglist\fR
+uses a caching logic which stores the list together with its timestamp
+in \fI$XDG_CACHE_HOME/aur\-pkglist\fR.
+New lists are generated every 5 minutes, thus setting a lower interval
+with \fB\-t\fR yields no benefit.
 
 See also:
 
@@ -50,9 +52,9 @@ See also:
 .UE
 
 .SH SEE ALSO
-.BR aur (1),
-.BR gzip (1),
-.BR pcregrep (1),
+.BR aur (1) ,
+.BR gzip (1) ,
+.BR pcregrep (1) ,
 .BR wget (1)
 
 .SH AUTHORS
