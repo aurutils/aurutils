@@ -36,7 +36,7 @@ find_pkg_dupes() {
     # This function uses the extended --packagelist introduced with
     # pacman 5.1. It assumes that PKGEXT does not change between
     # invoking --packagelist and makepkg in the later build process.
-    makepkg --packagelist | xargs basename -a | xargs -I{} find "$1" -maxdepth 1 -name '{}'
+    makepkg --packagelist | xargs -I{} basename -a '{}' | xargs -I{} find "$1" -maxdepth 1 -name '{}'
 }
 
 print_quoted() {
