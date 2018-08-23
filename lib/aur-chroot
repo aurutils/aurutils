@@ -80,7 +80,8 @@ done > "$tmp"/custom.conf
 
 for repo in "${host_repo[@]}"; do
     # FIXME: custom.conf may contain multiple file:// entries per local repo
-    server=$(get_file_server "$repo" "$tmp"/custom.conf | grep -Em1 '^file://')
+    # the '|| true' is to not exit when no file servers are available
+    server=$(get_file_server "$repo" "$tmp"/custom.conf | grep -Em1 '^file://' || true)
     server=${server#file://}
 
     # arch-nspawn only supports specifying a single CacheDir via -c
