@@ -248,6 +248,14 @@ if ((list)); then
     exit
 fi
 
+# reset state of view directory
+if [[ -d $AUR_VIEWDIR ]]; then
+    find "$AUR_VIEWDIR" \( -type l \
+         -or -name '*.patch' -or -name '*.diff' \) -delete
+else
+    mkdir -p "$AUR_VIEWDIR"
+fi
+
 { if (($#)); then
       printf '%s\n' "$@"
   fi
@@ -306,7 +314,7 @@ fi
 
 if ((download)); then
     msg "Retrieving package files"
-    
+
     aur jobs -Xj +3 --nice 10 --halt soon,fail=1 \
         aur fetch "${fetch_args[@]}" :::: "$tmp"/queue
 fi
