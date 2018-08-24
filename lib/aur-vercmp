@@ -61,17 +61,6 @@ parse_aur() {
     aur rpc -t info | jq -r '.results[] | [.Name, .Version] | @tsv'
 }
 
-check_sync() {
-    # https://github.com/andrewgregory/pacutils/issues/22
-    pacconf --repo="$1" >/dev/null || exit 1
-}
-
-parse_sync() {
-    # https://git.archlinux.org/pacman.git/commit/?id=ab3d8478
-    pacsift --exact --null --repo "$1" <&- \
-        | xargs -0r pacman -Sddp --print-format '%n %v'
-}
-
 trap_exit() {
     if [[ ! -o xtrace ]]; then
         rm -rf "$tmp"
@@ -79,7 +68,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-d repo] [-p file] [-ac]"
+    plain "usage: $argv0 [-p file] [-ac]"
     exit 1
 }
 
@@ -90,7 +79,7 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-opt_short='acd:p:u:'
+opt_short='acp:u:'
 opt_long=()
 if ! parseopts "$opt_short" "${opt_long[@]}" -- "$@"; then
     usage
@@ -102,7 +91,6 @@ while true; do
     case "$1" in
         -a) all=1 ;;
         -c) format='equal' ;;
-        -d) shift; repo=$1 ;; # FIXME remove this? (#316)
         -p) target='file'
             shift; aux=$1 ;;
         -u) shift; upair=$1 ;;
@@ -116,15 +104,7 @@ tmp=$(mktemp) || exit
 trap 'trap_exit' EXIT
 
 # set input file
-if [[ -v repo ]]; then
-    check_sync "$repo"
-    parse_sync "$repo" | sort -k 1b,1 >"$tmp"
-else
-    if [[ -t 0 ]]; then
-        plain 'repository not specified, assuming stdin'
-    fi
-    sort -k 1b,1 >"$tmp"
-fi
+sort -k 1b,1 >"$tmp"
 
 # set filters (1)
 case $target in

@@ -5,23 +5,9 @@ shopt -s nullglob
 shopt -s extglob
 readonly argv0=sync
 
-<<<<<<< HEAD
-db_namever() {
-    awk '/%NAME%/ {
-        getline
-        printf("%s\t", $1)
-    }
-    /%VERSION%/ {
-        getline
-        printf("%s\n", $1)
-    }'
-}
-
-db_fill_empty() {
-    awk '{print} END {
-        if (!NR)
-            printf("%s\t%s\n", "(none)", "(none)")
-    }'
+check_sync() {
+    # https://github.com/andrewgregory/pacutils/issues/22
+    pacconf --repo="$1" >/dev/null || exit 1
 }
 
 parse_sync() {
@@ -30,8 +16,6 @@ parse_sync() {
         | xargs -0r pacman -Sddp --print-format '%n %v'
 }
 
-=======
->>>>>>> f72452c... aur-sync + aur-repolist: factorise cat_db
 usage() {
     plain "usage: $argv0 -d database"
     exit 1
@@ -63,5 +47,12 @@ while true; do
 done
 unset opt_short opt_long OPTRET
 
+if [[ -v local_repo ]]; then
+    check_sync "$repo"
+    parse_sync "$local_repo"
+    exit $?
+fi
+
+get_db
 db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
 cat_db "$db_path"
