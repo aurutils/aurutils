@@ -224,14 +224,6 @@ if ! [[ -w $root/$repo.db && -r $root/$repo.db ]]; then
     exit 13
 fi
 
-# reset state of view directory
-if [[ -d $AUR_VIEWDIR ]]; then
-    find "$AUR_VIEWDIR" \( -type l \
-         -or -name '*.patch' -or -name '*.diff' \) -delete
-else
-    mkdir -p "$AUR_VIEWDIR"
-fi
-
 if ((snapshot)); then
     aur_workdir=$AURDEST_SNAPSHOT
     fetch_args=(-L "$AUR_VIEWDIR" -t)
@@ -254,6 +246,14 @@ if ((list)); then
     done <db_info
 
     exit
+fi
+
+# reset state of view directory
+if [[ -d $AUR_VIEWDIR ]]; then
+    find "$AUR_VIEWDIR" \( -type l \
+         -or -name '*.patch' -or -name '*.diff' \) -delete
+else
+    mkdir -p "$AUR_VIEWDIR"
 fi
 
 { if (($#)); then
@@ -314,7 +314,7 @@ fi
 
 if ((download)); then
     msg "Retrieving package files"
-    
+
     aur jobs -Xj +3 --nice 10 --halt soon,fail=1 \
         aur fetch "${fetch_args[@]}" :::: "$tmp"/queue
 fi
