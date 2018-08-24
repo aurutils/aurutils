@@ -90,8 +90,8 @@ done
 unset opt_short opt_long OPTRET
 
 get_db
-db_root=$(realpath -e -- "${AUR_DBROOT}")
-db_path=$(realpath -e -- "${AUR_DBROOT}/$AUR_REPO.db") # .db symbolic link to archive
+db_root=$(realpath -e -- "$AUR_DBROOT")
+db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
 
 if ! [[ -r $db_path && -w $db_path ]]; then
     error "$argv0: $db_path: permission denied"

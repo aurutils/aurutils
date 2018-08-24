@@ -184,13 +184,7 @@ if ! (($# + update + list)); then
 fi
 
 msg "Using [$AUR_REPO] repository"
-db_root=$(realpath -e -- "${AUR_DBROOT}")
-db_path=$(realpath -e -- "${AUR_DBROOT}/$AUR_REPO.db") # .db symbolic link to archive
-
-if ! [[ -w $db_path && -r $db_path ]]; then
-    error "$argv0: $AUR_REPO: permission denied (read-write)"
-    exit 13
-fi
+db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
 
 if ((snapshot)); then
     aur_workdir=$AURDEST_SNAPSHOT
@@ -206,7 +200,7 @@ chmod -c 700 "$aur_workdir"
 cd_safe "$tmp"
 
 # parse repo contents
-bsdcat "$db_path" | db_namever | db_fill_empty >db_info
+cat_db "$db_path" > db_info
 
 if ((list)); then
     while read -r pkgname pkgver; do

@@ -5,6 +5,7 @@ shopt -s nullglob
 shopt -s extglob
 readonly argv0=sync
 
+<<<<<<< HEAD
 db_namever() {
     awk '/%NAME%/ {
         getline
@@ -29,6 +30,8 @@ parse_sync() {
         | xargs -0r pacman -Sddp --print-format '%n %v'
 }
 
+=======
+>>>>>>> f72452c... aur-sync + aur-repolist: factorise cat_db
 usage() {
     plain "usage: $argv0 -d database"
     exit 1
@@ -60,6 +63,5 @@ while true; do
 done
 unset opt_short opt_long OPTRET
 
-get_db
-db_path=$(realpath -e -- "${AUR_DBROOT}/$AUR_REPO.db") # .db symbolic link to archive
-bsdcat "$db_path" | db_namever | db_fill_empty
+db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
+cat_db "$db_path"

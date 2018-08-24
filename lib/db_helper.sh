@@ -60,3 +60,25 @@ get_db() {
     fi
     export AUR_REPO AUR_DBROOT
 }
+
+db_namever() {
+    awk '/%NAME%/ {
+        getline
+        printf("%s\t", $1)
+    }
+    /%VERSION%/ {
+        getline
+        printf("%s\n", $1)
+    }'
+}
+
+db_fill_empty() {
+    awk '{print} END {
+        if (!NR)
+            printf("%s\t%s\n", "(none)", "(none)")
+    }'
+}
+
+cat_db() {
+    bsdcat "$1" | db_namever | db_fill_empty
+}
