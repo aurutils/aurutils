@@ -1,5 +1,24 @@
 source /usr/share/makepkg/util/message.sh
 
+db_namever() {
+    awk '/%NAME%/ {
+        getline
+        printf("%s\t", $1)
+    }
+    /%VERSION%/ {
+        getline
+        printf("%s\n", $1)
+    }'
+}
+
+db_fill_empty() {
+    awk '{print} END {
+        if (!NR)
+            printf("%s\t%s\n", "(none)", "(none)")
+    }'
+}
+
+
 conf_file_repo() {
     awk -F'= ' '
         $1 ~ /^\[.+\]$/ {

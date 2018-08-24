@@ -41,24 +41,6 @@ conf_file_repo() {
         }'
 }
 
-db_namever() {
-    awk '/%NAME%/ {
-        getline
-        printf("%s\t", $1)
-    }
-    /%VERSION%/ {
-        getline
-        printf("%s\n", $1)
-    }'
-}
-
-db_fill_empty() {
-    awk '{print} END {
-        if (!NR)
-            printf("%s\t%s\n", "(none)", "(none)")
-    }'
-}
-
 # files: $1 pkgname\tpkgbase $2 pkgname (order by $2)
 select_pkgbase() {
     awk 'NR == FNR {
