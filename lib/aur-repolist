@@ -53,6 +53,12 @@ if [[ -v local_repo ]]; then
     exit $?
 fi
 
-get_db
-db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
-cat_db "$db_path"
+if (($#)); then
+    for file in "$@"; do
+        cat_db $file
+    done
+else
+    get_db
+    db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
+    cat_db "$db_path"
+fi
