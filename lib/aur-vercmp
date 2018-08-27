@@ -6,28 +6,8 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
 format=all
-target=aur
 
-cmp_equal_or_newer() {
-    local pkg v_cmp v_in op
-
-    while read -r pkg v_cmp v_in; do
-        case $v_cmp in
-            -) op=2 ;; # - on field 2
-            *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
-        esac
-
-        case $op in
-           -1) plain "$pkg: $v_cmp is newer than $v_in"
-               printf '%s\n' "$pkg"      ;;
-            0) printf '%s\n' "$pkg"      ;;
-            1) msg2 "$pkg: $v_cmp -> $v_in" ;;
-            2) msg2 "$pkg: (none) -> $v_in" ;;
-        esac
-    done
-}
-
-cmp_checkupdates() {
+cmp() {
     local pkg v_cmp v_in op
 
     while read -r pkg v_cmp v_in; do
@@ -36,16 +16,23 @@ cmp_checkupdates() {
             *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
         esac
 
-        if ((!$1)) && ((op > -1)); then
-            continue
-        fi
-
-        case $op in
-           -1) printf '%s: %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-            0) printf '%s: %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
-            1) printf '%s: %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
-            2) printf '%s: (none) -> %s\n' "$pkg" "$v_cmp"     ;;
-        esac
+        case $format in
+            equal)
+                case $op in
+                   -1) plain "$pkg: $v_cmp is newer than $v_in"
+                       printf '%s\n' "$pkg"      ;;
+                    0) printf '%s\n' "$pkg"      ;;
+                    1) msg2 "$pkg: $v_cmp -> $v_in" ;;
+                    2) msg2 "$pkg: (none) -> $v_in" ;;
+                esac ;;
+            all)
+                case $op in
+                   -1) printf '%s: %s -> %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+                    0) printf '%s: %s = %s\n'  "$pkg" "$v_in" "$v_cmp" ;;
+                    1) printf '%s: %s <- %s\n' "$pkg" "$v_in" "$v_cmp" ;;
+                    2) printf '%s: (none) -> %s\n' "$pkg" "$v_cmp"     ;;
+                esac
+            esac
     done
 }
 
@@ -57,21 +44,6 @@ my_vercmp() {
     fi
 }
 
-parse_aur() {
-    aur rpc -t info | jq -r '.results[] | [.Name, .Version] | @tsv'
-}
-
-check_sync() {
-    # https://github.com/andrewgregory/pacutils/issues/22
-    pacconf --repo="$1" >/dev/null || exit 1
-}
-
-parse_sync() {
-    # https://git.archlinux.org/pacman.git/commit/?id=ab3d8478
-    pacsift --exact --null --repo "$1" <&- \
-        | xargs -0r pacman -Sddp --print-format '%n %v'
-}
-
 trap_exit() {
     if [[ ! -o xtrace ]]; then
         rm -rf "$tmp"
@@ -79,7 +51,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-d repo] [-p file] [-ac]"
+    plain "usage: $argv0 [-ac] file1 file2"
     exit 1
 }
 
@@ -90,7 +62,7 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-opt_short='acd:p:u:'
+opt_short='acu:'
 opt_long=()
 if ! parseopts "$opt_short" "${opt_long[@]}" -- "$@"; then
     usage
@@ -102,9 +74,6 @@ while true; do
     case "$1" in
         -a) all=1 ;;
         -c) format='equal' ;;
-        -d) shift; repo=$1 ;; # FIXME remove this? (#316)
-        -p) target='file'
-            shift; aux=$1 ;;
         -u) shift; upair=$1 ;;
         --) shift; break ;;
     esac
@@ -115,32 +84,9 @@ unset opt_short opt_long OPTRET
 tmp=$(mktemp) || exit
 trap 'trap_exit' EXIT
 
-# set input file
-if [[ -v repo ]]; then
-    check_sync "$repo"
-    parse_sync "$repo" | sort -k 1b,1 >"$tmp"
-else
-    if [[ -t 0 ]]; then
-        plain 'repository not specified, assuming stdin'
-    fi
-    sort -k 1b,1 >"$tmp"
-fi
-
-# set filters (1)
-case $target in
-     aur) get() { awk '{print $1}' "$tmp" | parse_aur; } ;;
-    file) get() { awk '{print}' "$aux"; } ;;
-esac
-
-# set filters (2)
-case $format in
-      all) cmp() { cmp_checkupdates "${all-0}"; }
-           upair=${upair-1} ;; # join unpaired of target
-    equal) cmp() { cmp_equal_or_newer; }
-           upair=${upair-2} ;; # join unpaired of input
-esac
+upair=${upair-2} ;; # join unpaired of target
 
 # pipeline
-get | sort -k 1b,1 | join -a "$upair" -e - -o 0,1.2,2.2 - "$tmp" | cmp
+join -a "$upair" -e - -o 0,1.2,2.2 <(sort -k 1b,1 "$file1") <(sort -k 1b,1 "$file2") | cmp
 
 # vim: set et sw=4 sts=4 ft=sh:
