@@ -1,5 +1,5 @@
 #!/bin/bash
-# aur-vercmp - check packages for AUR updates
+# aur-version - get aur versions of packages
 set -o pipefail
 readonly argv0=version
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
