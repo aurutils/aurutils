@@ -1,0 +1,64 @@
+#!/bin/bash
+# aur-repolist - list packages from a repo
+set -o errexit -o pipefail
+shopt -s nullglob
+shopt -s extglob
+readonly argv0=sync
+
+check_sync() {
+    # https://github.com/andrewgregory/pacutils/issues/22
+    pacconf --repo="$1" >/dev/null || exit 1
+}
+
+parse_sync() {
+    # https://git.archlinux.org/pacman.git/commit/?id=ab3d8478
+    pacsift --exact --null --repo "$1" <&- \
+        | xargs -0r pacman -Sddp --print-format '%n %v'
+}
+
+usage() {
+    plain "usage: $argv0 -d database"
+    exit 1
+}
+
+source /usr/share/makepkg/util/parseopts.sh
+source $AURUTILS_LIB/db_helper.sh
+
+if [[ -t 2 && ! -o xtrace ]]; then
+    colorize
+fi
+
+opt_short='d:l:'
+opt_long=('database:' 'local:' 'repo:' 'root:')
+
+if ! parseopts "$opt_short" "${opt_long[@]}" -- "$@"; then
+    usage
+fi
+set -- "${OPTRET[@]}"
+
+while true; do
+    case "$1" in
+        -d|--repo|--database) shift; AUR_REPO=$1 ;;
+        -l|--local)           shift; local_repo=$1 ;;
+        --root)               shift; AUR_DBROOT=$1 ;;
+        --)                   shift; break ;;
+    esac
+    shift
+done
+unset opt_short opt_long OPTRET
+
+if [[ -v local_repo ]]; then
+    check_sync "$repo"
+    parse_sync "$local_repo"
+    exit $?
+fi
+
+if (($#)); then
+    for file in "$@"; do
+        cat_db $file
+    done
+else
+    get_db
+    db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
+    cat_db "$db_path"
+fi
