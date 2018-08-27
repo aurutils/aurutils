@@ -1,5 +1,5 @@
 #!/bin/bash
-# aur-sync - download and build AUR packages automatically
+# aur-buildorder - get dependency build order
 set -o errexit -o pipefail
 shopt -s nullglob
 shopt -s extglob
