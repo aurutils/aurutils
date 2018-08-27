@@ -73,9 +73,6 @@ while true; do
         -c) chroot=1 ;;
         -f) overwrite=1 ;;
         -N) no_sync=1 ;;
-        -r) shift; db_root=$1 ;;
-        -d) shift; database=$1
-            chroot_args+=(-d "$1") ;;
         -C) shift; chroot_args+=(-C "$1") ;;
         -D) shift; chroot_args+=(-D "$1") ;;
         -M) shift; chroot_args+=(-M "$1") ;;
@@ -97,13 +94,9 @@ else
     usage
 fi
 
-db_root=$(realpath -e -- "${db_root-${AUR_DBROOT-$server}}")
-db_path=$(realpath -e -- "${db_root}/$database.db") # .db symbolic link to archive
-
-if ! [[ -r $db_path && -w $db_path ]]; then
-    error "$argv0: $db_path: permission denied"
-    exit 13
-fi
+database=${AUR_DBPATH%.db.*}
+db_root=${AUR_DBPATH%/*}
+db_path=$(realpath -- "$AUR_DBPATH")
 
 if [[ -v queue ]]; then
     exec {fd}< "$queue"
