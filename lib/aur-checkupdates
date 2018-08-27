@@ -1,0 +1,10 @@
+#!/bin/bash
+# aur-ckeckupdates - check packages for AUR updates
+set -o pipefail
+readonly argv0=checkupdates
+readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+tmp=$(mktemp) || exit
+cat > $tmp
+
+aur vercmp "$@" $tmp <(cut -f1 $tmp | aur version)

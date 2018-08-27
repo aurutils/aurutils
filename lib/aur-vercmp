@@ -8,6 +8,7 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 format=all
 
 cmp() {
+    #TODO: the comparison order is reversed
     local pkg v_cmp v_in op
 
     while read -r pkg v_cmp v_in; do
@@ -84,9 +85,9 @@ unset opt_short opt_long OPTRET
 tmp=$(mktemp) || exit
 trap 'trap_exit' EXIT
 
-upair=${upair-2} ;; # join unpaired of target
+upair=${upair-2} # join unpaired of target
 
 # pipeline
-join -a "$upair" -e - -o 0,1.2,2.2 <(sort -k 1b,1 "$file1") <(sort -k 1b,1 "$file2") | cmp
+join -a "$upair" -e - -o 0,1.2,2.2 <(sort -k 1b,1 "$1") <(sort -k 1b,1 "$2") | cmp
 
 # vim: set et sw=4 sts=4 ft=sh:
