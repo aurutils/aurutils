@@ -41,24 +41,6 @@ conf_file_repo() {
         }'
 }
 
-db_namever() {
-    awk '/%NAME%/ {
-        getline
-        printf("%s\t", $1)
-    }
-    /%VERSION%/ {
-        getline
-        printf("%s\n", $1)
-    }'
-}
-
-db_fill_empty() {
-    awk '{print} END {
-        if (!NR)
-            printf("%s\t%s\n", "(none)", "(none)")
-    }'
-}
-
 # files: $1 pkgname\tpkgbase $2 pkgname (order by $2)
 select_pkgbase() {
     awk 'NR == FNR {
@@ -101,8 +83,8 @@ usage() {
 }
 
 source /usr/share/makepkg/util/util.sh
-source /usr/share/makepkg/util/message.sh
 source /usr/share/makepkg/util/parseopts.sh
+source $AURUTILS_LIB/db_helper.sh
 
 if [[ -t 2 && ! -o xtrace ]]; then
     colorize
@@ -122,10 +104,10 @@ if ! parseopts "$opt_short" "${opt_long[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset pkg pkg_i root repo
+unset pkg pkg_i
 while true; do
     case "$1" in
-        -d|--repo|--database) shift; repo=$1 ;;
+        -d|--repo|--database) shift; AUR_REPO=$1 ;;
         -D|--directory)       shift; build_args+=(-D "$1") ;;
         --bind)               shift; makechrootpkg_args+=(-D "$1") ;;
         --bind-rw)            shift; makechrootpkg_args+=(-d "$1") ;;
@@ -133,7 +115,7 @@ while true; do
                               pkg_i+=("${pkg[@]}") ;;
         --makepkg-conf)       shift; build_args+=(-M "$1") ;;
         --pacman-conf)        shift; build_args+=(-C "$1") ;;
-        --root)               shift; root=$1 ;;
+        --root)               shift; AUR_DBROOT=$1 ;;
         -A|--ignore?(-)arch)  makepkg_args+=(-A)
                               makechrootpkg_makepkg_args+=(-A) ;;
         -c|--chroot)          chroot=1; build_args+=(-c) ;;
@@ -186,35 +168,15 @@ if ((!keep_deps)); then
     makepkg_args+=(-r)
 fi
 
-if [[ ${repo=$AUR_REPO} ]]; then
-    server=$(pacconf --single --repo="$repo" Server)
-    server=${server#*://}
-else
-    mapfile -t conf < <(pacconf | conf_file_repo)
-
-    case ${#conf[@]} in
-        2) repo=${conf[0]}
-           root=${conf[1]#*://} ;;
-        0) error "$argv0: no file:// repository found"
-           exit 2 ;;
-        *) error "$argv0: repository choice is ambiguous (use --repo to specify)"
-           printf '%s\n' "${conf[@]}" | paste - - | column -t >&2
-           exit 2 ;;
-    esac
-fi
+get_db
 
 if ! (($# + update + list)); then
     error "$argv0: no targets specified"
     exit 1
 fi
 
-msg "Using [$repo] repository"
-root=$(realpath -- "${root-${AUR_DBROOT-$server}}")
-
-if ! [[ -w $root/$repo.db && -r $root/$repo.db ]]; then
-    error "$argv0: $repo: permission denied (read-write)"
-    exit 13
-fi
+msg "Using [$AUR_REPO] repository"
+db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
 
 if ((snapshot)); then
     aur_workdir=$AURDEST_SNAPSHOT
@@ -230,11 +192,11 @@ chmod -c 700 "$aur_workdir"
 cd_safe "$tmp"
 
 # parse repo contents
-bsdcat "$root/$repo".db | db_namever | db_fill_empty >db_info
+cat_db "$db_path" > db_info
 
 if ((list)); then
     while read -r pkgname pkgver; do
-        printf '%q\t%s\t%s\n' "$repo" "$pkgname" "$pkgver"
+        printf '%q\t%s\t%s\n' "$AUR_REPO" "$pkgname" "$pkgver"
     done <db_info
 
     exit
@@ -279,7 +241,7 @@ cut -f2 --complement depends | sort -u >pkginfo
 
   if ((provides)); then
       # note: this uses pacman's copy of the repo (as used by makepkg -s)
-      cut -f1 pkginfo | complement argv | aur repo-filter -d "$repo"
+      cut -f1 pkginfo | complement argv | aur repo-filter -d "$AUR_REPO"
   fi
 } >filter
 
@@ -322,7 +284,7 @@ if ((view)); then
 fi
 
 if ((build)); then
-    build_args+=(-d "$repo" -r "$root" -a "$tmp"/queue)
+    build_args+=(-a "$tmp"/queue)
 
     # check if dependency graph is valid
     aur graph "$tmp_view"/*/.SRCINFO >/dev/null

@@ -46,8 +46,8 @@ usage() {
 }
 
 source /usr/share/makepkg/util/util.sh
-source /usr/share/makepkg/util/message.sh
 source /usr/share/makepkg/util/parseopts.sh
+source $AURUTILS_LIB/db_helper.sh
 
 if [[ -t 2 && ! -o xtrace ]]; then
     colorize
@@ -66,15 +66,15 @@ if ! parseopts "$opt_short" "${opt_long[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset database db_root queue
+unset queue
 while true; do
     case "$1" in
         -a) shift; queue=$1 ;;
         -c) chroot=1 ;;
         -f) overwrite=1 ;;
         -N) no_sync=1 ;;
-        -r) shift; db_root=$1 ;;
-        -d) shift; database=$1
+        -r) shift; AUR_DBROOT=$1 ;;
+        -d) shift; AUR_REPO=$1
             chroot_args+=(-d "$1") ;;
         -C) shift; chroot_args+=(-C "$1") ;;
         -D) shift; chroot_args+=(-D "$1") ;;
@@ -89,16 +89,9 @@ while true; do
 done
 unset opt_short opt_long OPTRET
 
-if [[ ${database=$AUR_REPO} ]]; then
-    server=$(pacconf --single --repo="$database" Server)
-    server=${server#*//}
-else
-    error "$argv0: database: missing argument"
-    usage
-fi
-
-db_root=$(realpath -e -- "${db_root-${AUR_DBROOT-$server}}")
-db_path=$(realpath -e -- "${db_root}/$database.db") # .db symbolic link to archive
+get_db
+db_root=$(realpath -e -- "$AUR_DBROOT")
+db_path=$(realpath -e -- "$AUR_DBROOT/$AUR_REPO.db") # .db symbolic link to archive
 
 if ! [[ -r $db_path && -w $db_path ]]; then
     error "$argv0: $db_path: permission denied"
@@ -130,7 +123,7 @@ if ((sign_pkg)); then
         gpg_args+=(-u "$GPGKEY")
     fi
 else
-    db_sigs=("$db_root/$database"{,.files}.sig)
+    db_sigs=("$db_root/$AUR_REPO"{,.files}.sig)
 
     if [[ -f ${db_sigs[0]} ]]; then
         # avoid errors from stale db.sig files
@@ -144,7 +137,7 @@ fi
 if ((chroot)); then
     aur chroot --nobuild "${chroot_args[@]}"
 else
-    conf_repo "$database" >"$tmp"/custom.conf
+    conf_repo "$AUR_REPO" >"$tmp"/custom.conf
 fi
 
 while IFS= read -ru "$fd" path; do

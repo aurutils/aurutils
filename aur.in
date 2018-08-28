@@ -23,6 +23,7 @@ if [[ -z $1 ]]; then
 fi
 
 readonly PATH=$lib_dir:$PATH
+export AURUTILS_LIB=$lib_dir
 
 if type -P "aur-$1" >/dev/null; then
     exec "aur-$1" "${@:2}"

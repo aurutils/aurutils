@@ -21,7 +21,7 @@ trap 'rm -rf "$tmp"' EXIT
 cd_safe "$tmp"
 
 # get repo contents
-aur sync --list "$@" | cut -f2,3 >db_info
+aur repolist "$@" >db_info
 
 # checkout latest revision for existing pkgbuilds
 # this sources the pkgbuilds assuming they have been viewed priorly
