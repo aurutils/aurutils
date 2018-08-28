@@ -1,0 +1,95 @@
+#!/bin/bash
+# aur-buildorder - get dependency build order
+set -o errexit -o pipefail
+shopt -s nullglob
+shopt -s extglob
+readonly argv0=sync
+
+lib32() {
+    awk -v arch="$(uname -m)" '{
+        if(arch == "i686") {
+            gsub(/^lib32-/,"")
+            gsub(/^gcc-multilib$/,"")
+        }; print
+    }'
+}
+
+# files: $1 pkgname\tpkgbase $2 pkgname (order by $2)
+select_pkgbase() {
+    awk 'NR == FNR {
+        map[$1] = $2
+        next
+    } {
+        if ($1 in map) {
+            base = map[$1]
+
+            # only print pkgbase on first occurence
+            if (base in seen) {
+                next
+            } else {
+                print base
+                seen[base]
+            }
+        }
+    }' "$@"
+}
+
+# fields: $1 pkgname, $2 depends[<>=]
+tr_ver() {
+    awk -F'[<>=]' '{print $1}'
+}
+
+complement() {
+    # empty set should not return 1
+    grep -Fxvf "$@" || return $(($?-1))
+}
+
+trap_exit() {
+    if [[ ! -o xtrace ]]; then
+        rm -rf "$tmp"
+    fi
+}
+
+source /usr/share/makepkg/util/util.sh
+source /usr/share/makepkg/util/parseopts.sh
+
+tmp=$(mktemp -dt "$argv0".XXXXXXXX)
+trap 'trap_exit' EXIT
+
+cd_safe "$tmp"
+aur depends >depends
+cut -f2 --complement depends | sort -u >pkginfo
+{ if ((${#pkg_i[@]})); then
+      printf >&2 'warning: ignoring %s package\n' "${pkg_i[@]}"
+      printf '%s\n' "${pkg_i[@]}"
+  fi
+
+  # packages with equal or newer versions are taken as complement
+  # for the queue. if chkver_shallow is enabled, packages on the
+  # command-line are excluded from this complement
+  if ((chkver_depth)); then
+      case $chkver_depth in
+          1) chkver_i() { complement argv; } ;;
+          2) chkver_i() { tee; } ;;
+      esac
+
+      #TODO handle db_info? Ask for a file to be passed as argument?
+      #TODO handle checkupdates -p file
+      # or consider the filtering out of scope of aur buildorder and add
+      # 'aur filter'?
+      cut -f1,3 pkginfo | aur checkupdates -p db_info -c | chkver_i
+  fi
+
+  if ((provides)); then
+      # note: this uses pacman's copy of the repo (as used by makepkg -s)
+      cut -f1 pkginfo | complement argv | aur repo-filter -d "$AUR_REPO"
+  fi
+} >filter
+
+# pkgname queue (AUR + repos)
+cut -f1,2 depends | tr_ver | tsort | tac | lib32 | complement filter >queue_0
+
+# pkgbase queue (AUR)
+cut -f1,2 pkginfo | select_pkgbase - queue_0 >queue
+
+cat queue

@@ -1,0 +1,7 @@
+#!/bin/bash
+# aur-version - get aur versions of packages
+set -o pipefail
+readonly argv0=version
+readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+aur rpc -t info | jq -r '.results[] | [.Name, .Version] | @tsv'
