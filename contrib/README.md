@@ -4,10 +4,14 @@ of the main aurutils suite.
 To use a script with `aur(1)`, copy it to a directory in
 `PATH`. Alternatively, create a symbolic link if you have no local
 changes and always want to use the latest version.
+Note that the script's name must begin with `aur-`.
 
 ```
 $ cp -s /usr/share/aurutils/contrib/vercmp-devel /usr/local/bin/aur-vercmp-devel
 $ aur vercmp-devel
+
+$ cp -s /usr/share/aurutils/contrib/talk /usr/local/bin/aur-talk
+$ aur talk <package-name>
 ```
 
 ## vercmp-devel
@@ -56,3 +60,41 @@ aur sync --list | cut -f2 | grep -E "$AURVCS" | xargs aur sync --no-ver --print
 [//]: # (The last pipeline will also show any non-VCS dependencies.)
 [//]: # (Since the respective PKGBUILDs are not run by aur-srcver,)
 [//]: # (they are not of relevance. Use aur-fetch manually?)
+
+## talk
+
+This script fetches and displays the comments of an AUR package.
+
+Dependencies:
+
+- python 3
+- lxml (`python-lxml` from the Arch repo)
+- html2text (`python-html2text` from the Arch repo)
+
+```
+$ aur talk aurutils
+===============================================================================
+=                               Pinned Comments                               =
+===============================================================================
+
+Alad commented on 2018-08-04 23:46
+----------------------------------
+
+Known issues with 1.5.3:
+
+- May fail to resolve some dependencies, such as gstreamer0.10-base. See
+  <https://github.com/AladW/aurutils/issues/421>.
+- Some queries may not resolve with aursearch. See
+  <https://github.com/AladW/aurutils/issues/267>.
+
+Both issues are solved in aurutils-git.
+
+===============================================================================
+=                               Latest Comments                               =
+===============================================================================
+
+Alad commented on 2018-09-24 13:08
+----------------------------------
+
+Did you install _devtools_?
+```
