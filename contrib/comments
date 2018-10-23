@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# depends: hq
+# usage: aur comments <package name> <number of comments>
+# example: aur comments aurutils-git 3
+
+if ! [ -n "$1" ] || ! [ -n "$2" ] || ! [ "$2" -eq "$2" ] 2>/dev/null; then
+  echo "invalid arguments" >&2
+  exit 1
+fi
+
+out="$(curl -sSL "https://aur.archlinux.org/packages/$1/?O=0&PP=$2")"
+comid=0
+commax=$2
+
+IFS=$'\0' readarray -d $'\0' authors < <(<<< "$out" hq -0 '.package-comments > .comment-header[id*="comment"]' text)
+IFS=$'\0' readarray -d $'\0' contents < <(<<< "$out" hq -0 '.package-comments > .article-content[id*="comment"]' text md)
+
+while true; do
+  if [ $((commax-comid)) -lt 1 ] || ! [[ -n "${authors[comid]}" ]]; then
+    break
+  elif [ $comid -gt 0 ]; then
+    printf -- "\n"
+  fi
+
+  printf -- "\e[1m%s\e[0m:\n\e[2m%s\e[0m\n" "${authors[comid]}" "${contents[comid]}"
+  comid=$((comid+1))
+done

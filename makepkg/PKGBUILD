@@ -16,7 +16,8 @@ optdepends=('devtools: aur-chroot'
             'diffstat: aur-fetch-snapshot'
             'expac: aur-repo-filter'
             'vifm: build file interaction'
-            'xdelta3: generate delta files')
+            'xdelta3: generate delta files'
+            'hq: aur-comments (contrib)')
 
 pkgver() {
     cd aurutils
