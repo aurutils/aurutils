@@ -56,3 +56,25 @@ aur sync --list | cut -f2 | grep -E "$AURVCS" | xargs aur sync --no-ver --print
 [//]: # (The last pipeline will also show any non-VCS dependencies.)
 [//]: # (Since the respective PKGBUILDs are not run by aur-srcver,)
 [//]: # (they are not of relevance. Use aur-fetch manually?)
+
+
+## comments
+
+This script fetches and displays the comments of an AUR page
+
+Dependencies:
+- hq
+
+```
+$ aur comments aurutils-git 3
+Alad commented on 2018-10-15 12:17:
+Done. Much appreciated.
+PS. Daily shouldn't be required. There's however a new PKGBUILD in the devel branch, which has not yet been pulled to master.
+
+sudoforge commented on 2018-10-13 19:26:
+Hey Alad, would you mind adding me as a maintainer for this package? I'd be happy to push updated PKGBUILDs daily, to keep this in sync with its upstream.
+
+Alad commented on 2018-06-11 16:43:
+Note that technically speaking `ed` is an optional dependency (for aur-chroot) but as a convenient/short way to edit files, I may use it in other scripts later.
+If someone gets it working with `ex` (I didn't) feel free to tell me.
+```
