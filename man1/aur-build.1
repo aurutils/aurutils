@@ -48,6 +48,10 @@ for more information.
 The name of the pacman database.
 
 .TP
+.BI \-D " DIR" "\fR,\fP \-\-directory=" DIR
+The path pointing to the container.
+
+.TP
 .BR \-f ", " \-\-force
 Continue the build process if a package with the same name is found
 (ignoring the extension). Existing packages will be moved with a
@@ -55,8 +59,18 @@ Continue the build process if a package with the same name is found
 suffix.
 
 .TP
+.BI \-\-makepkg\-conf= FILE
+.BR makepkg.conf (5)
+used inside the container.
+
+.TP
 .BR \-N ", " \-\-no-sync
 Do not sync the local repository after building.
+
+.TP
+.BI \-\-pacman\-conf= FILE
+.BR pacman.conf (5)
+used inside the container.
 
 .TP
 .BI \-r " DIR" "\fR,\fP \-\-root=" DIR
