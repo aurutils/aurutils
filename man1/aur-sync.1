@@ -60,7 +60,7 @@ upgrade candidates from
 Version checks for package dependencies remain enabled.
 
 .TP
-.BR \-p ", " \-\-print
+.BR \-\-print
 Print target packages and their paths instead of building them.
 
 .TP
@@ -87,12 +87,12 @@ Build packages with makechrootpkg. (\fBaur build \-c\fR)
 .TP
 .BI \-\-pacman\-conf= FILE
 .BR pacman.conf (5)
-used inside the container. (\fBaur build \-C\fR)
+used inside the container. (\fBaur build \-\-pacman\-conf\fR)
 
 .TP
 .BI \-\-makepkg\-conf= FILE
 .BR makepkg.conf (5)
-used inside the container. (\fBaur build \-M\fR)
+used inside the container. (\fBaur build \-\-makepkg\-conf\fR)
 
 .TP
 .BI \-D " DIR" "\fR,\fP \-\-directory=" DIR
