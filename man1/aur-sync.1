@@ -216,25 +216,8 @@ split on white space, allowing
 .RE
 
 .SH NOTES
-Targets may be taken from stdin using
-.BR xargs (1).
-For example:
-.EX
 
-  $ aur vercmp-devel | xargs aur sync --noconfirm
 
-.EE
-
-Note that command output interferes with input from the tty. The
-.B \-\-noconfirm
-option may be used to disable interaction, or output redirected to a
-file:
-.EX
-
-  $ aur vercmp-devel > new.txt
-  $ xargs -a new.txt aur sync
-
-.EE
 
 When version checks are enabled (\fB\-\-no\-ver\fR is not specified),
 build files are only retrieved if the remote (RPC) version is newer
