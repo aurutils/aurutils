@@ -16,3 +16,4 @@ install-bash: bash/aur
 
 install-zsh: zsh/_aur
 	@install -Dm644 zsh/_aur -t $(DESTDIR)$(SHRDIR)/zsh/site-functions
+	@install -Dm755 zsh/run-help-aur -t $(DESTDIR)$(SHRDIR)/zsh/functions/Misc
