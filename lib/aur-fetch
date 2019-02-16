@@ -8,34 +8,27 @@ readonly startdir=$PWD
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-mode=git recurse=0
+log=directory mode=git recurse=0
 
 git_stat_patch() {
     git --no-pager log -O "$1" --patch --stat '..@{upstream}'
 }
 
-merge_upstream() {
-    # set destination of patch file
-    local pkg=$1 log_dir=$2 output
+upstream_sync() {
+    local pkg=$1 patch=${2:-/dev/stdout}
+    local orderfile=${GIT_DIR:-$PWD/$pkg/.git}/orderfile
 
-    if [[ -d $log_dir ]]; then
-        output=$log_dir/$pkg.patch
-    else
-        output=/dev/stdout
-    fi
-
-    # default to showing PKGBUILD diffs first (#399)
-    local orderfile=${GIT_DIR:-$PWD/.git}/orderfile
-
+    # default to showing PKGBUILD in diffs first (#399)
     if [[ ! -s $orderfile ]]; then
         echo PKGBUILD >"$orderfile"
     fi
 
+    # get last upstream revision
     git fetch -v >&2
 
-    # only print log on upstream changes
     if [[ $(git rev-parse HEAD) != $(git rev-parse '@{upstream}') ]]; then
-        git_stat_patch "$orderfile" >> "$output"
+        # only print log on upstream changes
+        git_stat_patch "$orderfile" >> "$patch"
 
         # discard any local changes (#349)
         git reset --hard "HEAD@{upstream}" >&2
@@ -43,7 +36,7 @@ merge_upstream() {
 }
 
 fetch_git() {
-    local log_dir=$1 pkg uri
+    local uri pkg output_dir=$1
 
     while IFS= read -r uri; do
         pkg=${uri##*/}   # strip path
@@ -51,28 +44,16 @@ fetch_git() {
 
         if [[ -d $pkg/.git ]]; then
             # avoid issues with filesystem boundaries (#274)
-            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" merge_upstream "$pkg" "$log_dir"
+            GIT_DIR="$pkg"/.git GIT_WORK_TREE="$pkg" upstream_sync "$pkg" "${output_dir:+$output_dir/$pkg.patch}"
         else
             git clone "$uri"
         fi
     done
 }
 
-diff_log() {
-    local base=$1 log_dir=$2
-
-    if [[ -d $log_dir ]]; then
-        tee -a "$log_dir/$base".diff | diffstat -Ckq -f3
-    else
-        tee
-    fi
-}
-
 tar_no_mode_diff() {
-    local archive=$1 base=$2 dir=$3
-
-    if [[ -d $dir/$base ]]; then
-        LC_MESSAGES=C tar -df "$archive" -C "$dir" | grep -Evq '(Mode|Uid|Gid)'
+    if [[ -d $1/$2 ]]; then
+        LC_MESSAGES=C tar -df "$3" -C "$1" | grep -Evq '(Mode|Uid|Gid)'
     else
         return 1
     fi
@@ -80,7 +61,7 @@ tar_no_mode_diff() {
 
 fetch_tar() {
     #global tmp
-    local log_dir=$1 archive base
+    local archive base output_dir=$1
 
     wget -i /dev/stdin --directory-prefix "$tmp" || return 1
 
@@ -88,8 +69,13 @@ fetch_tar() {
         base=$(basename "$archive" .tar.gz)
         tar -kxf "$archive" --directory "$tmp"
 
-        if tar_no_mode_diff "$archive" "$base" "$startdir"; then
-            diff -ur "$startdir/$base" "$tmp/$base" | diff_log "$base" "$log_dir"
+        if tar_no_mode_diff "$startdir" "$base" "$archive"; then
+            if [[ -d $output_dir ]]; then
+	    	# use diffstat to print a summary (of diff) to stdout
+		diff -ur "$startdir/$base" "$tmp/$base" | tee -a "$output_dir/$base".diff | diffstat -Ckq -f3
+            else
+                diff -ur "$startdir/$base" "$tmp/$base"
+            fi
         fi
 
         cp -af "$tmp/$base" "$startdir"
@@ -115,11 +101,16 @@ EOF
     exit 1
 }
 
-source /usr/share/makepkg/util/util.sh
+source /usr/share/makepkg/util/message.sh
 source /usr/share/makepkg/util/parseopts.sh
+source /usr/share/makepkg/util/util.sh
+
+if [[ -t 2 && ! -o xtrace ]]; then
+    colorize
+fi
 
 opt_short='L:grt'
-opt_long=('log-dir:' 'git' 'recurse' 'tar')
+opt_long=('log-dir:' 'git' 'verbose' 'recurse' 'tar')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -127,13 +118,15 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset log_dir
+unset patch_dir
 while true; do
     case "$1" in
-        -L|--log-dir) shift; log_dir=$(canonicalize_path "$1") ;;
+	# XXX rename to --patch-dir?
+        -L|--log-dir) shift; patch_dir=$(canonicalize_path "$1") ;;
         -r|--recurse) recurse=1 ;;
         -g|--git) mode=git ;;
         -t|--tar) mode=tar ;;
+        --verbose) log=stdout ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
@@ -149,10 +142,16 @@ if ! (($#)); then
     usage
 fi
 
-if [[ -v log_dir ]] && [[ ! -d $log_dir ]]; then
-    printf >&2 '%s: %q: not a directory' "$argv0" "$log_dir"
-    exit 21
-fi
+case $log in
+    directory)
+	# store patches in current directory by default
+        if [[ ! -d ${patch_dir:=$startdir} ]]; then
+            error "$argv0: '$patch_dir': not a directory"
+            exit 21
+        fi ;;
+    stdout)
+        unset patch_dir ;;
+esac
 
 # set filters (1)
 case $recurse in
@@ -167,6 +166,6 @@ case $mode in
 esac
 
 # pipeline
-deps "$@" | uri | fetch_$mode "$log_dir"
+deps "$@" | uri | fetch_$mode "$patch_dir"
 
 # vim: set et sw=4 sts=4 ft=sh:
