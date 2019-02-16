@@ -8,23 +8,17 @@ readonly startdir=$PWD
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-mode=git recurse=0
+log=directory mode=git recurse=0
 
 git_stat_patch() {
     git --no-pager log -O "$1" --patch --stat '..@{upstream}'
 }
 
 merge_upstream() {
-    # set destination of patch file
-    local pkg=$1 log_dir=$2 output
+    # default to printing diff on stdout
+    local output=${1:-/dev/stdout}
 
-    if [[ -d $log_dir ]]; then
-        output=$log_dir/$pkg.patch
-    else
-        output=/dev/stdout
-    fi
-
-    # default to showing PKGBUILD diffs first (#399)
+    # default to showing PKGBUILD in diffs first (#399)
     local orderfile=${GIT_DIR:-$PWD/.git}/orderfile
 
     if [[ ! -s $orderfile ]]; then
@@ -43,29 +37,23 @@ merge_upstream() {
 }
 
 fetch_git() {
-    local log_dir=$1 pkg uri
+    local log_dir=$1 uri= pkg= output=
 
     while IFS= read -r uri; do
         pkg=${uri##*/}   # strip path
         pkg=${pkg%%.git} # strip .git suffix
 
+        if [[ $log_dir ]]; then
+            output=$log_dir/$pkg.patch
+        fi
+
         if [[ -d $pkg/.git ]]; then
             # avoid issues with filesystem boundaries (#274)
-            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" merge_upstream "$pkg" "$log_dir"
+            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" merge_upstream "$pkg" "$output"
         else
             git clone "$uri"
         fi
     done
-}
-
-diff_log() {
-    local base=$1 log_dir=$2
-
-    if [[ -d $log_dir ]]; then
-        tee -a "$log_dir/$base".diff | diffstat -Ckq -f3
-    else
-        tee
-    fi
 }
 
 tar_no_mode_diff() {
@@ -78,9 +66,13 @@ tar_no_mode_diff() {
     fi
 }
 
+diff_log() {
+    tee -a "$1/$2".diff | diffstat -Ckq -f3
+}
+
 fetch_tar() {
     #global tmp
-    local log_dir=$1 archive base
+    local log_dir=$1 archive= base=
 
     wget -i /dev/stdin --directory-prefix "$tmp" || return 1
 
@@ -89,7 +81,11 @@ fetch_tar() {
         tar -kxf "$archive" --directory "$tmp"
 
         if tar_no_mode_diff "$archive" "$base" "$startdir"; then
-            diff -ur "$startdir/$base" "$tmp/$base" | diff_log "$base" "$log_dir"
+            if [[ $log_dir ]]; then
+                diff -ur "$startdir/$base" "$tmp/$base" | diff_log "$log_dir" "$base"
+            else
+                diff -ur "$startdir/$base" "$tmp/$base"
+            fi
         fi
 
         cp -af "$tmp/$base" "$startdir"
@@ -134,6 +130,7 @@ while true; do
         -r|--recurse) recurse=1 ;;
         -g|--git) mode=git ;;
         -t|--tar) mode=tar ;;
+        --stdout) log=stdout ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
@@ -150,10 +147,15 @@ if ! (($#)); then
     usage
 fi
 
-if [[ -v log_dir ]] && [[ ! -d $log_dir ]]; then
-    printf >&2 '%s: %q: not a directory' "$argv0" "$log_dir"
-    exit 21
-fi
+case $log in
+    directory)
+        if [[ ! -d ${log_dir-$startdir} ]]; then
+            printf >&2 '%s: %q: not a directory' "$argv0" "$log_dir"
+            exit 21
+        fi ;;
+    stdout)
+        unset log_dir ;;
+esac
 
 # set filters (1)
 case $recurse in
