@@ -15,7 +15,7 @@ makepkg_args=(--clean --syncdeps)
 repo_add_args=()
 
 # default options
-chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0
+chroot=0 delta=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0
 
 conf_single() {
     awk -v "repo=[$1]" '
@@ -39,7 +39,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-d repo] [-aCDMr path] [-cfNRsv] [--] <makepkg args>" >&2
+    plain "usage: $argv0 [-d repo] [-aCDMr path] [-cfNRXsv] [--] <makepkg args>" >&2
     exit 1
 }
 
@@ -52,8 +52,8 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 ## option parsing
-opt_short='a:B:C:d:D:M:r:cfNRsv'
-opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'sign'
+opt_short='a:B:C:d:D:M:r:cfNRXsv'
+opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'delta' 'sign'
           'verify' 'directory:' 'no-sync' 'pacman-conf:'
           'makepkg-conf:' 'remove' 'build-command:' 'pkgver')
 opt_hidden=('dump-options')
@@ -72,6 +72,7 @@ while true; do
         -r|--root)          shift; db_root=$1 ;;
         -c|--chroot)        chroot=1 ;;
         -f|--force)         overwrite=1 ;;
+        -X|--delta)         delta=1 ;;
         -s|--sign)          sign_pkg=1
                             repo_add_args+=(-s) ;;
         -v|--verify)        repo_add_args+=(-v) ;;
@@ -106,7 +107,7 @@ if (($#)); then
     fi
 fi
 
-if type -P xdelta3 >/dev/null; then
+if type -P xdelta3 >/dev/null && ((delta)); then
     repo_add_args+=(-d)
 fi
 
@@ -126,8 +127,7 @@ case $db_name in
         esac ;;
     *)
         case $db_root in
-            "") db_path=$(aur repo -d "$db_name")
-                db_name=$(basename "$db_path" .db)
+            "") db_path=$(aur repo -d "$db_name") db_name=$(basename "$db_path" .db)
                 db_root=$(dirname "$db_path")
                 ;;
              *) db_path=$db_root/$db_name.db
