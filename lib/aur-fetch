@@ -115,7 +115,7 @@ source /usr/share/makepkg/util/util.sh
 source /usr/share/makepkg/util/parseopts.sh
 
 opt_short='L:grt'
-opt_long=('log-dir:' 'git' 'recurse' 'tar')
+opt_long=('log-dir:' 'git' 'print' 'recurse' 'tar')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -130,7 +130,7 @@ while true; do
         -r|--recurse) recurse=1 ;;
         -g|--git) mode=git ;;
         -t|--tar) mode=tar ;;
-        --stdout) log=stdout ;;
+        --print) log=stdout ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
