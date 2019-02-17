@@ -4,6 +4,9 @@ readonly argv0=depends
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly max_request=30
 
+# default options
+mode=pkgname
+
 count() {
     jq -r '.resultcount' "$1" | awk '{s += $1} END {print s}'
 }
@@ -24,7 +27,7 @@ tr_ver() {
 chain() {
     local a num sub
 
-    aur rpc -t info > json/0 || exit
+    printf '%s\n' "$@" | aur rpc -t info > json/0 || exit
     num=$(count json/0)
 
     if ((num < 1)); then
@@ -38,27 +41,28 @@ chain() {
 
         # Avoid querying duplicates (#4)
         cut -f1 tsv/$sub >> seen # pkgname
-        cut -f2 tsv/$sub | tr_ver | grep -Fxvf seen \
-            | aur rpc -t info > json/$a || exit # rpc error
+        cut -f2 tsv/$sub | tr_ver | grep -Fxvf seen | \
+            aur rpc -t info > json/$a || exit # rpc error
 
         if [[ -s json/$a ]]; then
             num=$(count json/$a)
         else
-            cat tsv/n
-            return # no unique results
+            return $a # no unique results (seen \ tsv == [empty])
         fi
 
         if ((num >= 1)); then
             cut -f2 tsv/$sub >> seen # depends
         else
-            cat tsv/n
-            return # no results, recursion complete
+            return $a # no results, recursion complete
         fi
     done
 
     # recursion limit exceeded
-    printf >&2 '%s: total requests: %d (out of range)\n' "$argv0" "$a"
-    exit 34
+    return $max_request
+}
+
+order() {
+    cut -f1,2 "$1" | tsort | tac
 }
 
 trap_exit() {
@@ -68,17 +72,94 @@ trap_exit() {
 }
 
 usage() {
-    printf >&2 'usage: %s\n' "$argv0"
+    printf >&2 'usage: %s [-abnt]\n' "$argv0"
     exit 1
 }
+
+source /usr/share/makepkg/util/message.sh
+source /usr/share/makepkg/util/parseopts.sh
+
+if [[ -t 2 && ! -o xtrace ]]; then
+    colorize
+fi
+
+opt_short='abnt'
+opt_long=('table' 'pkgbase' 'pkgname' 'pkgname-all')
+opt_hidden=('dump-options')
+
+if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
+    usage
+fi
+set -- "${OPTRET[@]}"
+
+while true; do
+    case "$1" in
+        -a|--pkgname-all) mode=pkgname_all ;;
+        -b|--pkgbase)     mode=pkgbase ;;
+        -n|--pkgname)     mode=pkgname ;;
+        -t|--table)       mode=table ;;
+        --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
+                        printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
+                        exit ;;
+        --) shift; break ;;
+    esac
+    shift
+done
 
 tmp=$(mktemp -dt "$argv0".XXXXXXXX) || exit
 trap 'trap_exit' EXIT
 
+rings=0
 if cd "$tmp" && mkdir json tsv; then
-    chain # tsv/n: pkgname\tdepends\tpkgbase\pkgver
+    chain "$@" || rings=$? # tsv/n: pkgname\tdepends\tpkgbase\pkgver
+
+    # check iteration number
+    case $rings in
+        1) true # no dependencies
+           ;;
+        $max_request)
+            error "$argv0: total requests: $((max_request+1)) (out of range)"
+            exit 34 ;;
+    esac
+
+    case $mode in
+        # pkgbase (AUR, total order)
+        pkgbase)
+            # associate pkgname to pkgbase
+            declare -A map map_seen
+
+            while read -r pkgname pkgbase; do
+                map[$pkgname]=$pkgbase
+            done < <(cut -f1,3 tsv/n)
+
+            # pkgbase is ignored for repo packages (as unknown)
+            while read -r pkgname; do
+                pkgbase=${map[$pkgname]}
+
+                if [[ $pkgbase ]] && [[ ! ${map_seen[$pkgbase]} ]]; then
+                    printf '%s\n' "${map[$pkgname]}"
+                    map_seen[$pkgbase]=1
+                fi
+            done < <(order tsv/n)
+            ;;
+        # pkgname (AUR, total order)
+        pkgname)
+            grep -Fxf <(cut -f1 tsv/n) <(order tsv/n)
+            ;;
+        # pkgname (all, total order)
+        pkgname_all)
+            order tsv/n
+            ;;
+        # pkgname\tdepends\tpkgbase\tpkgver (AUR)
+        table)
+            cat tsv/n
+            ;;
+        *)
+            error "$argv0: invalid argument"
+            exit 22 ;;
+    esac
 else
-    exit
+    exit      
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:

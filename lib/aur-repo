@@ -4,38 +4,25 @@ readonly argv0=repo
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default arguments
+modifier=local
 vercmp_args=()
 
 db_namever() {
     awk '/%NAME%/ {
-        getline; printf("%s\t", $1)
+        getline
+        printf("%s\t", $1)
     } /%VERSION%/ {
-        getline; printf("%s\n", $1)
-    } END {
-        if (!NR) {
-            printf("warning: empty database\n") > "/dev/stderr"
-            close("/dev/stderr")
-        }
+        getline
+        printf("%s\n", $1)
     }'
 }
 
-sync_exists() {
-    # https://github.com/andrewgregory/pacutils/issues/22
-    pacman-conf -r "$1" >/dev/null
-}
-
-sync_pkgspec() {
-    # https://github.com/andrewgregory/pacutils/issues/3
-    pacsift --exact --null --repo "$1" <&-
-}
-
-sync_format() {
-    # https://git.archlinux.org/pacman.git/commit/?id=ab3d8478
-    xargs -0r pacman -Sddp --print-format "$1"
+ex_namever() {
+    awk -F"/" -v rname="^$1/" '$0 ~ rname { print $NF }'
 }
 
 usage() {
-    plain "usage: $argv0 [-alu] [-d repo] [-r root]" >&2
+    plain "usage: $argv0 [-d repo] [-r path] [-alSu]" >&2
     exit 1
 }
 
@@ -47,10 +34,9 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 ## option parsing
-opt_short='d:o:r:ahlu'
-opt_long=('all' 'database:' 'list' 'root:' 'upgrades' 'repo-list'
-          'status-file:' 'help')
-opt_hidden=('dump-options')
+opt_short='d:r:alSu'
+opt_long=('all' 'database:' 'list' 'root:' 'upgrades' 'repo-list' 'sync')
+opt_hidden=('dump-options' 'status-file:')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
     usage
@@ -60,26 +46,26 @@ set -- "${OPTRET[@]}"
 unset mode db_name db_root status_file
 while true; do
     case $1 in
-        -a|--all)      vercmp_args+=(-a) ;;
-        -d|--database) shift; db_name=$1 ;;
-        -r|--root)     shift; db_root=$1 ;;
-        -l|--list)     mode=list_packages ;;
-        -u|--upgrades) mode=list_upgrades ;;
-        --repo-list)   mode=repo_list ;;
-        --status-file) shift; status_file=$1 ;;
+        -d|--database)  shift; db_name=$1 ;;
+        -r|--root)      shift; db_root=$1 ;;
+        -a|--all)       mode=list_upgrades
+                        vercmp_args+=(-a) ;;
+        -l|--list)      mode=list_packages ;;
+        -u|--upgrades)  mode=list_upgrades ;;
+        -S|--sync)      modifier=sync ;;
+        --repo-list)    mode=repo_list ;;
+        --status-file)  shift; status_file=$1 ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
-        -h|--help) usage ;;
         --) shift; break ;;
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
 # assign environment variables
-: ${db_name=$AUR_REPO}
-: ${db_root=$AUR_DBROOT}
+: "${db_name=$AUR_REPO}"
+: "${db_root=$AUR_DBROOT}"
 
 unset conf_repo server
 
@@ -97,7 +83,7 @@ while read -r key _ value; do
                     if ! [[ $db_root ]]; then
                         db_root=$server
                     elif [[ $db_root != "$server" ]]; then
-                        warning "$argv0: --root and pacman.conf mismatch"
+                        warning "$db_name: --root and pacman.conf mismatch"
                     fi ;;
             esac
             ;;
@@ -112,11 +98,12 @@ while read -r key _ value; do
     esac
 done < <(pacman-conf)
 
+# exclusive modes
 case $mode in
     #requires (none)
     repo_list)
         if [[ ${conf_repo[*]} ]]; then
-            printf '%s\n' "${conf_repo[@]}" | paste - - | column -t
+            printf '%s\n' "${conf_repo[@]}" | paste - -
         else
             plain "no file:// repository configured"
         fi
@@ -128,10 +115,10 @@ if ! [[ $db_name ]]; then
         2) db_name=${conf_repo[0]}
            db_root=${conf_repo[1]}
            ;;
-        0) error "$argv0: no file:// repository found"
+        0) error "no file:// repository found"
            exit 2
            ;;
-        *) error "$argv0: repository choice is ambiguous (use -d to specify)"
+        *) error "repository choice is ambiguous (use -d to specify)"
            printf '%s\n' "${conf_repo[@]}" | paste - - | column -t >&2
            exit 1
            ;;
@@ -142,33 +129,36 @@ if [[ -v status_file ]]; then
     printf '%s\n%s\n' "$db_name" "$db_root" >"$status_file"
 fi
 
-case $mode in
+case $modifier in
     #requires
-    # - $db_root/$db_name (path) OR
-    # - [$db_name], Server=file:// (pacman.conf)
-    list_packages)
+    # - $db_root/$db_name (path)
+    local)
         if ! [[ $db_root ]]; then
-            error "$argv0: $db_name: repository path not found"
+            error "$db_name: repository path not found"
             exit 2
         elif [[ $db_root == *://* ]]; then
-            error "$argv0: $db_root: object is remote"
+            error "$db_root: object is remote (use -S to query)"
             exit 66
         elif ! [[ -d $db_root ]]; then
-            error "argv0: $db_root: not a directory"
+            error "$db_root: not a directory"
             exit 20
+        else
+            contents() { bsdcat "$db_root/$db_name".db | db_namever; }
         fi
-
-        bsdcat "$db_root/$db_name".db | db_namever
         ;;
     #requires
     # - [$db_name] (pacman.conf)
+    sync)
+        contents() { expac -Sv '%r/%n\t%v' | ex_namever "$db_name"; }
+        ;;
+esac
+
+case $mode in
     list_upgrades)
-        if sync_exists "$db_name"; then
-            sync_pkgspec "$db_name" | \
-                sync_format '%n %v' | aur vercmp "${vercmp_args[@]}"
-        else
-            exit 1
-        fi
+        contents | aur vercmp "${vercmp_args[@]}"
+        ;;
+    list_packages)
+        contents
         ;;
     *)
         printf '%s\n' "$db_root/$db_name".db

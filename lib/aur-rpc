@@ -1,11 +1,16 @@
 #!/bin/bash
 # aur-rpc - interface with AurJson
 readonly argv0=rpc
-readonly aur_location='https://aur.archlinux.org'
+readonly AUR_LOCATION=${AUR_LOCATION:-'https://aur.archlinux.org'}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}):${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
-query_info() {
-    awk -v rpc="$aur_location/rpc/?v=5&type=info" '{
+# default options
+declare -i rpc_ver=5
+declare    rpc_url="$AUR_LOCATION/rpc/?v=$rpc_ver"
+
+uri_info() {
+    #global rpc_url
+    awk -v rpc="$rpc_url&type=info" '{
         if (NR == 1)
             printf "%s&arg[]=%s", rpc, $0
         else if (NR % 150 == 0)
@@ -17,8 +22,9 @@ query_info() {
     }'
 }
 
-query_search() {
-    awk -v rpc="$aur_location/rpc/?v=5&type=search&by=$1&arg" '{
+uri_search() {
+    #global rpc_url
+    awk -v rpc="$rpc_url&type=search&by=$1&arg" '{
         printf "%s=%s\n", rpc, $0
     }'
 }
@@ -30,8 +36,8 @@ usage() {
 
 source /usr/share/makepkg/util/parseopts.sh
 
-opt_short='b:t:h'
-opt_long=('by:' 'type:' 'help')
+opt_short='b:t:'
+opt_long=('by:' 'type:' 'aur-url:' 'rpc-ver:' 'rpc-url:')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -42,9 +48,10 @@ set -- "${OPTRET[@]}"
 unset by type
 while true; do
     case "$1" in
-        -b|--by) shift; by=$1 ;;
+        -b|--by)   shift; by=$1 ;;
         -t|--type) shift; type=$1 ;;
-        -h|--help) usage ;;
+        --rpc-ver) shift; rpc_ver=$1 ;;
+        --rpc-url) shift; rpc_url=$1 ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
@@ -52,12 +59,11 @@ while true; do
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
 # set filters
 case $type in
-      info) query() { query_info; } ;;
-    search) query() { query_search "${by:-name-desc}"; } ;;
+      info) uri() { uri_info; } ;;
+    search) uri() { uri_search "${by:-name-desc}"; } ;;
          *) usage ;;
 esac
 
@@ -65,11 +71,22 @@ esac
 wget_log=$(mktemp -t wget.XXXXXXXX)
 trap 'rm -rf "$wget_log"' EXIT
 
-# pipeline
-jq -R -r '@uri' | query | wget -o "$wget_log" -i - -O - -nv
+# check for interactive terminal
+if [[ -t 0 ]]; then
+    cat >&2 <<EOF
+Warning: Input is read from the terminal. You either know what you
+Warning: are doing, or you forgot to pipe data into $argv0.
+Warning: Press CTRL-D to exit.
+EOF
+fi
 
-if ((PIPESTATUS[2])); then
+# pipeline
+jq -R -r '@uri' | uri | wget -o "$wget_log" -i - -O - -nv
+wget_err=${PIPESTATUS[2]}
+
+if ((wget_err)); then
     cat "$wget_log" >&2
+    exit "$wget_err"
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:

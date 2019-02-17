@@ -4,37 +4,32 @@ set -o errexit
 shopt -s extglob
 readonly argv0=build
 readonly startdir=$PWD
+readonly XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default arguments
 chroot_args=()
 gpg_args=(--detach-sign --no-armor --batch)
 makechrootpkg_args=(-cu)
-makepkg_args=(-crs)
+makepkg_args=(--clean --syncdeps)
 repo_add_args=()
 
 # default options
-chroot=0 no_sync=0 overwrite=0 sign_pkg=0
+chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0
 
 conf_single() {
-    awk -v "rname=[$1]" '
-    /^\[.+\]$/ {
-        needle = 0
+    awk -v "repo=[$1]" '
+    /^\[.*\]$/ {
+        do_print = ($1 == "[options]" || $1 == repo)
     }
-    $1 == "[options]" || $1 == rname {
-        needle = 1
-    }
-    needle {
-        print $0
-    }'
+    do_print'
 }
 
 db_replaces() {
-    bsdcat "$1" | awk '/%REPLACES%/ {
-    while(NF != 0) {
-        getline; print
-    }
-}'
+    bsdcat "$1" | awk '
+    /%REPLACES%/ {
+        while(NF != 0) { getline; print; }
+    }'
 }
 
 trap_exit() {
@@ -44,7 +39,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 -d database [-afNRsv] [--] <makepkg args>" >&2
+    plain "usage: $argv0 [-d repo] [-aCDMr path] [-cfNRsv] [--] <makepkg args>" >&2
     exit 1
 }
 
@@ -57,10 +52,10 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 ## option parsing
-opt_short='a:d:r:C:D:M:cfNRsv'
+opt_short='a:B:C:d:D:M:r:cfNRsv'
 opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'sign'
           'verify' 'directory:' 'no-sync' 'pacman-conf:'
-          'makepkg-conf:' 'remove')
+          'makepkg-conf:' 'remove' 'build-command:' 'pkgver')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -68,29 +63,33 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset queue db_name db_path db_root
+unset queue db_name db_path db_root build_cmd m_conf p_conf
 while true; do
     case "$1" in
-        -a|--arg-file)  shift; queue=$1 ;;
-        -d|--database)  shift; db_name=$1 ;;
-        -r|--root)      shift; db_root=$1 ;;
-        -c|--chroot)    chroot=1 ;;
-        -f|--force)     overwrite=1 ;;
-        -s|--sign)      sign_pkg=1; repo_add_args+=(-s) ;;
-        -v|--verify)    repo_add_args+=(-v) ;;
-        -D|--directory) shift; chroot_args+=(-D "$1") ;;
-        -C|--pacman-conf)  shift; chroot_args+=(-C "$1") ;;
-        -M|--makepkg-conf) shift; chroot_args+=(-M "$1") ;;
-        -N|--no-sync)   no_sync=1 ;;
-        -R|--remove)    repo_add_args+=(-R) ;;
-        --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
-                        printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
+        -a|--arg-file)      shift; queue=$1 ;;
+        -d|--database)      shift; db_name=$1
+                            chroot_args+=(-d "$1") ;;
+        -r|--root)          shift; db_root=$1 ;;
+        -c|--chroot)        chroot=1 ;;
+        -f|--force)         overwrite=1 ;;
+        -s|--sign)          sign_pkg=1
+                            repo_add_args+=(-s) ;;
+        -v|--verify)        repo_add_args+=(-v) ;;
+        -B|--build-command) shift; build_cmd+=("$1") ;;
+        -D|--directory)     shift; chroot_args+=(-D "$1") ;;
+        -C|--pacman-conf)   shift; chroot_args+=(-C "$1"); p_conf=$1 ;;
+        -M|--makepkg-conf)  shift; chroot_args+=(-M "$1"); m_conf=$1 ;;
+        -N|--no-sync)       no_sync=1 ;;
+        -R|--remove)        repo_add_args+=(-R) ;;
+        --pkgver)           run_pkgver=1
+                            makepkg_args+=(--holdver) ;;
+        --dump-options) printf -- '--%s\n' "${opt_long[@]}"
+                        printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g'
                         exit ;;
         --) shift; break ;;
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/$argv0".XXXXXXXX)
 var_tmp=$(mktemp -d "${TMPDIR:-/var/tmp}/$argv0".XXXXXXXX)
@@ -112,8 +111,8 @@ if type -P xdelta3 >/dev/null; then
 fi
 
 # assign environment variables
-: ${db_name=$AUR_REPO}
-: ${db_root=$AUR_DBROOT}
+: "${db_name=$AUR_REPO}"
+: "${db_root=$AUR_DBROOT}"
 
 case $db_name in
     "")
@@ -137,7 +136,10 @@ case $db_name in
 esac
 
 # resolve symbolic link
-db_path=$(readlink -f -- "$db_path")
+if ! db_path=$(readlink -e -- "$db_path"); then
+    error "$argv0: $db_path: no such file or directory"
+    exit 2
+fi
 
 if ! [[ -w $db_path ]]; then
     error "$argv0: $db_path: permission denied"
@@ -167,16 +169,40 @@ else
     fi
 fi
 
+# configuration for container builds
 if ((chroot)); then
-    aur chroot -d "$db_name" --no-build "${chroot_args[@]}" 
-else
-    pacman-conf | conf_single "$db_name" >"$tmp"/custom.conf
+    aur chroot --no-build "${chroot_args[@]}"
 fi
+
+# configuration for host builds
+pacman-conf --config "${p_conf:-/etc/pacman.conf}" | conf_single "$db_name" >"$tmp"/custom.conf
+
+# PKGDEST is defined later through makepkg.conf (#513)
+unset PKGDEST
+
+{ cat -s "${m_conf:-/etc/makepkg.conf}"
+
+  if [[ -r $XDG_CONFIG_HOME/pacman/makepkg.conf ]]; then
+      cat -s "$XDG_CONFIG_HOME"/pacman/makepkg.conf
+  elif [[ -r $HOME/.makepkg.conf ]]; then
+      cat -s "$HOME"/.makepkg.conf
+  fi
+
+  # PKGDEST defined here is NOT exported to the build environment.
+  # This is not a concern for container builds, as makechrootpkg
+  # already has a similar mechanism. (#498)
+  printf "PKGDEST='%s'\\n" "$var_tmp"
+} >"$tmp"/makepkg.conf
 
 while IFS= read -ru "$fd" path; do
     cd_safe "$startdir/$path"
 
-    if ((!overwrite)); then
+    # run pkgver before --packagelist (#500)
+    if ((run_pkgver)); then
+        makepkg --noprepare -od
+    fi
+
+    if ! ((overwrite)); then
         unset mark
 
         while IFS= read -r; do
@@ -191,18 +217,30 @@ while IFS= read -ru "$fd" path; do
         fi
     fi
 
-    if ((chroot)); then
+    if [[ -v build_cmd ]]; then
+        printf '%s\n' >&2 "Running custom command: ${build_cmd[*]}"
+        env PKGDEST="$var_tmp" AUR_REPO="$db_name" AUR_DBROOT="$db_root" "${build_cmd[@]}"
+    elif ((chroot)); then
         printf '%s\n' >&2 "Running makechrootpkg ${makechrootpkg_args[*]}"
-        PKGDEST="$var_tmp" aur chroot --no-prepare "${chroot_args[@]}" \
-            -- "${makechrootpkg_args[@]}"
+        env PKGDEST="$var_tmp" aur chroot --no-prepare "${chroot_args[@]}" -- "${makechrootpkg_args[@]}"
     else
         printf '%s\n' >&2 "Running makepkg ${makepkg_args[*]}"
-        PKGDEST="$var_tmp" makepkg "${makepkg_args[@]}"
+
+        # unset SHELLOPTS due to odd behavior with fakeroot (a /bin/sh
+        # script) when it is set in the environment. see:
+        # https://lists.gnu.org/archive/html/bug-bash/2011-10/msg00052.html
+        env -u SHELLOPTS makepkg --config "$tmp"/makepkg.conf "${makepkg_args[@]}"
     fi
 
     cd_safe "$var_tmp"
-    pkglist=(./!(*.sig)) # discard makepkg --sign from package list (#410)
+    pkglist=(!(*.sig)) # discard makepkg --sign from package list (#410)
     siglist=()
+
+    # pkglist should not be empty (#513)
+    if [[ ${pkglist[*]} == '!(*.sig)' ]]; then
+        error "$argv0: invalid argument (no packages found)"
+        exit 22
+    fi
 
     for p in "${pkglist[@]}"; do
         if [[ -f $p.sig ]]; then
@@ -216,8 +254,9 @@ while IFS= read -ru "$fd" path; do
     done
 
     # move build products (relative paths)
-    mv -bf "${pkglist[@]}" "${siglist[@]}" "$db_root"
+    mv -f "${pkglist[@]}" "${siglist[@]}" "$db_root"
 
+    # update database
     cd_safe "$db_root"
     LANG=C repo-add "${repo_add_args[@]}" "$db_path" "${pkglist[@]}"
 

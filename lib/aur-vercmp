@@ -28,7 +28,7 @@ cmp_equal_or_newer() {
 }
 
 cmp_checkupdates() {
-    local pkg v_cmp v_in op
+    local all=$1 pkg v_cmp v_in op
 
     while read -r pkg v_cmp v_in; do
         case $v_in in
@@ -36,7 +36,7 @@ cmp_checkupdates() {
             *) op=$(my_vercmp "$v_in" "$v_cmp") ;;
         esac
 
-        if ((!$1)) && ((op > -1)); then
+        if ! ((all)) && ((op > -1)); then
             continue
         fi
 
@@ -68,7 +68,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-ac] [-p file]" >&2
+    plain "usage: $argv0 [-p path] [-acq]" >&2
     exit 1
 }
 
@@ -79,9 +79,9 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-opt_short='p:u:ach'
-opt_long=('all' 'path:' 'upair:' 'help')
-opt_hidden=('dump-options')
+opt_short='p:u:acq'
+opt_long=('all' 'current' 'path:' 'quiet')
+opt_hidden=('dump-options' 'upair:')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
     usage
@@ -92,10 +92,11 @@ unset all aux repo upair
 while true; do
     case "$1" in
         -a|--all)   all=1 ;;
-        -c)         format=equal ;;
-        -p|--path)  shift; target=file; aux=$1 ;;
+        -c|--current) format=equal ;;
+        -q|--quiet) format=quiet ;;
+        -p|--path)  shift; target='file'
+                    aux=$1 ;;
         -u|--upair) shift; upair=$1 ;;
-        -h|--help)  usage ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
@@ -103,12 +104,18 @@ while true; do
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
 tmp=$(mktemp) || exit
 trap 'trap_exit' EXIT
 
-# set input file
+# check for interactive terminal
+if [[ -t 0 ]]; then
+    cat >&2 <<EOF
+Warning: Input is read from the terminal. You either know what you
+Warning: are doing, or you forgot to pipe data into $argv0.
+Warning: Press CTRL-D to exit.
+EOF
+fi
 sort -k 1b,1 >"$tmp"
 
 # set filters (1)
@@ -121,6 +128,8 @@ esac
 case $format in
     check) cmp() { cmp_checkupdates "${all-0}"; }
            upair=${upair-1} ;; # join unpaired of target
+    quiet) cmp() { cmp_checkupdates "${all-0}" | cut -d: -f1; }
+           upair=${upair-1} ;;
     equal) cmp() { cmp_equal_or_newer; }
            upair=${upair-2} ;; # join unpaired of input
 esac

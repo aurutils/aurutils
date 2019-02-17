@@ -1,10 +1,10 @@
-.TH AUR-SEARCH 1 2018-03-19 AURUTILS
+.TH AUR-SEARCH 1 2019-01-24 AURUTILS
 .SH NAME
 aur\-search \- search for AUR packages
 
 .SH SYNOPSIS
 .SY "aur search"
-.OP \-aisdmnqv
+.OP \-adimnqrsv
 .OP \-k key
 .IR keyword ...
 .YS
@@ -22,6 +22,10 @@ interface, and displayed in a brief format.
 .TP
 .B \-q ", " \-\-short
 Only display package name, version and description.
+
+.TP
+.B \-r ", " \-\-raw
+Display the unprocessed JSON output.
 
 .TP
 .B \-v ", " \-\-verbose
@@ -77,6 +81,10 @@ Valid choices are \fIName\fR, \fIVersion\fR, \fINumVotes\fR,
 \fIPopularity\fR, \fIOutOfDate\fR, \fIMaintainer\fR,
 \fIFirstSubmitted\fR, \fILastModified\fR (for \fB\-v\fR verbose
 output).
+
+.SH EXIT STATUS
+The exit status is 0 on valid results, 1 if no results were found, or
+2 if an AUR error occured (such as "Too many results").
 
 .SH SEE ALSO
 .BR aur (1),

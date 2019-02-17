@@ -27,9 +27,9 @@ host_with_cache() {
     printf '[%s]\n' options
     pacman-conf --verbose CacheDir
 
-    for r in "$@"; do
-	printf '[%s]\n' "$r"
-	pacman-conf --repo "$r"
+    for a in "$@"; do
+        printf '[%s]\n' "$a"
+        pacman-conf --repo "$a"
     done
 }
 
@@ -40,13 +40,13 @@ trap_exit() {
 }
 
 usage() {
-    printf >&2 'usage: %s [-CDM <path>] [-d <repo>] -- <makechrootpkg args>\n' "$argv0"
+    printf >&2 'usage: %s [-d repo] [-CDM path] -- <makechrootpkg args>\n' "$argv0"
     exit 1
 }
 
 source /usr/share/makepkg/util/parseopts.sh
 
-opt_short='d:r:C:D:M:'
+opt_short='d:C:D:M:'
 opt_long=('database' 'directory' 'pacman-conf' 'makepkg-conf' 'no-build' 'no-prepare')
 opt_hidden=('dump-options')
 
@@ -72,7 +72,6 @@ while true; do
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
 tmp=$(mktemp -d)
 trap 'trap_exit' EXIT

@@ -1,4 +1,4 @@
-.TH AUR-REPO-FILTER 1 2018-05-05 AURUTILS
+.TH AUR-REPO-FILTER 1 2019-01-24 AURUTILS
 .SH NAME
 aur\-repo\-filter \- filter packages in the Arch Linux repositories
 
@@ -11,30 +11,36 @@ aur\-repo\-filter \- filter packages in the Arch Linux repositories
 .SH DESCRIPTION
 .B aur\-repo\-filter
 checks if
-.IR pkgname
-.RI "(as provided on " stdin )
-is in the official Arch Linux repositories. If found, it is printed to
-.IR stdout .
+.IR package[<cmp><version>]
+(taken from standard input) is satisfied by a package in the official
+Arch Linux repositories \- that is,
+.BR core ,
+.BR extra ,
+.BR testing ,
+.BR community ,
+.BR community\-testing ,
+.BR multilib ,
+or
+.BR multilib\-testing .
 
-If the package is virtual (that is, provided by a different package),
-it is printed to
-.IR stderr .
+If found, the package is printed to standard output.  If the package
+is provided by a package of a different name, the latter is printed to
+standard error.
 
 .SH OPTIONS
 .TP
-.BR \-a ", " \-\-all
-Query all available repositories.
-.RB ( "pacconf " \-\-repo\-list )
+.BR \-a ", " \-\-all ", " \-\-sync
+Query all available pacman repositories.
+.RB ( "pacsift " \-\-sync )
 
 .TP
 .BI \-d " NAME" "\fR,\fP \-\-database=" NAME "\fR,\fP \-\-repo=" NAME
-Check a given repository. Multiple repositories may be specified by
-repeating this argument.
+Query a given pacman repository.  Multiple repositories may be
+specified by repeating this argument.
 
 .SH SEE ALSO
 .BR aur (1),
 .BR expac (1),
-.BR jq (1),
 .BR pacsift (1)
 
 .SH AUTHORS

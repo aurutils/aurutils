@@ -1,0 +1,23 @@
+#compdef aur
+
+zstyle ':completion::complete:aur:argument-rest:' sort false
+
+_aur() {
+    local context state state_descr line
+    typeset -A opt_args
+
+    DEFAULT_OPTS
+
+    _arguments -C \
+        '1: :(${(k)default_cmds})' \
+        '*: :->options'
+
+    case $state in
+        options)
+            if [[ ${default_cmds[${words[2]}]} != *${words[-2]}:* ]]; then
+                _arguments '*: :(${=default_cmds[${words[2]}]//:/})'
+            else
+               _files
+            fi ;;
+    esac
+}

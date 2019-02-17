@@ -27,7 +27,7 @@ applicable to
 .BR \-c .)
 
 .TP
-.B \-c
+.B \-c ", " \-\-current
 Changes format to print packages with an equal or newer version to
 .BR stdout .\&
 A human\-readable version of the comparison will be printed to
@@ -42,6 +42,10 @@ the same format as stdin
 and
 .IR pkgver ,
 space-separated).
+
+.TP
+.B \-q ", " \-\-quiet
+Only print package names to standard output.
 
 .TP
 .BI \-u " FILENUM" "\fR,\fP \-\-upair=" FILENUM

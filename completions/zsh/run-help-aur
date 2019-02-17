@@ -1,0 +1,5 @@
+if [ $# -eq 0 ]; then
+	man aur
+else
+	man aur-$1
+fi

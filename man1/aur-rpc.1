@@ -1,4 +1,4 @@
-.TH AUR-RPC 1 2018-02-02 AURUTILS
+.TH AUR-RPC 1 2019-01-24 AURUTILS
 .SH NAME
 aur\-rpc \- send GET requests to aurweb
 
@@ -6,18 +6,35 @@ aur\-rpc \- send GET requests to aurweb
 .SY "aur rpc"
 .OP \-t type
 .OP \-b by
+.OP \-rpc\-url
+.OP \-rpc\-ver
 .YS
 
 .SH DESCRIPTION
 
 .SH OPTIONS
+.TP
+.BR \-b ", " \-\-by
+
+.TP
+.BR \-t ", " \-\-type
+
+.TP
+.BI \-\-rpc\-ver= NUM
+
+.TP
+.BI \-\-rpc\-url= URI
+
+.SH ENVIRONMENT
+.TP
+.B AUR_LOCATION
 
 .SH NOTES
 As the AUR RPC is limited to GET requests, queries are split by 150
 arguments to avoid HTTP 414 errors (\fIFS#49089\fR).
 
 .SH SEE ALSO
-.BR aria2c (1),
+.BR jq (1),
 .BR wget (1)
 
 .SH AUTHORS

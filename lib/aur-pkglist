@@ -2,12 +2,13 @@
 # aur-pkglist - print the AUR package list
 set -o pipefail
 readonly argv0=pkglist
-readonly aur_location='https://aur.archlinux.org'
 readonly cache=${XDG_CACHE_HOME:-$HOME/.cache}/aurutils/$argv0
+readonly AUR_LOCATION=${AUR_LOCATION:-'https://aur.archlinux.org'}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
 delay=300
+mode=plain
 pkglist=packages
 update=0
 
@@ -37,13 +38,10 @@ usage() {
     exit 1
 }
 
-# default to any match
-pcre_opt=('.*')
-
 source /usr/share/makepkg/util/parseopts.sh
 
-opt_short='F:P:bth'
-opt_long=('pkgbase' 'fixed-strings' 'perl-regexp' 'help')
+opt_short='t:bFP'
+opt_long=('pkgbase' 'fixed-strings' 'perl-regexp' 'time:')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -54,10 +52,9 @@ set -- "${OPTRET[@]}"
 while true; do
     case "$1" in
         -b|--pkgbase) pkglist=pkgbase ;;
-        -t) shift; delay=$1 ;;
-        -F|--fixed-strings) shift; pcre_opt=('-e' "$1" '-F') ;;
-        -P|--perl-regexp) shift; pcre_opt=('-e' "$1") ;;
-        -h|--help) usage ;;
+        -t|--time)    shift; delay=$1 ;;
+        -F|--fixed-strings) mode=fixed ;;
+        -P|--perl-regexp)   mode=regex ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
@@ -65,15 +62,20 @@ while true; do
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
-mkdir -p     "$cache"
-chmod -c 700 "$cache"
+# default to regex if >0 arguments specified
+case $# in
+    0) [[ $mode != 'plain' ]] && usage ;;
+    *) [[ $mode == 'plain' ]] && mode=regex ;;
+esac
+
+# packages.gz cache
+install -dm700 "$cache"
 cd "$cache" || exit
 
 if [[ -s $pkglist && -s timestamp ]]; then
     sec_l=$(date -f timestamp '+%s')
-    sec_r=$(list_http_date "$aur_location/$pkglist.gz" | date -f - '+%s')
+    sec_r=$(list_http_date "$AUR_LOCATION/$pkglist.gz" | date -f - '+%s')
 
     if ((sec_l)) && ((sec_r)) && ((sec_r - sec_l > delay)); then
         update=1
@@ -83,9 +85,14 @@ else
 fi
 
 if ((update)); then
-    list_update "$aur_location/$pkglist.gz" "$pkglist" > timestamp
+    list_update "$AUR_LOCATION/$pkglist.gz" "$pkglist" > timestamp
 fi
 
-pcregrep "${pcre_opt[@]}" < "$pkglist"
+# pattern match
+case $mode in
+    plain) cat "$pkglist" ;;
+    fixed) grep -F "$1" "$pkglist" ;;
+    regex) grep -P "$1" "$pkglist" ;;
+esac
 
 # vim: set et sw=4 sts=4 ft=sh:

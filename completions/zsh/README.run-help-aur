@@ -1,0 +1,7 @@
+run-help-aur is a Zsh run-help assistant. It allows run-help to open the correct man page for the aur commands, instead of opening aur(1).
+To use it, first setup run-help following zshcontrib(1), then place run-help-aur in fpath and autoload it.
+For example, after installing run-help-aur to /usr/share/zsh/functions/Misc/run-help-aur and autoloading run-help, run:
+
+autoload -Uz run-help-aur
+
+Refer to zshcontrib(1) for more details on run-help and its assistant functions.

@@ -1,15 +1,15 @@
 #!/bin/bash
 # aur-search - search for AUR packages
-set -o pipefail
 readonly argv0=search
-readonly aur_location='https://aur.archlinux.org'
+readonly AUR_LOCATION=${AUR_LOCATION:-'https://aur.archlinux.org'}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
 multiple=section
-query_type=search
+output=hrm
 search_by=name-desc
 sort_key=Name
+type=search
 
 tabulate() {
     # It is important to have a default value for every field, or
@@ -43,7 +43,7 @@ tabulate() {
 }
 
 
-parse_long() {
+info_long() {
     local -a desc=(
         'Name'
         'Base'
@@ -65,10 +65,11 @@ parse_long() {
     local -a info
 
     while IFS=$'\t' read -r -a info; do
-        printf "$BOLD%s:$ALL_OFF\t%s\n" "AUR URL" "$aur_location/packages/${info[0]}"
+        # XXX: AUR_LOCATION only used here
+        printf "$BOLD%s:$ALL_OFF\\t%s\\n" "AUR URL" "$AUR_LOCATION/packages/${info[0]}"
 
         for i in "${!info[@]}"; do
-            printf "$BOLD%s:$ALL_OFF\t%s\n" "${desc[i]}" "${info[i]}"
+            printf "$BOLD%s:$ALL_OFF\\t%s\\n" "${desc[i]}" "${info[i]}"
         done
 
         # column(1) ignores empty lines (package delimitation)
@@ -76,7 +77,7 @@ parse_long() {
     done
 }
 
-parse_short() {
+info_short() {
     local Name Version NumVotes Popularity Maintainer OutOfDate Description
 
     while IFS=$'\t' read -r Name _ Version Description _ _ _ Maintainer NumVotes Popularity OutOfDate _; do
@@ -98,8 +99,14 @@ parse_short() {
     done
 }
 
+trap_exit() {
+    if [[ ! -o xtrace ]]; then
+        rm -rf "$tmp"
+    fi
+}
+
 usage() {
-    printf >&2 'usage: %s: [-aisdmnqv] [-k key] [pkgname...]\n' "$argv0"
+    printf >&2 'usage: %s: [-adimnqrsv] [-k key] pkgname...\n' "$argv0"
     exit 1
 }
 
@@ -110,9 +117,9 @@ if [[ -t 1 && ! -o xtrace ]]; then
     colorize
 fi
 
-opt_short='k:aisdmnqvh'
+opt_short='k:adimnqrsv'
 opt_long=('any' 'info' 'search' 'desc' 'maintainer' 'name' 'depends'
-          'makedepends' 'optdepends' 'checkdepends' 'key:' 'help')
+          'makedepends' 'optdepends' 'checkdepends' 'key:' 'raw')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -124,8 +131,8 @@ unset format
 while true; do
     case "$1" in
         -a|--any)        multiple=union ;;
-        -i|--info)       query_type=info ;;
-        -s|--search)     query_type=search ;;
+        -i|--info)       type=info ;;
+        -s|--search)     type=search ;;
         -d|--desc)       search_by=name-desc ;;
         -m|--maintainer) search_by=maintainer ;;
         -n|--name)       search_by=name ;;
@@ -135,8 +142,8 @@ while true; do
         --checkdepends)  search_by=checkdepends ;;
         -q|--short)      format=short ;;
         -v|--verbose)    format=long ;;
+        -r|--raw)        output=raw ;;
         -k|--key)        shift; sort_key=$1 ;;
-        -h|--help)       usage ;;
         --dump-options)  printf -- '--%s\n' "${opt_long[@]}" ;
                          printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                          exit ;;
@@ -144,37 +151,62 @@ while true; do
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
-if ((!$#)); then
+if ! (($#)); then
     usage
 fi
 
-# XXX union is done by the AUR for info type, but not search
-if (($# < 2)) || [[ $query_type == info ]]; then
+tmp=$(mktemp -t "$argv0".XXXXXXXX)
+trap 'trap_exit' EXIT
+
+# XXX union is done by the AUR for info, but not search
+if (($# < 2)) || [[ $type == 'info' ]]; then
     multiple=none
 fi
 
 # set format depending on query type (#319)
-case $query_type in
+case $type in
       info) format=${format-long}  ;;
     search) format=${format-short} ;;
 esac
 
 # set filters (1)
 case $format in
-     long) parse() { parse_long | column -ts $'\t' | sed -E 's/^-//; $d'; } ;;
-    short) parse() { parse_short; } ;;
+     long) info() { info_long | column -ts $'\t' | sed -E 's/^-//; $d'; } ;;
+    short) info() { info_short; } ;;
 esac
 
 # set filters (2)
 case $multiple in
+       none) combine() { tee; } ;;
     section) combine() { sort | uniq -d; } ;;
       union) combine() { sort | uniq -u; } ;;
-       none) combine() { tee; } ;;
 esac
 
-# pipeline
-printf '%s\n' "$@" | aur rpc -t "$query_type" -b "$search_by" | tabulate "$sort_key" | combine | parse
+# check results
+printf '%s\n' "$@" | aur rpc -t "$type" -b "$search_by" > "$tmp" || exit
+
+# exit early on raw output (#187)
+case $output in
+    hrm) parser() { tabulate "$sort_key" | combine | info; } ;;
+    raw) cat "$tmp"
+         exit ;;
+esac
+
+# check results (#257)
+count=$(jq -r '.resultcount' "$tmp" | awk '{s += $1} END {print s}')
+error=$(jq -r '.error' "$tmp")
+
+case $count in
+    0) if [[ $error != 'null' ]]; then
+           error "$error"
+           exit 2
+       else
+           # no results found
+           exit 1
+       fi ;;
+    *) parser < "$tmp"
+       ;;
+esac
 
 # vim: set et sw=4 sts=4 ft=sh:

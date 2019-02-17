@@ -1,0 +1,8 @@
+#!/bin/bash
+aur search aurutils
+
+# expected: valid results, exit 0
+case $? in
+    0) exit 0 ;;
+    *) exit 1 ;;
+esac

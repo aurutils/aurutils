@@ -1,0 +1,8 @@
+#!/bin/bash
+aur search .invalid
+
+# expected: [empty], exit 1
+case $? in
+    1) exit 0 ;;
+    *) exit 1 ;;
+esac

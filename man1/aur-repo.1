@@ -1,4 +1,4 @@
-.TH AUR-REPO 1 2018-12-10 AURUTILS
+.TH AUR-REPO 1 2018-12-13 AURUTILS
 .SH NAME
 aur\-repo \- manage local repositories
 
@@ -6,50 +6,71 @@ aur\-repo \- manage local repositories
 .SY "aur repo"
 .OP \-d database
 .OP \-r root
-.OP \-lu
+.OP \-alSu
 .OP \-\-repo\-list
-.OP \-\-status\-file
 .YS
 
 .SH DESCRIPTION
+When run without arguments,
+.BR aur\-repo
+prints the path of a selected repository to standard output. For other
+modes, see the
+.B OPTIONS
+section.
 
 .SH OPTIONS
 .TP
 .BI \-d " NAME" "\fR,\fP \-\-database=" NAME
+The name of the pacman repository. May be specified through the
+.B AUR_REPO
+environment variable.
 
 .TP
 .BI \-r " PATH" "\fR,\fP \-\-root=" PATH
+ The path to the root of the pacman repository. May be specified
+through the
+.B AUR_DBROOT
+environment variable.
 
 .TP
 .BR \-l ", " \-\-list
+List the contents of the repository in
+.BI pkgname\tpkgver
+format. If the
+.B \-S
+option is not enabled, the repository is queried directly through the
+.BI .db
+file on-disk.
 
 .TP
-.BR \-u ", " \-\-updates
+.BR \-u ", " \-\-upgrades
+Use
+.BR aur\-vercmp (1)
+to check a pacman repository for updates.
 
 .TP
-.BI \-\-status\-file= PATH
+.BR \-a ", " \-\-all
+Use
+.B "aur\-vercmp --all"
+when checking for updates. Implies
+.BR \-\-upgrades .
+
+.TP
+.BR \-S ", " \-\-sync
+Query repositories through
+.BR pacman (8).
 
 .TP
 .BR \-\-repo\-list
-
-.SH ENVIRONMENT
-
-.B AUR_REPO
-.RS
-The repository used for building packages.  If
-.B AUR_DBROOT
-is not specified, the entry must be a valid
+List all local (with a
 .B file://
-repository configured in
-.BR pacman.conf (5).
-.RE
-
-.B AUR_DBROOT
-.RS
-.RE
+prefix) pacman repositories, in
+.BI name\tServer
+format.
 
 .SH SEE ALSO
 .BR aur (1),
-.BR pacman (1),
-.BR pacsift (1),
+.BR aur\-vercmp (1),
+.BR expac (1),
+.BR pacman (8),
 .BR pacman.conf (5)

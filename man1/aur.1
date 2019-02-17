@@ -1,5 +1,5 @@
 '\" t
-.TH AUR 1 2016-12-25 AURUTILS
+.TH AUR 1 2019-01-24 AURUTILS
 .SH NAME
 aur \- helper tool for the arch user repository
 
@@ -78,12 +78,6 @@ Download and build AUR packages automatically.
 Check packages for AUR updates.
 .RE
 
-.P
-.BR aur\-vercmp\-devel (1)
-.RS 4
-Retrieve latest revision for VCS packages.
-.RE
-
 .SH EXIT STATUS
 Programs follow a subset of errno(3), or preserve command status where
 applicable.
@@ -97,18 +91,12 @@ directive. This section documents an example configuration; for
 details, consult the
 .BR pacman.conf (5)
 man page.
+
 .SY Note:
 Avoid naming the repository
 .IR local ,
 as this name is reserved by
-.BR pacman (1).
-
-.SY Note:
-It is recommended to use a pacman cache directory
-.RB ( CacheDir )
-as the package pool. This avoids checksum mismatches between built
-packages and any cached versions.
-.YS
+.BR pacman (8).
 
 .SY Tip:
 Consider separate repositories for different purposes, such as
@@ -117,49 +105,31 @@ version control packages.
 
 .SS Pacman configuration
 .P
-If the local repository
+For the purposes of this example, we assume the local repository
 .I custom
 is located in
-.IR /var/cache/pacman/custom ,
-create
-.IR /etc/pacman.d/custom
-with the following contents:
-.EX
+.IR /home/custompkgs .
 
-  [options]
-  CacheDir = /var/cache/pacman/pkg
-  CacheDir = /var/cache/pacman/custom
-  CleanMethod = KeepCurrent
+Append a section for the local repository to
+.IR /etc/pacman.conf
+.EX
 
   [custom]
   SigLevel = Optional TrustAll
-  Server = file:///var/cache/pacman/custom
+  Server = file:///home/custompkgs
 
 .EE
-Include the configuration in
-.IR /etc/pacman.conf :
-.EX
-
-  # An example of a custom package repository.  See the pacman manpage for
-  # tips on creating your own repositories.
-  Include = /etc/pacman.d/custom
-
-.EE
-Add
-.B Include\fR to the \fIend\fR of pacman.conf, where possible.
-
-.SS Adding packages
 Create the repository root and database:
 .EX
 
-  $ sudo install -d /var/cache/pacman/custom -o $USER
-  $ repo-add /var/cache/pacman/custom/custom.db.tar
+  $ sudo install -d /home/custompkgs -o $USER
+  $ repo-add /home/custompkgs/custom.db.tar
 
 .EE
 If built packages are available, add them to the database:
 .EX
 
-  $ cd /var/cache/pacman/custom
+  $ cd /home/custompkgs
   $ repo-add -n custom.db.tar ./*.pkg.tar.xz
 
 .EE
@@ -170,8 +140,59 @@ Synchronize pacman:
 
 .EE
 
+.SS CacheDir (optional)
+When packages from a local repository are installed through
+.BR "pacman -S" ,
+they are copied to a cache directory (usually
+.IR /var/cache/pacman/pkg )
+by
+.BR pacman .
+Besides using additional space, this may cause checksum mismatches
+between built packages and any cached versions. (See GitHub issue #85.)
+
+There are several ways to avoid this. A first approach is to set the
+repository path as a
+.B pacman
+.IR CacheDir ,
+together with the
+.B "CleanMethod = KeepCurrent"
+setting to avoid unexpected deletion of built packages with
+.BR "pacman -Sc" .
+
+This can be done by editing
+.IR /etc/pacman.conf
+as follows:
+.EX
+
+  [options]
+  CacheDir = /var/cache/pacman/pkg
+  CacheDir = /var/cache/pacman/custom
+  CleanMethod = KeepCurrent
+
+.EE
+Packages may still be deleted unconditionally through
+.BR "pacman -Scc" .
+An alternative is to use
+.BR "mount --bind " and
+remount the local repository to a CacheDir path. For example:
+.EX
+
+  # mount --bind /home/custompkgs /var/cache/pacman/custom
+
+.EE
+To avoid accidental modification, this mount can then be made read-only:
+.EX
+
+  # mount -o remount,bind,ro /home/custompkgs /var/cache/pacman/custom
+
+.EE
+.\" A third option is to use aur-build --results and symlink the
+.\" built packages. However, this assumes that pacman -Sc uses unlink(2)
+.\" to remove packages (i.e. it does not follow symbolic links). Such
+.\" behavior is not documented and may change at any time.
+
 .SH EXAMPLES
-Examples below assume
+In this section, we assume that
 .BR bash (1)
 is the interactive shell.
 
@@ -201,6 +222,22 @@ Check foreign packages for AUR updates:
 .EX
 
   $ pacman -Qm | aur vercmp
+
+.EE
+Check the
+.I custom
+repository for AUR updates:
+.EX
+
+  $ aur repo -d custom --list | aur vercmp
+
+.EE
+If
+.B pacman.conf
+only contains one local repository, the above may be shortened to:
+.EX
+
+  $ aur repo --upgrades
 
 .EE
 

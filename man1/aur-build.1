@@ -1,12 +1,13 @@
-.TH AUR\-BUILD 1 2018-12-04 AURUTILS
+.TH AUR\-BUILD 1 2019-01-24 AURUTILS
 .SH NAME
 aur\-build \- build packages to a local repository
 
 .SH SYNOPSIS
 .SY "aur build"
-.OP "\-d" database
+.OP \-d database
 .OP \-cfNRsv
 .OP \-a queue
+.OP \-B string
 .OP \--
 .RI [ "makepkg args" ]
 .YS
@@ -26,12 +27,35 @@ or
 .BR makechrootpkg
 when
 .B \-c
-is specified.
+is specified. The default options are
+.B \-\-clean \-\-syncdeps
+and
+.BR "\-c \-u" ,
+respectively.
 
 .TP
 .BI \-a " FILE" "\fR,\fP \-\-arg\-file=" FILE
 A text file describing directories that contain a PKGBUILD, relative to
 the current directory. If unspecified, the current directory is assumed.
+
+.TP
+.BI \-B " STRING" "\fR,\fP \-\-build\-command=" STRING
+A string used as build command
+(instead of
+.B makepkg
+or
+.BR makechrootpkg ).
+The command has
+.BR PKGDEST ,
+.BR AUR_REPO ", and"
+.BR AUR_DBROOT
+set in the user environment. (These variables should be unset where
+appropriate.) To split the command on whitespace, repeat the
+.B \-B
+option for each substring. For example,
+.BI "\-B " "makepkg " "\-B " \-sri
+would set the build command to
+.BR "makepkg \-sri" .
 
 .TP
 .BR \-c ", " \-\-chroot
@@ -54,10 +78,7 @@ The name of the pacman database.
 
 .TP
 .BR \-f ", " \-\-force
-Continue the build process if a package with the same name is found
-(ignoring the extension). Existing packages will be moved with a
-.I ~
-suffix.
+Continue the build process if a package with the same name is found.
 
 .TP
 .BR \-N ", " \-\-no-sync
@@ -74,7 +95,7 @@ built packages, and secondary files such as the files database
 This defaults to the value of the
 .B Server
 directive for the configured repository.
-
+.RS
 .SY Note:
 The
 .I Server
@@ -84,6 +105,7 @@ is used for
 .BR pacman (8)
 sync operations regardless of this setting. See also
 .BR \-N .
+.RE
 
 .TP
 .B \-R
@@ -107,6 +129,18 @@ Verify the PGP signature of the database before
 updating.
 .RB ( "repo\-add \-v" ).
 
+.TP
+.BR \-\-pkgver
+Run
+.B "makepkg --noprepare -od"
+before checking existing packages (effectively running an existing
+.B pkgver()
+function). This option adds
+.B \-\-holdver
+to the default
+.BR makepkg (8)
+options.
+
 .SH ENVIRONMENT
 .B AUR_REPO
 .RS
@@ -117,10 +151,25 @@ selected with
 
 .B AUR_DBROOT
 .RS
+The root directory of the repository. If unspecified, the path is
+retrieved with
+.BR aur\-repo (1).
 .RE
 
 .B GPGKEY
 .RS
+The GPG key used for signing packages. Note that while this variable
+may be set in
+.BR makepkg.conf (5),
+it is then ignored for
+.BR repo\-add .
+.RE
+
+.B TMPDIR
+.RS
+The directory for temporary files. (This includes intermediary storage
+of built packages, defaulting to
+.IR /var/tmp .)
 .RE
 
 .SH NOTES
@@ -136,13 +185,6 @@ official repositories "local", and warns if they are newer than any
 custom counterpart. Packages which define a
 .I replaces
 field are ignored if the target package is installed on the local system.
-
-Databases are built with
-.B LANG=C
-to avoid libalpm from skipping entries if the locale is not set
-(FS#49342). Packages are signed manually with
-.B "gpg \-\-batch \-\-detach\-sign \-\-no\-armor"
-(FS#49946).
 
 .SS Using a dedicated build user
 While using a dedicated user for the build process does not increase
@@ -210,6 +252,27 @@ in
 See
 .BR gpg (1)
 for details.
+
+.SH BUGS
+Databases are built with
+.B LANG=C
+to avoid libalpm from skipping entries if the locale is not set
+(FS#49342). Packages are signed manually with
+.B "gpg \-\-batch \-\-detach\-sign \-\-no\-armor"
+(FS#49946).
+
+When using
+.BR "makepkg --rmdeps" ,
+installed dependencies will be removed through
+.BR "pacman -Rn" .
+When answering "n" to the resulting prompt,
+.B makepkg
+will exit with "An unknown error has occured", and send SIGUSR1 to its
+parent group. As
+.B aur\-build
+does not catch this signal, the
+.B \-\-rmdeps
+option is disabled by default.
 
 .SH SEE ALSO
 .BR aur (1),

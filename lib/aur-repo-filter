@@ -4,8 +4,25 @@ readonly argv0=repo-filter
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly arch_repo=(core extra testing community{,-testing} multilib{,-testing})
 
+# The command line will hit ARG_MAX on approximately 70k packages;
+# spread arguments with xargs (and printf, as a shell built-in).
+print_args() {
+    printf -- '--satisfies=%s\n' "$@"
+}
+
+satisfies() {
+    #global sift_args
+    xargs -a <(print_args "$@") pacsift --null "${sift_args[@]}" <&-
+}
+
+# Use null delimimitation as repository names may contain (apart from
+# newlines) arbitrary characters.
+provides() {
+    xargs -0r expac '%n %R %S' -Sv
+}
+
 usage() {
-    printf >&2 'usage: %s [-a] [-d repo]\n' "$argv0"
+    printf >&2 'usage: %s [-d repo] [-S]\n' "$argv0"
     exit 1
 }
 
@@ -16,8 +33,8 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-opt_short='ad:h'
-opt_long=('all' 'database:' 'help')
+opt_short='d:a'
+opt_long=('all' 'sync' 'database:' 'repo:')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -25,58 +42,85 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset argv_repo reposet sync_repo fields
+unset argv_repo sync_repo sift_args
 while true; do
     case "$1" in
-        -a|--all)       sync_repo=1 ;;
-        -d|--database)  shift; argv_repo+=("$1") ;;
-        -h|--help)      usage ;;
-        --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
-            printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
-            exit ;;
+        -a|--all|--sync) sync_repo=1 ;;
+        -d|--database)   shift; argv_repo+=("$1") ;;
+        --dump-options)  printf -- '--%s\n' "${opt_long[@]}" ;
+                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
+                         exit ;;
         --) shift; break;;
     esac
     shift
 done
-unset opt_short opt_long OPTRET
 
 if ((sync_repo)); then
-    reposet=(--sync)
+    sift_args+=(--sync)
 elif [[ -v argv_repo ]]; then
-    reposet=(--exact "${argv_repo[@]/#/--repo=}")
+    sift_args+=(--exact "${argv_repo[@]/#/--repo=}")
 else
-    reposet=(--exact "${arch_repo[@]/#/--repo=}")
+    sift_args+=(--exact "${arch_repo[@]/#/--repo=}")
+fi
+
+# check for interactive terminal
+if [[ -t 0 ]]; then
+    cat >&2 <<EOF
+Warning: Input is read from the terminal. You either know what you
+Warning: are doing, or you forgot to pipe data into $argv0.
+Warning: Press CTRL-D to exit.
+EOF
 fi
 
 # associative array for input package names
 declare -A pkgset
+unset strset
 
-while IFS= read -r package; do
-    pkgset[$package]=1
+while IFS= read -r str; do
+    # store unversioned string as key
+    name=${str%%[<>=]*}
+
+    # store version + operator as value (1 if unavailable)
+    if ((${#str} - ${#name})); then
+        pkgset[$name]=${str:${#name}}
+    else
+        pkgset[$name]=1
+    fi
+
+    # store original versioned string
+    strset+=("$str")
 done
 
-# nothing to do
-if ! [[ ${pkgset[*]} ]]; then
+# exit on empty stdin
+if ! (( ${#pkgset[@]} )); then
     exit 0
 fi
 
-# use xargs -a to bypass isatty() check
-xargs -0a <(printf -- '--satisfies=%s\0' "${!pkgset[@]}") pacsift "${reposet[@]}" <&- |
-    expac '%n %R %S' -Sv - | while read -ra line
-do
-    package=${line[0]#*/}
+# Standard input is taken as "provides[<cmp><version>]", where pacsift
+# checks for a package satisfying this condition. Results are printed
+# as "repository/package", and piped to expac to relate the names of
+# the original provides to its corresponding package(s).
+satisfies "${strset[@]}" | provides | while read -ra array; do
+    package=${array[0]}
 
     if [[ ${pkgset[$package]} ]]; then
         printf '%s\n' "$package"
     fi
 
-    for ((i = 1; i < ${#line[@]}; i++)); do
-        virtual=${line[$i]}
+    for ((i = 1; i < ${#array[@]}; i++)); do
+        virtual=${array[$i]}
 
-        if [[ ${pkgset[$virtual]} ]]; then
-            plain "virtual dependency $virtual satisfied by $package" >&2
-            printf '%s\n' "$virtual"
-        fi
+        case $virtual in
+            None) continue ;;
+               *) version=${pkgset[$virtual]} ;;
+        esac
+
+        case $version in
+            1) plain "dependency $virtual satisfied by $package" >&2
+               printf '%s\n' "$virtual" ;;
+            *) plain "dependency $virtual$version satisfied by $package" >&2
+               printf '%s\n' "$virtual" ;;
+        esac
     done
 done
 

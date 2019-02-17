@@ -4,6 +4,7 @@ aur\-srcver \- list version of VCS packages
 
 .SH SYNOPSIS
 .SY "aur srcver"
+.OP \-\-noprepare
 .IR pkgbase ...
 .YS
 
@@ -12,12 +13,17 @@ aur\-srcver \- list version of VCS packages
 takes the names of packages and lists the current
 .I pkgver
 of VCS packages. This is achieved by running
-.B "makepkg \-\-skipinteg \-\-noprepare \-od"
+.B "makepkg \-\-skipinteg \-od"
 and parsing the output.
 
 It is assumed that source directories are already available, and that
 .B aur\-srcver
 is used in the same directory as those source directories.
+
+.SH OPTIONS
+.TP
+.B \-\-noprepare
+Do not run the prepare() function in the PKGBUILD.
 
 .SH SEE ALSO
 .BR makepkg (1),

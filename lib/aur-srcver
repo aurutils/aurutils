@@ -3,8 +3,9 @@
 readonly argv0=srcver
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly startdir=$PWD
+makepkg_args=('--nobuild' '--nodeps' '--skipinteg')
 
-get_pkgbuild_info() {
+srcver_pkgbuild_info() {
     env -C "$1" -i bash -c '
         PATH= source PKGBUILD
 
@@ -17,15 +18,16 @@ get_pkgbuild_info() {
         printf %s\\t%s\\n "${pkgbase:-$pkgname}" "$fullver"
     '
 }
+export -f srcver_pkgbuild_info
 
-find_pkgbuild_path() {
-    find "$@" -maxdepth 1 -type f -name PKGBUILD -printf '%h\0'
+srcver_pkgbuild_path() {
+    if env -C "$1" makepkg "${@:3}" ; then
+        srcver_pkgbuild_info "$1" >> "$2"
+    else
+        return
+    fi
 }
-
-usage() {
-    printf >&2 'usage: %s path...\n' "$argv0"
-    exit 1
-}
+export -f srcver_pkgbuild_path
 
 trap_exit() {
     if ! [[ -o xtrace ]]; then
@@ -33,46 +35,72 @@ trap_exit() {
     fi
 }
 
-if ((!$#)); then
-    usage
+usage() {
+    plain "usage: $argv0 [--noprepare] <pkgbase> [<pkgbase> ...]" >&2
+    exit 1
+}
+
+source /usr/share/makepkg/util/message.sh
+source /usr/share/makepkg/util/parseopts.sh
+
+if [[ -t 2 && ! -o xtrace ]]; then
+    colorize
 fi
 
-# FIXME trickery for hyphen and absolute path arguments
-mapfile -t arg_path < <(readlink -e -- "$@")
+opt_short=
+opt_long=('no-prepare')
+opt_hidden=('dump-options' 'noprepare')
+
+if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
+    usage
+fi
+set -- "${OPTRET[@]}"
+
+while true; do
+    case "$1" in
+        --noprepare|--no-prepare) makepkg_args+=(--noprepare) ;;
+        --dump-options) printf -- '--%s\n' "${opt_long[@]}"
+			printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g'
+			exit ;;
+        --) shift; break ;;
+    esac
+    shift
+done
+
+if ! (($#)); then
+    usage
+fi
 
 tmp=$(mktemp -dt "$argv0".XXXXXXXX) || exit
 trap 'trap_exit' EXIT
 
-cd "$tmp" || exit
-aur jobs --nice 10 -j +2 --joblog makepkg_log --results '{#}_makepkg' \
-  'cd {}; makepkg --skipinteg --noprepare -od' >/dev/null 2>&1 ::: "${arg_path[@]}"
+aur jobs --nice 10 -j +2 --joblog "$tmp"/makepkg_log --results "$tmp/{#}_makepkg" \
+    srcver_pkgbuild_path '{}' "$tmp"/results "${makepkg_args[@]}" ::: "$@" >/dev/null 2>&1
 jobs_exit=$?
 
 if ((jobs_exit > 101)); then
-    printf >&2 '%s: error running "parallel", exit code %d\n' "$argv0" "$jobs_exit"
+    error "$argv0: error running 'parallel', exit code $jobs_exit"
     exit "$jobs_exit"
 fi
 
 if ((jobs_exit > 0)); then
-    printf >&2 '%s: failed to update %s packages\n' "$argv0" "$jobs_exit"
+    error "$argv0: failed to update $jobs_exit packages"
 
     while IFS=$'\t' read -r seq _ _ _ _ _ makepkg_exit _ command; do
         if ((makepkg_exit)); then
             printf >&2 '8<----\n'
             printf >&2 '%s\n' "$command"
 
-            cat "${seq}_makepkg" >&2
-            cat "${seq}_makepkg.err" >&2
+            cat "$tmp/${seq}_makepkg" >&2
+            cat "$tmp/${seq}_makepkg.err" >&2
         else
             continue
         fi
-    done < makepkg_log
+    done < "$tmp"/makepkg_log
 
     exit "$jobs_exit"
+else
+    cat "$tmp"/results
 fi
-
-find_pkgbuild_path "${arg_path[@]}" | while IFS= read -d $'\0' -r; do
-    get_pkgbuild_info "$REPLY"
-done
 
 # vim: set et sw=4 sts=4 ft=sh:

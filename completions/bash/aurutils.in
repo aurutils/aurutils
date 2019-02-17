@@ -3,11 +3,11 @@ _aur_completion()
     local cur prev words cword
     _get_comp_words_by_ref cur prev words cword
 
-    SUBCOMMANDS
+    DEFAULT_OPTS
 
     # complete subcommands
     if [[ $cword -eq 1 ]]; then
-        COMPREPLY=( $(compgen -W "${subcommands[*]}" -- "$cur") )
+        COMPREPLY=( $(compgen -W "${!default_cmds[*]}" -- "$cur") )
         return
     fi
 
@@ -21,12 +21,11 @@ _aur_completion()
     # is stored with an : suffix, because the option requires an argument.
     # Fallback to default (files) completion in such cases.
 
-    opts=($(_get_default_opts ${words[1]} ))
+    opts=(${default_cmds[${words[1]}]})
     if [[ ${opts[*]} != *$prev:* ]]; then
         COMPREPLY=($(compgen -W "${opts[*]%:}" -- "$cur"));
     fi
 }
 
-DEFAULT_OPTS
 
-complete -o bashdefault -o default -F _aur_completion aur
+complete -o bashdefault -o default -o nosort -F _aur_completion aur

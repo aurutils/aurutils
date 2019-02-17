@@ -1,41 +1,51 @@
-.TH AUR-DEPENDS 1 2018-04-29 AURUTILS
+.TH AUR-DEPENDS 1 2019-01-15 AURUTILS
 .SH NAME
 aur\-depends \- retrieve dependencies using aurweb
 
 .SH SYNOPSIS
 .SY "aur depends"
+.OP \-abnt
 .YS
 
 .SH DESCRIPTION
 .B aur\-depends
 takes package names from
 .IR stdin ,
-and solves the dependencies for those packages using aurweb. The
-output is in the following format:
+and solves the dependencies for those packages using aurweb.
 
-\fIpkgname\\tdepends\\tpkgbase\\tpkgver\fR
+.SH OPTIONS
+.TP
+.BR \-b ", " \-\-pkgbase
+Print dependency information (AUR-only) to stdout as
+.BR pkgbase ,
+in total order.
 
-.SH EXAMPLES
-Retrieve the total dependency order for the \fIplasma-desktop-git\fR
-package:
-.EX
+.TP
+.BR \-n ", " \-\-pkgname
+Print dependency information (AUR-only) to stdout as
+.BR pkgname ,
+in total order.
 
-  $ echo plasma-desktop-git | aur depends | cut -f1,2 | tsort | tac
+.TP
+.BR \-a ", " \-\-pkgname\-all
+Print dependency information to stdout as
+.BR pkgname ,
+in total order. All dependencies are printed.
 
-.EE
+.TP
+.BR \-t ", " \-\-table
+Output dependency information in the following format:
+
+.B pkgname\\\\tdepends\\\\tpkgbase\\\\tpkgver
 
 .SH NOTES
 Version information is ignored for dependencies. See
-.IR FS#54096 .
-
-Unlike
-.BR aur-graph (1),
-dependencies are kept in
-.B pkgname
-format.
+.B FS#54906
+for details.
 
 .SH SEE ALSO
 .BR aur (1),
+.BR aur\-graph (1),
 .BR aur\-rpc (1),
 .BR jq (1)
 
