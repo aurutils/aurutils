@@ -14,7 +14,7 @@ git_stat_patch() {
     git --no-pager log -O "$1" --patch --stat '..@{upstream}'
 }
 
-merge() {
+upstream_sync() {
     local orderfile=${GIT_DIR:-$PWD/.git}/orderfile
 
     # default to showing PKGBUILD in diffs first (#399)
@@ -53,7 +53,7 @@ fetch_git() {
 
         if [[ -d $pkg/.git ]]; then
             # avoid issues with filesystem boundaries (#274)
-            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" merge "$pkg" "$output"
+            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" upstream_sync "$pkg" "$output"
         else
             git clone "$uri"
         fi
