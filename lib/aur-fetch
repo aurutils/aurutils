@@ -15,7 +15,8 @@ git_stat_patch() {
 }
 
 upstream_sync() {
-    local orderfile=${GIT_DIR:-$PWD/.git}/orderfile
+    local pkg=$1 patch=${2:-/dev/stdout}
+    local orderfile=${GIT_DIR:-$PWD/$pkg/.git}/orderfile
 
     # default to showing PKGBUILD in diffs first (#399)
     if [[ ! -s $orderfile ]]; then
@@ -26,12 +27,8 @@ upstream_sync() {
     git fetch -v >&2
 
     if [[ $(git rev-parse HEAD) != $(git rev-parse '@{upstream}') ]]; then
-	# only print log on upstream changes
-	if [[ -f $1 ]]; then
-            git_stat_patch "$orderfile" >> "$1"
-	else
-	    git_stat_patch "$orderfile"
-	fi
+        # only print log on upstream changes
+        git_stat_patch "$orderfile" >> "$patch"
 
         # discard any local changes (#349)
         git reset --hard "HEAD@{upstream}" >&2
@@ -39,21 +36,15 @@ upstream_sync() {
 }
 
 fetch_git() {
-    local uri pkg output
+    local uri pkg output_dir=$1
 
     while IFS= read -r uri; do
         pkg=${uri##*/}   # strip path
         pkg=${pkg%%.git} # strip .git suffix
 
-        if [[ -d $1 ]]; then
-            output=$1/$pkg.patch
-	else
-	    output=
-        fi
-
         if [[ -d $pkg/.git ]]; then
             # avoid issues with filesystem boundaries (#274)
-            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" upstream_sync "$pkg" "$output"
+            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" upstream_sync "$pkg" "${output_dir:+$output_dir/$pkg.patch}"
         else
             git clone "$uri"
         fi
