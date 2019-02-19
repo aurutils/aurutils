@@ -152,7 +152,7 @@ fi
 case $log in
     directory)
 	# store patches in current directory by default
-        if [[ ! -d ${patch_dir-$startdir} ]]; then
+        if [[ ! -d ${patch_dir:=$startdir} ]]; then
             error "$argv0: '$patch_dir': not a directory"
             exit 21
         fi ;;
