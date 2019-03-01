@@ -286,7 +286,7 @@ if ((view)); then
 
         # ask for confirmation when using PAGER (#530)
         if [[ -v PAGER ]]; then
-            read -p $'Press any key to continue or ctrl+d to abort\n'
+            read -n 1 -s -r -p $'Press any key to continue or ctrl+d to abort\n'
         fi
     fi
 fi
