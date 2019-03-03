@@ -4,6 +4,7 @@ set -o errexit
 shopt -s extglob
 readonly argv0=sync
 readonly XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+readonly XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 readonly AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/$argv0}
 readonly AURDEST_SNAPSHOT=${AURDEST_SNAPSHOT:-$XDG_CACHE_HOME/aurutils/snapshot}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
@@ -91,15 +92,16 @@ opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:'
           'no-ver-shallow' 'no-view' 'print' 'provides' 'rm-deps'
           'sign' 'temp' 'tar' 'upgrades' 'git' 'pkgver' 'rebuild'
           'rebuild-tree' 'build-command:' 'ignore-file:')
-opt_hidden=('dump-options' 'allan' 'ignorearch' 'noconfirm' 'nover'
-            'nograph' 'nover-shallow' 'noview' 'rebuildtree' 'rmdeps')
+opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile'
+            'noconfirm' 'nover' 'nograph' 'nover-shallow' 'noview'
+            'rebuildtree' 'rmdeps')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
     usage
 fi
 set -- "${OPTRET[@]}"
 
-unset pkg pkg_i
+unset pkg pkg_i ignore_file
 while true; do
     case "$1" in
         -d|--database)        shift; repo_args+=(-d "$1") ;;
@@ -111,7 +113,7 @@ while true; do
         --bind-rw)            shift; makechrootpkg_args+=(-d "$1") ;;
         --ignore)             shift; IFS=, read -a pkg -r <<< "$1"
                               pkg_i+=("${pkg[@]}") ;;
-        --ignore-file)        shift; mapfile -t pkg_i < "$1" ;;
+        --ignore?(-)file)     shift; ignore_file=$1 ;;
         --root)               shift; repo_args+=(-r "$1") ;;
         -A|--ignore?(-)arch)  makepkg_args+=(--ignorearch)
                               makechrootpkg_makepkg_args+=(-A) ;;
@@ -148,6 +150,11 @@ done
 tmp=$(mktemp -dt "$argv0".XXXXXXXX)
 tmp_view=$(mktemp -dt view.XXXXXXXX)
 trap 'trap_exit' EXIT
+
+# append contents of ignore file
+if [[ -f ${ignore_file=$XDG_CONFIG_HOME/aurutils/sync/ignore} ]]; then
+    while read -r i; do pkg_i+=("$i"); done < "$ignore_file"
+fi
 
 if ((rotate)); then
     if { hash rot13 && target=$(aur pkglist | shuf -n 1); } 2>/dev/null; then

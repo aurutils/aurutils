@@ -52,7 +52,8 @@ separating them with a comma, or by repeating the \fB\-\-ignore\fR option.
 .BI \-\-ignore\-file= FILE
 Ignore package upgrades listed in
 .IR FILE .
-Each package name should be specified on a separate line.
+Each package name should be specified on a separate line. Defaults to
+.BR $XDG_CONFIG_HOME/aurutils/sync/ignore .
 
 .TP
 .BR \-\-nograph ", " \-\-no\-graph
