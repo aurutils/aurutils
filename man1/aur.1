@@ -147,8 +147,10 @@ they are copied to a cache directory (usually
 .IR /var/cache/pacman/pkg )
 by
 .BR pacman .
-Besides using additional space, this may cause checksum mismatches
-between built packages and any cached versions. (See GitHub issue #85.)
+Besides using additional space, this may result in checksum mismatches
+when rebuilding packages without increasing
+.BR pkgrel .
+(See GitHub issue #85)
 
 There are several ways to avoid this. A first approach is to set the
 repository path as a
@@ -170,9 +172,11 @@ as follows:
   CleanMethod = KeepCurrent
 
 .EE
-Packages may still be deleted unconditionally through
-.BR "pacman -Scc" .
-An alternative is to use
+Note that
+.BR "pacman -Scc"
+will remove packages regardless of the
+.B CleanMethod
+setting. An alternative is to use
 .BR "mount --bind " and
 remount the local repository to a CacheDir path. For example:
 .EX
