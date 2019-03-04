@@ -358,8 +358,9 @@ in $PATH, for example
   find "$AURDEST" -name .git -execdir git clean -xf \\;
   
   # Print directories which do not contain a PKGBUILD file
-  grep -Fxvf <(find "$AURDEST" -maxdepth 2 -name PKGBUILD -printf '%h\\n') \\
-             <(printf '%s\\n' "$AURDEST"/*)
+  for d in "$AURDEST"/*; do
+    [[ -f $d/PKGBUILD ]] || printf '%s\\n' "$d"
+  done
 .EE
 
 .BR aur\-remove
