@@ -176,24 +176,16 @@ Note that
 .BR "pacman -Scc"
 will remove packages regardless of the
 .B CleanMethod
-setting. An alternative is to use
-.BR "mount --bind " and
-remount the local repository to a CacheDir path. For example:
-.EX
+setting.
 
-  # mount --bind /home/custompkgs /var/cache/pacman/custom
-
-.EE
-To avoid accidental modification, this mount can then be made read-only:
-.EX
-
-  # mount -o remount,bind,ro /home/custompkgs /var/cache/pacman/custom
-
-.EE
-.\" A third option is to use aur-build --results and symlink the
-.\" built packages. However, this assumes that pacman -Sc uses unlink(2)
-.\" to remove packages (i.e. it does not follow symbolic links). Such
-.\" behavior is not documented and may change at any time.
+An alternative is to use
+.B aur-build \-\-results
+and symlink the built packages. However, this assumes that
+.B pacman \-Sc
+uses
+.BR unlink (2)
+to remove packages (i.e. it does not follow symbolic links). Such
+behavior is not documented and may change at any time.
 
 .SH EXAMPLES
 In this section, we assume that
