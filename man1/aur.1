@@ -178,15 +178,6 @@ will remove packages regardless of the
 .B CleanMethod
 setting.
 
-An alternative is to use
-.B aur-build \-\-results
-and symlink the built packages. However, this assumes that
-.B pacman \-Sc
-uses
-.BR unlink (2)
-to remove packages (i.e. it does not follow symbolic links). Such
-behavior is not documented and may change at any time.
-
 .SH EXAMPLES
 In this section, we assume that
 .BR bash (1)
