@@ -6,6 +6,7 @@ aur\-repo\-filter \- filter packages in the Arch Linux repositories
 .SY "aur repo-filter"
 .OP \-a
 .OP \-d database
+.OP \-\-sysroot
 .YS
 
 .SH DESCRIPTION
@@ -38,13 +39,10 @@ Query all available pacman repositories.
 Query a given pacman repository.  Multiple repositories may be
 specified by repeating this argument.
 
-.SH NOTES
-Due to
-.BR expac (1)
-limitations,
-.BR aur\-repo\-filter (1)
-only works with the local pacman configuration in
-.BR /etc/pacman.conf .
+.TP
+.BI \-\-sysroot= NAME
+Set an alternate system root. See
+.BR pacutils\-sysroot (7).
 
 .SH SEE ALSO
 .BR aur (1),
