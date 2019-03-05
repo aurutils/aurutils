@@ -219,6 +219,7 @@ cut -f2 --complement depends | sort -u >pkginfo
       # note: AUR cannot be queried by pkgbase (FS#57230)
       cut -f1,3 pkginfo | aur vercmp -p db_info -c >current
 
+      # shellcheck disable=SC2002
       case $chkver_depth in
           1) cat current | complement argv ;;
           2) cat current ;;
@@ -286,7 +287,7 @@ if ((view)); then
 
         # ask for confirmation when using PAGER (#530)
         if [[ -v PAGER ]]; then
-            read -p $'Press Return to continue or Ctrl+d to abort\n'
+            read -rp $'Press Return to continue or Ctrl+d to abort\n'
         fi
     fi
 fi
