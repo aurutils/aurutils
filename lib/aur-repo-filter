@@ -4,21 +4,26 @@ readonly argv0=repo-filter
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 readonly arch_repo=(core extra testing community{,-testing} multilib{,-testing})
 
+# Default arguments
+sysroot=/
+
 # The command line will hit ARG_MAX on approximately 70k packages;
 # spread arguments with xargs (and printf, as a shell built-in).
-print_args() {
-    printf -- '--satisfies=%s\n' "$@"
-}
-
 satisfies() {
-    #global sift_args
-    xargs -a <(print_args "$@") pacsift --null "${sift_args[@]}" <&-
+    #global sysroot sift_args
+    xargs -a <(printf -- '--satisfies=%s\n' "$@") \
+          pacsift --sysroot="$sysroot" "${sift_args[@]}" <&-
 }
 
 # Use null delimimitation as repository names may contain (apart from
 # newlines) arbitrary characters.
 provides() {
-    xargs -0r expac '%n %R %S' -Sv
+    # global sysroot
+    pacinfo --sysroot="$sysroot" | awk -F'[:<=>]' '
+        /Name:/     { pkgname=$2; print $2, $2; }
+        /Provides:/ { print pkgname, $2; }
+        /Replaces:/ { print pkgname, $2; }
+    '
 }
 
 usage() {
@@ -34,7 +39,7 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 opt_short='d:a'
-opt_long=('all' 'sync' 'database:' 'repo:')
+opt_long=('all' 'sync' 'database:' 'repo:' 'sysroot:')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -47,6 +52,7 @@ while true; do
     case "$1" in
         -a|--all|--sync) sync_repo=1 ;;
         -d|--database)   shift; argv_repo+=("$1") ;;
+        --sysroot)       shift; sysroot=${1%%/} ;;
         --dump-options)  printf -- '--%s\n' "${opt_long[@]}" ;
                          printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                          exit ;;
@@ -54,6 +60,11 @@ while true; do
     esac
     shift
 done
+
+if ! [[ -e ${sysroot}/etc/pacman.conf ]]; then
+    error "$argv0: invalid sysroot (${sysroot}/etc/pacman.conf does not exist)"
+    exit 2
+fi
 
 if ((sync_repo)); then
     sift_args+=(--sync)
@@ -100,28 +111,23 @@ fi
 # checks for a package satisfying this condition. Results are printed
 # as "repository/package", and piped to expac to relate the names of
 # the original provides to its corresponding package(s).
-satisfies "${strset[@]}" | provides | while read -ra array; do
-    package=${array[0]}
-
+satisfies "${strset[@]}" | provides | while read -r package virtual; do
     if [[ ${pkgset[$package]} ]]; then
         printf '%s\n' "$package"
     fi
 
-    for ((i = 1; i < ${#array[@]}; i++)); do
-        virtual=${array[$i]}
+    if [[ $virtual != "$package" ]]; then
+        version=${pkgset[$virtual]}
+    else
+        continue
+    fi
 
-        case $virtual in
-            None) continue ;;
-               *) version=${pkgset[$virtual]} ;;
-        esac
-
-        case $version in
-            1) plain "dependency $virtual satisfied by $package" >&2
-               printf '%s\n' "$virtual" ;;
-            *) plain "dependency $virtual$version satisfied by $package" >&2
-               printf '%s\n' "$virtual" ;;
-        esac
-    done
+    case $version in
+        1) plain "dependency $virtual satisfied by $package" >&2
+           printf '%s\n' "$virtual" ;;
+        *) plain "dependency $virtual$version satisfied by $package" >&2
+           printf '%s\n' "$virtual" ;;
+    esac
 done
 
 # vim: set et sw=4 sts=4 ft=sh:
