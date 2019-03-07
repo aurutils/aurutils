@@ -1,11 +1,40 @@
 '\" t
-.TH AUR 1 2019-01-24 AURUTILS
+.TH AUR 1 2019-03-03 AURUTILS
 .SH NAME
 aur \- helper tool for the arch user repository
 
-.SH PROGRAMS
+.SH DESCRIPTION
+.BR aur (1)
+is the command wrapper for
+.BR aurutils ,
+a collection of scripts to automate usage of the Arch User
+Repository. Different tasks such as update checks, package searching,
+and computing dependencies are split to seperate commands.
+
+The chosen approach for managing packages is local pacman
+repositories, instead of foreign (installed by
+.BR "pacman -U" )
+packages.
+
+A brief overview of local repositories is given in the
+.B "CREATING A LOCAL REPOSITORY"
+section.
+
+.SH AUR COMMANDS
 The below gives a short overview; see the respective documentation for
 details.
+.BR aur (1)
+searches for commands in
+.BR /usr/lib/aurutils/
+by default, followed by
+.B $PATH
+as set in the environment.
+
+A different path may be set at build time through the
+.B AUR_LIB_DIR
+macro, for example
+.IR /usr/local/lib/aurutils:/usr/lib/aurutils .
+
 .P
 .BR aur\-build (1)
 .RS 4
@@ -310,6 +339,49 @@ Build a package for a different architecture, here \fIi686\fR:
 
   $ setarch i686 aur sync -c --repo=custom_i686 tclkit
 
+.EE
+
+.SS Custom commands
+The following scripts are examples of custom commands added anywhere
+in $PATH, for example
+.IR /usr/local/bin .
+
+.BR aur\-gc
+
+.EX
+  #!/bin/bash
+  # Remove unused build files in aur-sync cache
+  readonly XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
+  readonly AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
+  
+  # Assumes build files were retrieved through git(1)
+  find "$AURDEST" -name .git -execdir git clean -xf \\;
+  
+  # Print directories which do not contain a PKGBUILD file
+  for d in "$AURDEST"/*; do
+    [[ -f $d/PKGBUILD ]] || printf '%s\\n' "$d"
+  done
+.EE
+
+.BR aur\-remove
+
+.EX
+  #!/bin/bash
+  # alternative to 'repoctl remove' which loops over all local repositories
+  package=$1
+
+  aur repo --repo-list | while read -r repo_path; do
+    # remove package from database
+    repo-remove "$(readlink -e "$repo_path")" "$package"
+
+    # remove all versions of package
+    find "$(dirname "$repo_path")" -name "$package*" -delete
+  done
+
+  # remove package from system
+  if expac -Q '%n' "$package" >/dev/null; then
+    sudo pacman -R "$package"
+  fi
 .EE
 
 .SS Using third-party helpers
