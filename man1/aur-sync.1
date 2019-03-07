@@ -172,8 +172,14 @@ The location of the repository root. Defaults to the
 value of the configured repository.
 
 .TP
+.B \-R
+Remove old package files from disk when updating their entry in the
+database
+.RB ( "aur\-build \-R" ).
+
+.TP
 .BR \-u ", " \-\-upgrades
-Update all AUR packages in a local repository that are obsolete.
+Update all obsolete AUR packages in a local repository.
 
 .SS makepkg
 The default build command is
