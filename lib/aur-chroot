@@ -17,21 +17,28 @@ bindmounts_ro=()
 # default options
 prepare=1 build=1
 
-ignore_defaults() {
-    awk '/^RootDir/ || /^DBPath/ || /^HookDir/ || /^GPGDir/ || /^LogFile/ {
+# XXX: exit status of pacman-conf is lost; return to pacconf --raw?
+pacman_conf_raw() {
+    local pacman_conf="$1"
+    shift
+
+    pacman-conf --config "$pacman_conf" | awk '
+    /^RootDir/ || /^DBPath/ || /^HookDir/ || /^GPGDir/ || /^LogFile/ {
         next
     } { print }'
 }
 
+# XXX: same pacman configuration is queried several times (cf. #490)
 host_with_cache() {
-    local pacman_conf="$1"; shift
+    local host_conf="$1" repo
+    shift
 
     printf '[%s]\n' options
-    pacman-conf --config "$pacman_conf" --verbose CacheDir
+    pacman-conf --config "$host_conf" --verbose CacheDir
 
-    for a in "$@"; do
-        printf '[%s]\n' "$a"
-        pacman-conf --config "$pacman_conf" --repo "$a"
+    for repo in "$@"; do
+        printf '[%s]\n' "$repo"
+        pacman-conf --config "$host_conf" --repo "$repo"
     done
 }
 
@@ -49,7 +56,7 @@ usage() {
 source /usr/share/makepkg/util/parseopts.sh
 
 opt_short='d:C:D:M:'
-opt_long=('database' 'directory' 'pacman-conf' 'makepkg-conf' 'no-build' 'no-prepare')
+opt_long=('database:' 'directory:' 'pacman-conf:' 'makepkg-conf:' 'host-conf:' 'no-build' 'no-prepare')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -58,18 +65,19 @@ fi
 set -- "${OPTRET[@]}"
 
 # FIXME: add --sysroot to set pacconf host, see pacutils-sysroot(7)
-unset pacman_conf makepkg_conf host_repo server
+unset pacman_conf host_pacman_conf makepkg_conf host_repo server
 while true; do
     case "$1" in
-        -d|--database) shift; host_repo+=("$1") ;;
-        -D|--directory) shift; directory=$1 ;;
-        -C|--pacman-conf) shift; pacman_conf=$1 ;;
+        -d|--database)     shift; host_repo+=("$1") ;;
+        -D|--directory)    shift; directory=$1 ;;
+        -C|--pacman-conf)  shift; pacman_conf=$1 ;;
         -M|--makepkg-conf) shift; makepkg_conf=$1 ;;
-        --no-build)     build=0 ;;
-        --no-prepare)   prepare=0 ;;
-        --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
-                        printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
-                        exit ;;
+        --host-conf)       shift; host_pacman_conf=$1 ;;
+        --no-build)        build=0 ;;
+        --no-prepare)      prepare=0 ;;
+        --dump-options)    printf -- '--%s\n' "${opt_long[@]}" ;
+                           printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
+                           exit ;;
         --) shift; break ;;
     esac
     shift
@@ -86,23 +94,22 @@ fi
 # baseline configuration
 pacman_conf=${pacman_conf-/usr/share/devtools/pacman-multilib.conf}
 makepkg_conf=${makepkg_conf-/usr/share/devtools/makepkg-$machine.conf}
+host_pacman_conf=${host_pacman_conf-/etc/pacman.conf}
 
 # CacheDir will be replaced by devtools (#416)
-host_with_cache "$pacman_conf" "${host_repo[@]}" >"$tmp"/custom.conf
+host_with_cache "$host_pacman_conf" "${host_repo[@]}" > "$tmp"/custom.conf
 
 # bind mount all file:// paths to container (#461)
 while read -r key _ value; do
     case $key=$value in
-        Server=file://*)
-            bindmounts_ro+=("--bind-ro=${value#file://}")
-            makechrootpkg_bindmounts_ro+=(-D "${value#file://}") ;;
+        Server=file://*) bindmounts_ro+=("--bind-ro=${value#file://}")
+                         makechrootpkg_bindmounts_ro+=(-D "${value#file://}") ;;
     esac
 done < "$tmp"/custom.conf
 
 if ((prepare)); then
     # do not print DBPath (#412)
-    pacman-conf -c "$pacman_conf" | ignore_defaults \
-        | cat - "$tmp"/custom.conf >"$tmp"/pacman.conf
+    pacman_conf_raw "$pacman_conf" | cat - "$tmp"/custom.conf > "$tmp"/pacman.conf
 
     if [[ -f $directory/root/.arch-chroot ]]; then
         # locking is done by systemd-nspawn
