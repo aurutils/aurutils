@@ -43,12 +43,15 @@ completion.
 .BI \-C " FILE" "\fR,\fP \-\-pacman\-conf=" FILE
 The
 .BR pacman.conf (5)
-file used inside the container. Defaults to devtools'
-.IR pacman-extra.conf .
+file used inside the container. Defaults to
+.BR /usr/share/devtools/pacman\-multilib.conf .
 This file is processed with
-.BR pacconf (1)
-to include necessary information from the host, such as mirrors. If a
-local repository name is specified with
+.BR pacman\-conf
+to include necessary information from the host, such as mirrors.
+
+Due to devtools limitations, it should include at least one
+.B CacheDir
+entry (commented or not). If a local repository name is specified with
 .BR \-d ,
 its configuration is appended to this file.
 
@@ -56,15 +59,22 @@ its configuration is appended to this file.
 .BI \-\-host\-conf= FILE
 The
 .BR pacman.conf (5)
-file used on the host. Defaults to
+file used on the host to retrieve local repository
+information. Defaults to
 .IR /etc/pacman.conf .
+
+Due to devtools limitations, the values of
+.B CacheDir
+in the container configuration are always set to those of
+.B /etc/pacman.conf
+regardless of this setting.
 
 .TP
 .BI \-M " FILE" "\fR,\fP \-\-makepkg\-conf=" FILE
 The
 .BR makepkg.conf (5)
-file used inside the container. Defaults to devtools'
-.IR makepkg\-<machine>.conf .
+file used inside the container. Defaults to
+.IR /usr/share/devtools/makepkg\-<machine>.conf .
 
 .TP
 .B \-\-no\-build
@@ -196,7 +206,6 @@ for
 .SH SEE ALSO
 .BR aur (1),
 .BR aur\-build (1),
-.BR pacconf (1),
 .BR pacman (1),
 .BR makepkg.conf (5),
 .BR pacman.conf (5),
