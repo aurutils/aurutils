@@ -33,8 +33,10 @@ host_with_cache() {
     local host_conf="$1" repo
     shift
 
-    printf '[%s]\n' options
-    pacman-conf --config "$host_conf" --verbose CacheDir
+    # The following lines have no effect, as arch-nspawn unconditionally
+    # replaces CacheDir with values from "pacman-conf -v".
+    #printf '[%s]\n' options
+    #pacman-conf --config "$host_conf" --verbose CacheDir
 
     for repo in "$@"; do
         printf '[%s]\n' "$repo"
