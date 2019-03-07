@@ -24,12 +24,14 @@ ignore_defaults() {
 }
 
 host_with_cache() {
+    local pacman_conf="$1"; shift
+
     printf '[%s]\n' options
-    pacman-conf --verbose CacheDir
+    pacman-conf --config "$pacman_conf" --verbose CacheDir
 
     for a in "$@"; do
         printf '[%s]\n' "$a"
-        pacman-conf --repo "$a"
+        pacman-conf --config "$pacman_conf" --repo "$a"
     done
 }
 
@@ -86,7 +88,7 @@ pacman_conf=${pacman_conf-/usr/share/devtools/pacman-multilib.conf}
 makepkg_conf=${makepkg_conf-/usr/share/devtools/makepkg-$machine.conf}
 
 # CacheDir will be replaced by devtools (#416)
-host_with_cache "${host_repo[@]}" >"$tmp"/custom.conf
+host_with_cache "$pacman_conf" "${host_repo[@]}" >"$tmp"/custom.conf
 
 # bind mount all file:// paths to container (#461)
 while read -r key _ value; do

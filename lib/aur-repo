@@ -43,21 +43,22 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset mode db_name db_root status_file
+unset mode db_name db_root status_file pacman_conf
 while true; do
     case $1 in
-        -d|--database)  shift; db_name=$1 ;;
-        -r|--root)      shift; db_root=$1 ;;
-        -a|--all)       mode=list_upgrades
-                        vercmp_args+=(-a) ;;
-        -l|--list)      mode=list_packages ;;
-        -u|--upgrades)  mode=list_upgrades ;;
-        -S|--sync)      modifier=sync ;;
-        --repo-list)    mode=repo_list ;;
-        --status-file)  shift; status_file=$1 ;;
-        --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
-                        printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
-                        exit ;;
+        -d|--database)      shift; db_name=$1 ;;
+        -r|--root)          shift; db_root=$1 ;;
+        -a|--all)           mode=list_upgrades
+                            vercmp_args+=(-a) ;;
+        -C|--pacman-conf)   shift; pacman_conf=$1 ;;
+        -l|--list)          mode=list_packages ;;
+        -u|--upgrades)      mode=list_upgrades ;;
+        -S|--sync)          modifier=sync ;;
+        --repo-list)        mode=repo_list ;;
+        --status-file)      shift; status_file=$1 ;;
+        --dump-options)     printf -- '--%s\n' "${opt_long[@]}" ;
+                            printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
+                            exit ;;
         --) shift; break ;;
     esac
     shift
@@ -96,7 +97,7 @@ while read -r key _ value; do
             esac
             ;;
     esac
-done < <(pacman-conf)
+done < <(pacman-conf --config "${pacman_conf:-/etc/pacman.conf}")
 
 # exclusive modes
 case $mode in
