@@ -15,7 +15,7 @@ makepkg_args=(--clean --syncdeps)
 repo_add_args=()
 
 # default options
-chroot=0 delta=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 results=0
+chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 results=0
 
 conf_single() {
     awk -v "repo=[$1]" '
@@ -108,10 +108,6 @@ if (($#)); then
     fi
 fi
 
-if ((delta)); then
-    repo_add_args+=(-d)
-fi
-
 # assign environment variables
 : "${db_name=$AUR_REPO}"
 : "${db_root=$AUR_DBROOT}"
@@ -181,12 +177,14 @@ else
     fi
 fi
 
-# configuration for container builds
+# Configuration for container builds. This step is run before the
+# build to save time when the (root) container has not been updated
+# for a longer period of time.
 if ((chroot)); then
     aur chroot --no-build "${chroot_args[@]}"
 fi
 
-# configuration for host builds
+# Configuration for host builds.
 pacman-conf --config "${p_conf:-/etc/pacman.conf}" | conf_single "$db_name" >"$tmp"/custom.conf
 
 # PKGDEST is defined later through makepkg.conf (#513)
