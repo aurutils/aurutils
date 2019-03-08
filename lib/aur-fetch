@@ -53,7 +53,8 @@ fetch_git() {
             # avoid issues with filesystem boundaries (#274)
             GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" merge_upstream "$pkg" "$log_dir"
         else
-            git clone "$uri"
+            # abort if directory is a snapshot
+            git clone "$uri" || return
         fi
     done
 }

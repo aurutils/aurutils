@@ -215,7 +215,7 @@ fi
 cut -f2 --complement depends | sort -u >pkginfo
 
 { if ((${#pkg_i[@]})); then
-      printf >&2 'warning: ignoring %s package\n' "${pkg_i[@]}"
+      warning "$argv0: ignoring %s package" "${pkg_i[@]}"
       printf '%s\n' "${pkg_i[@]}"
   fi
 
@@ -260,7 +260,7 @@ fi
 
 if ((download)); then
     msg "Retrieving package files" >&2
-    aur jobs -Xj +3 --nice 10 --halt soon,fail=1 --keep-order \
+    aur jobs -Xj +3 --nice 10 --halt now,fail=1 --keep-order \
         aur fetch "${fetch_args[@]}" :::: "$tmp"/queue
 fi
 
