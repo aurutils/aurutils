@@ -26,13 +26,6 @@ pacman_conf_raw() {
     } { print }'
 }
 
-host_local_repo() {
-    while read -r; do
-        printf '[%s]\n' "$REPLY"
-        pacman-conf --config "$1" --repo "$REPLY"
-    done
-}
-
 trap_exit() {
     if ! [[ -o xtrace ]]; then
         rm -rf "$tmp"
@@ -88,7 +81,10 @@ makepkg_conf=${makepkg_conf-/usr/share/devtools/makepkg-$machine.conf}
 host_pacman_conf=${host_pacman_conf-/etc/pacman.conf}
 
 # CacheDir will be replaced by devtools (#416)
-printf '%s\n' "${host_repo[@]}" | host_local_repo "$host_pacman_conf" > "$tmp"/custom.conf
+for repo in "${host_repo[@]}"; do
+    printf '[%s]\n' "$repo"
+    pacman-conf --config "$host_pacman_conf" --repo "$repo"
+done > "$tmp"/custom.conf
 
 # bind mount all file:// paths to container (#461)
 while read -r key _ value; do
