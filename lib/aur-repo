@@ -9,16 +9,10 @@ vercmp_args=()
 
 db_namever() {
     awk '/%NAME%/ {
-        getline
-        printf("%s\t", $1)
+        getline; pkgname=$1
     } /%VERSION%/ {
-        getline
-        printf("%s\n", $1)
+        getline; printf("%s\t%s\n", pkgname, $1)
     }'
-}
-
-ex_namever() {
-    awk -F"/" -v rname="^$1/" '$0 ~ rname { print $NF }'
 }
 
 usage() {
@@ -34,8 +28,9 @@ if [[ -t 2 && ! -o xtrace ]]; then
 fi
 
 ## option parsing
-opt_short='d:r:alSu'
-opt_long=('all' 'database:' 'list' 'root:' 'upgrades' 'repo-list' 'sync')
+opt_short='c:d:r:aluS'
+opt_long=('database:' 'pacman-conf:' 'root:'
+          'all' 'list' 'repo-list' 'sync' 'upgrades')
 opt_hidden=('dump-options' 'status-file:')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -48,12 +43,11 @@ while true; do
     case $1 in
         -d|--database)      shift; db_name=$1 ;;
         -r|--root)          shift; db_root=$1 ;;
-        -a|--all)           mode=list_upgrades
-                            vercmp_args+=(-a) ;;
-        -C|--pacman-conf)   shift; pacman_conf=$1 ;;
+        -c|--pacman-conf)   shift; pacman_conf=$1 ;;
+        -a|--all)           mode=list_upgrades; vercmp_args+=(-a) ;;
         -l|--list)          mode=list_packages ;;
-        -u|--upgrades)      mode=list_upgrades ;;
         -S|--sync)          modifier=sync ;;
+        -u|--upgrades)      mode=list_upgrades ;;
         --repo-list)        mode=repo_list ;;
         --status-file)      shift; status_file=$1 ;;
         --dump-options)     printf -- '--%s\n' "${opt_long[@]}" ;
@@ -74,6 +68,9 @@ while read -r key _ value; do
     case $key=$value in
         \[*\]*)
             section=${key:1:-1}
+            ;;
+        DBPath=)
+            pacman_dbpath=$key
             ;;
         Server=file://*)
             server=${value#file://}
@@ -150,7 +147,7 @@ case $modifier in
     #requires
     # - [$db_name] (pacman.conf)
     sync)
-        contents() { expac -Sv '%r/%n\t%v' | ex_namever "$db_name"; }
+        contents() { bsdcat "$pacman_dbpath/sync/$db_name".db | db_namever; }
         ;;
 esac
 

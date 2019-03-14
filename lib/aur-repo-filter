@@ -53,11 +53,6 @@ while true; do
     shift
 done
 
-if ! [[ -e ${sysroot}/etc/pacman.conf ]]; then
-    error "$argv0: invalid sysroot (${sysroot}/etc/pacman.conf does not exist)"
-    exit 2
-fi
-
 if ((sync_repo)); then
     sift_args+=(--sync)
 elif [[ -v argv_repo ]]; then
