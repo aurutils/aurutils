@@ -123,16 +123,6 @@ The path pointing to the container. (\fBaur build \-D\fR)
 Do not download package files.
 
 .TP
-.BR \-g ", " \-\-git
-Clone AUR repositories with
-.BR git-clone (1).
-
-.TP
-.BR \-t ", " \-\-tar
-Download AUR snapshots (\fIpkgbase.tar.gz\fR) and extract them with
-.BR tar (1).
-
-.TP
 .BR \-\-noview ", " \-\-no\-view
 Do not present build files for inspection.
 
@@ -302,13 +292,6 @@ works around this by stripping the
 prefix from packages and removing
 .I gcc\-multilib
 if the i686 architecture is detected.
-
-.I tar
-snapshots are extracted to the
-.I $AURDEST_SNAPSHOT
-directory in order to avoid conflicts with
-.BR git (1)
-repositories.
 
 .SH SEE ALSO
 .BR aur (1),

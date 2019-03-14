@@ -6,12 +6,10 @@ readonly argv0=sync
 readonly XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 readonly XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 readonly AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/$argv0}
-readonly AURDEST_SNAPSHOT=${AURDEST_SNAPSHOT:-$XDG_CACHE_HOME/aurutils/snapshot}
 readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default arguments
 build_args=()
-fetch_args=()
 makechrootpkg_args=(-cu)
 makechrootpkg_makepkg_args=()
 makepkg_args=(--clean --syncdeps)
@@ -21,7 +19,7 @@ repo_args=()
 build=1 chkver_depth=2 download=1 view=1 provides=0 graph=1
 
 # default options (disabled)
-chroot=0 rotate=0 snapshot=0 update=0
+chroot=0 rotate=0 update=0
 
 lib32() {
     awk -v arch="$(uname -m)" '{
@@ -73,7 +71,7 @@ trap_exit() {
 }
 
 usage() {
-    plain "usage: $argv0 [-d repo] [-CDM path] [-AcfgkLnpPstTu] [--] pkgname..." >&2
+    plain "usage: $argv0 [-d repo] [-CDM path] [-AcfkLnpPsTu] [--] pkgname..." >&2
     exit 1
 }
 
@@ -85,13 +83,13 @@ if [[ -t 2 && ! -o xtrace ]]; then
     colorize
 fi
 
-opt_short='B:C:d:D:M:AcfgkLnpPrRstTu'
+opt_short='B:C:d:D:M:AcfkLnpPrRsTu'
 opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:'
           'root:' 'makepkg-conf:' 'pacman-conf:' 'chroot' 'continue'
           'force' 'ignore-arch' 'log' 'no-confirm' 'no-ver' 'no-graph'
           'no-ver-shallow' 'no-view' 'print' 'provides' 'rm-deps'
-          'sign' 'temp' 'tar' 'upgrades' 'git' 'pkgver' 'rebuild'
-          'rebuild-tree' 'build-command:' 'ignore-file:')
+          'sign' 'temp' 'upgrades' 'pkgver' 'rebuild' 'rebuild-tree'
+          'build-command:' 'ignore-file:')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile'
             'noconfirm' 'nover' 'nograph' 'nover-shallow' 'noview'
             'rebuildtree' 'rmdeps')
@@ -119,7 +117,6 @@ while true; do
                               makechrootpkg_makepkg_args+=(-A) ;;
         -c|--chroot)          chroot=1; build_args+=(-c) ;;
         -f|--force)           build_args+=(-f) ;;
-        -g|--git)             snapshot=0 ;;
         -L|--log)             makepkg_args+=(--log) ;;
         -P|--provides)        provides=1 ;;
         -n|--no?(-)confirm)   makepkg_args+=(--noconfirm) ;;
@@ -127,7 +124,6 @@ while true; do
         -r|--rm?(-)deps)      makepkg_args+=(--rmdeps) ;;
         -R)                   build_args+=(-R) ;;
         -s|--sign)            build_args+=(-sv) ;;
-        -t|--tar)             snapshot=1 ;;
         -T|--temp)            makechrootpkg_args+=(-T) ;;
         -u|--upgrades)        update=1 ;;
         --allan)              rotate=1 ;;
@@ -169,15 +165,7 @@ if ! (($# + update)); then
     exit 1
 fi
 
-if ((snapshot)); then
-    aur_workdir=$AURDEST_SNAPSHOT
-    fetch_args=(-L "$tmp_view" -t)
-else
-    aur_workdir=$AURDEST
-    fetch_args=(-L "$tmp_view" -g)
-fi
-
-mkdir -p "$aur_workdir"
+mkdir -p "$AURDEST"
 cd_safe "$tmp"
 
 # retrieve path to local repo (#448)
@@ -252,7 +240,7 @@ fi
 cut -f1,2 pkginfo | select_pkgbase - queue_1 >queue
 
 if [[ -s queue ]]; then
-    cd_safe "$aur_workdir"
+    cd_safe "$AURDEST"
 else
     plain "there is nothing to do" >&2
     exit
@@ -261,7 +249,7 @@ fi
 if ((download)); then
     msg "Retrieving package files" >&2
     aur jobs -Xj +3 --nice 10 --halt now,fail=1 --keep-order \
-        aur fetch "${fetch_args[@]}" :::: "$tmp"/queue
+        aur fetch -L "$tmp_view" :::: "$tmp"/queue
 fi
 
 # link build files in the queue (absolute links)
