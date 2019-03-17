@@ -10,7 +10,7 @@ source=('git+https://github.com/AladW/aurutils')
 sha256sums=('SKIP')
 conflicts=('aurutils')
 provides=("aurutils=${pkgver%%.r*}")
-depends=('git' 'jq' 'expac' 'pacutils' 'parallel' 'wget')
+depends=('git' 'jq' 'pacutils' 'parallel' 'wget')
 makedepends=('git')
 optdepends=('bash-completion: bash completion'
             'devtools: aur-chroot'

@@ -101,7 +101,7 @@ fi
 
 # Standard input is taken as "provides[<cmp><version>]", where pacsift
 # checks for a package satisfying this condition. Results are printed
-# as "repository/package", and piped to expac to relate the names of
+# as "repository/package", and piped to pacinfo to relate the names of
 # the original provides to its corresponding package(s).
 satisfies "${strset[@]}" | provides | while read -r package virtual; do
     if [[ ${pkgset[$package]} ]]; then
