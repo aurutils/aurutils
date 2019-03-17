@@ -4,9 +4,10 @@ aur\-repo \- manage local repositories
 
 .SH SYNOPSIS
 .SY "aur repo"
+.OP \-c config
 .OP \-d database
 .OP \-r root
-.OP \-alSu
+.OP \-aluS
 .OP \-\-repo\-list
 .YS
 
@@ -33,6 +34,17 @@ through the
 environment variable.
 
 .TP
+.BR \-a ", " \-\-all
+Use
+.B "aur\-vercmp --all"
+when checking for updates. Implies
+.BR \-\-upgrades .
+
+.TP
+.BR \-c ", " \-\-pacman\-conf
+
+
+.TP
 .BR \-l ", " \-\-list
 List the contents of the repository in
 .BI pkgname\tpkgver
@@ -43,22 +55,15 @@ option is not enabled, the repository is queried directly through the
 file on-disk.
 
 .TP
+.BR \-S ", " \-\-sync
+Query repositories through
+.BR pacman (8).
+
+.TP
 .BR \-u ", " \-\-upgrades
 Use
 .BR aur\-vercmp (1)
 to check a pacman repository for updates.
-
-.TP
-.BR \-a ", " \-\-all
-Use
-.B "aur\-vercmp --all"
-when checking for updates. Implies
-.BR \-\-upgrades .
-
-.TP
-.BR \-S ", " \-\-sync
-Query repositories through
-.BR pacman (8).
 
 .TP
 .BR \-\-repo\-list
@@ -71,6 +76,5 @@ format.
 .SH SEE ALSO
 .BR aur (1),
 .BR aur\-vercmp (1),
-.BR expac (1),
 .BR pacman (8),
 .BR pacman.conf (5)

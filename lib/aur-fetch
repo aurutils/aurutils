@@ -1,173 +1,95 @@
 #!/bin/bash
 # aur-fetch - retrieve build files from the AUR
 readonly argv0=fetch
-readonly AUR_LOCATION=${AUR_LOCATION:-'https://aur.archlinux.org'}
-readonly fmt_git_clone=$AUR_LOCATION/%s.git
-readonly fmt_snapshot=$AUR_LOCATION/cgit/aur.git/snapshot/%s.tar.gz
-readonly startdir=$PWD
-readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+readonly AUR_LOCATION=${AUR_LOCATION:-https://aur.archlinux.org}
+readonly XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
 
 # default options
-mode=git recurse=0
-
-git_stat_patch() {
-    git --no-pager log -O "$1" --patch --stat '..@{upstream}'
-}
-
-merge_upstream() {
-    # set destination of patch file
-    local pkg=$1 log_dir=$2 output
-
-    if [[ -d $log_dir ]]; then
-        output=$log_dir/$pkg.patch
-    else
-        output=/dev/stdout
-    fi
-
-    # default to showing PKGBUILD diffs first (#399)
-    local orderfile=${GIT_DIR:-$PWD/.git}/orderfile
-
-    if [[ ! -s $orderfile ]]; then
-        echo PKGBUILD >"$orderfile"
-    fi
-
-    git fetch -v >&2
-
-    # only print log on upstream changes
-    if [[ $(git rev-parse HEAD) != $(git rev-parse '@{upstream}') ]]; then
-        git_stat_patch "$orderfile" >> "$output"
-
-        # discard any local changes (#349)
-        git reset --hard "HEAD@{upstream}" >&2
-    fi
-}
-
-fetch_git() {
-    local log_dir=$1 pkg uri
-
-    while IFS= read -r uri; do
-        pkg=${uri##*/}   # strip path
-        pkg=${pkg%%.git} # strip .git suffix
-
-        if [[ -d $pkg/.git ]]; then
-            # avoid issues with filesystem boundaries (#274)
-            GIT_DIR="$PWD/$pkg"/.git GIT_WORK_TREE="$PWD/$pkg" merge_upstream "$pkg" "$log_dir"
-        else
-            # abort if directory is a snapshot
-            git clone "$uri" || return
-        fi
-    done
-}
-
-diff_log() {
-    local base=$1 log_dir=$2
-
-    if [[ -d $log_dir ]]; then
-        tee -a "$log_dir/$base".diff | diffstat -Ckq -f3
-    else
-        tee
-    fi
-}
-
-tar_no_mode_diff() {
-    local archive=$1 base=$2 dir=$3
-
-    if [[ -d $dir/$base ]]; then
-        LC_MESSAGES=C tar -df "$archive" -C "$dir" | grep -Evq '(Mode|Uid|Gid)'
-    else
-        return 1
-    fi
-}
-
-fetch_tar() {
-    #global tmp
-    local log_dir=$1 archive base
-
-    wget -i /dev/stdin --directory-prefix "$tmp" || return 1
-
-    for archive in "$tmp"/*.tar.gz; do
-        base=$(basename "$archive" .tar.gz)
-        tar -kxf "$archive" --directory "$tmp"
-
-        if tar_no_mode_diff "$archive" "$base" "$startdir"; then
-            diff -ur "$startdir/$base" "$tmp/$base" | diff_log "$base" "$log_dir"
-        fi
-
-        cp -af "$tmp/$base" "$startdir"
-    done
-}
-
-linef() {
-    awk -v "fmt=$1" '{ printf(fmt, $0) }'
-}
-
-trap_exit() {
-    if [[ ! -o xtrace ]]; then
-        rm -rf "$tmp"
-    fi
-}
+verbose=0 recurse=0
 
 usage() {
-    base64 -d <<EOF
-ICAgICAgICAgICAgIC4tLX5+LF9fCjotLi4uLiwtLS0tLS0tYH5+Jy5fLicKIGAtLCwsICAsXyAg
-ICAgIDsnflUnCiAgXywtJyAsJ2AtX187ICctLS4KIChfLyd+fiAgICAgICcnJycoOwoK
-EOF
-    printf >&2 'usage: %s [-L path] [-grt] pkgname...\n' "$argv0"
-    exit 1
+    cat <<! | base64 -d
+ICAgICAgICAgICAgIC4tLX5+LF9fCjotLi4uLiwtLS0tLS0tYH5+Jy5fLicKIGAtLCwsICAs
+XyAgICAgIDsnflUnCiAgXywtJyAsJ2AtX187ICctLS4KIChfLyd+fiAgICAgICcnJycoOwoK
+!
+    printf 'usage: fetch [-l directory] [-rv] pkgname...\n'
 }
 
-source /usr/share/makepkg/util/util.sh
 source /usr/share/makepkg/util/parseopts.sh
 
-opt_short='L:grt'
-opt_long=('log-dir:' 'git' 'recurse' 'tar')
+opt_short='rvl:'
+opt_long=('recurse' 'verbose' 'write_log:')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
-    usage
+    usage >&2; exit 1;
 fi
 set -- "${OPTRET[@]}"
 
 unset log_dir
 while true; do
-    case "$1" in
-        -L|--log-dir) shift; log_dir=$(canonicalize_path "$1") ;;
-        -r|--recurse) recurse=1 ;;
-        -g|--git) mode=git ;;
-        -t|--tar) mode=tar ;;
+    case $1 in
+        -r|--recurse)   recurse=1 ;;
+        -v|--verbose)   verbose=1 ;;
+        -l|--write_log) shift; log_dir=$1 ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
                         exit ;;
         --) shift; break ;;
     esac
-    shift
 done
 
-tmp=$(mktemp -dt "$argv0".XXXXXXXX)
-trap trap_exit EXIT
-
-if ! (($#)); then
-    usage
+if [[ -v $log_dir ]] && [[ ! -d $log_dir ]]; then
+    printf 'fetch: %s: Not a directory\n' "$log_dir" >&2
+    exit 1
 fi
 
-if [[ -v log_dir ]] && [[ ! -d $log_dir ]]; then
-    printf >&2 '%s: %q: not a directory' "$argv0" "$log_dir"
-    exit 21
+if ! (( $# )); then
+    printf 'fetch: No pkgname given\n' >&2
+    exit 1
 fi
 
-# set filters (1)
-case $recurse in
-    1) deps() { aur depends --pkgbase "$@"; } ;;
-    0) deps() { printf '%s\n' "$@"; } ;;
-esac
+# Prepare configuration directory.
+mkdir -p "$XDG_CONFIG_HOME"/aurutils/$argv0
 
-# set filters (2)
-case $mode in
-    git) uri() { linef "$fmt_git_clone\\n"; } ;;
-    tar) uri() { linef "$fmt_snapshot\\n" ; } ;;
-esac
+# Default to showing PKGBUILD first in patch. (#399)
+orderfile=$XDG_CONFIG_HOME/aurutils/$argv0/orderfile
 
-# pipeline
-deps "$@" | uri | fetch_$mode "$log_dir"
+if [[ ! -s $orderfile ]]; then
+    printf 'PKGBUILD\n' > "$orderfile"
+fi
+
+if (( recurse )); then
+    aur depends --pkgbase "$@"
+else
+   printf '%s\n' "$@"
+fi | while read -r pkg; do
+    if [[ -d $pkg/.git ]]; then
+        # Avoid issues with filesystem boundaries. (#274)
+        export GIT_DIR=$pkg GIT_WORK_TREE=$pkg/.git
+        git fetch --verbose
+
+        if [[ $(git rev-parse HEAD) != $(git rev-parse '@{upstream}') ]]; then
+            # Only print log on upstream changes.
+            if (( verbose )); then
+                git --no-pager log --patch --stat '..@{upstream}'
+            fi
+
+            if [[ $log_dir ]]; then
+                git --no-pager log --patch --stat '..@{upstream}' > "$log_dir"/"$GIT_DIR".patch
+                printf '%s/%s.patch\n' "$log_dir" "$GIT_DIR"
+            fi
+
+            # Discard any local changes. (#349)
+            git reset --hard 'HEAD@{upstream}' >&2
+        fi
+    else
+        if ! git clone -c diff.orderFile="$orderfile" "$AUR_LOCATION"/"$pkg".git; then
+            printf 'fetch: %s: Failed to clone repository\n' "$pkg" >&2
+            exit 1
+        fi
+    fi
+done
 
 # vim: set et sw=4 sts=4 ft=sh:
