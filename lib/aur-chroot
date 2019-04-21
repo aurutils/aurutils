@@ -103,7 +103,7 @@ if ((prepare)); then
     # do not print DBPath (#412)
     pacman_conf_raw "$pacman_conf" | cat - "$tmp"/custom.conf > "$tmp"/pacman.conf
 
-    if [[ -f $directory/root/.arch-chroot ]]; then
+    if [[ -f /tmp/x86_64/root/.arch-chroot || -f /tmp/x86_64/root/.manjaro-chroot ]]; then
         # locking is done by systemd-nspawn
         sudo arch-nspawn -C "$tmp"/pacman.conf -M "$makepkg_conf" \
              "$directory"/root "${bindmounts_ro[@]}" pacman -Syu --noconfirm
