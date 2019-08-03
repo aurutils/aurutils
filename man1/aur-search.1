@@ -75,12 +75,42 @@ Search for packages with keywords in
 Sort results via a key, defaulting to
 .IR Name .
 
-Valid choices are \fIName\fR, \fIVersion\fR, \fINumVotes\fR,
-\fIDescription\fR (for brief output) or \fIName\fR, \fIPackageBase\fR,
-\fIVersion\fR, \fIDescription\fR, \fIURL\fR, \fINumVotes\fR,
-\fIPopularity\fR, \fIOutOfDate\fR, \fIMaintainer\fR,
-\fIFirstSubmitted\fR, \fILastModified\fR (for \fB\-v\fR verbose
-output).
+Valid choices are
+.IR Name ,
+.IR Version ,
+.IR NumVotes ,
+.IR Description
+(for brief output) or
+.IR Name ,
+.IR PackageBase ,
+.IR Version ,
+.IR Description ,
+.IR URL ,
+.IR NumVotes ,
+.IR Popularity ,
+.IR OutOfDate ,
+.IR Maintainer ,
+.IR FirstSubmitted ,
+.IR LastModified
+(for \fB\-v\fR verbose output).
+
+.SH ENVIRONMENT
+.TP
+.B AUR_COLOR
+Output colorization can be controlled by setting this environment
+variable to
+.B always
+for forcing colorization, or
+.B auto
+to colorize output only if both
+.B stdout
+and
+.B stderr
+are connected to a terminal.
+.B never
+or any unrecognized value will disable colorization completely. The
+default value is
+.BR auto .
 
 .SH EXIT STATUS
 The exit status is 0 on valid results, 1 if no results were found, or
