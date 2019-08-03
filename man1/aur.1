@@ -108,22 +108,28 @@ Check packages for AUR updates.
 .RE
 
 .SH EXIT STATUS
-Programs follow a subset of errno(3), or preserve command status where
-applicable.
+Programs follow a subset of
+.BR errno (3),
+or preserve command status where applicable.
 
 .SH ENVIRONMENT
 .TP
 .B AUR_COLOR
-Output colorization can be controlled by setting this environment variable
-to
+Output colorization can be controlled by setting this environment
+variable to
 .B always
-to force colorization on,
+for forcing colorization, or
 .B auto
-to colorize output only if both \fBstdout\fR and \fBstderr\fR are connected to
-a terminal, while
+to colorize output only if
+.B stderr
+is connected to a terminal.
 .B never
-or any unrecognized value will disable colorization completely. The default value is
+or any unrecognized value will disable colorization completely. The
+default value is
 .BR auto .
+
+See also
+.BR aur\-search (1).
 
 .SH CREATING A LOCAL REPOSITORY
 A local repository may be configured directly in
