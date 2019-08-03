@@ -80,7 +80,7 @@ source /usr/share/makepkg/util/util.sh
 source /usr/share/makepkg/util/message.sh
 source /usr/share/makepkg/util/parseopts.sh
 
-if [[ ( -t 1 && -t 2 && ! -o xtrace && $AUR_COLOR == auto ) || $AUR_COLOR == always ]] ; then
+if [[ ( -t 2 && ! -o xtrace && $AUR_COLOR == auto ) || $AUR_COLOR == always ]] ; then
     colorize
 fi
 
@@ -258,6 +258,7 @@ parallel -X ln -s "$(pwd -P)"/{} "$tmp_view" :::: "$tmp"/queue
 
 # Explicitly define if exit success is to be trusted (#561)
 trust_exit_success=0
+
 if type -P >/dev/null vifm; then
     # avoid directory prefix in printed paths (#452)
     viewer() ( cd "$1"; vifm -c 'view!' -c '0' - )
@@ -265,6 +266,7 @@ if type -P >/dev/null vifm; then
 else
     # shellcheck disable=SC2086
     viewer() ( cd "$1"; command -- ${PAGER:-less -K -+F} )
+
     # Trust our fallback
     if [[ -z $PAGER ]]; then
         trust_exit_success=1
