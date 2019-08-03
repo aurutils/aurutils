@@ -236,11 +236,7 @@ while IFS= read -ru "$fd" path; do
         env PKGDEST="$var_tmp" aur chroot --no-prepare "${chroot_args[@]}" -- "${makechrootpkg_args[@]}"
     else
         printf '%s\n' >&2 "Running makepkg ${makepkg_args[*]}"
-
-        # unset SHELLOPTS due to odd behavior with fakeroot (a /bin/sh
-        # script) when it is set in the environment. see:
-        # https://lists.gnu.org/archive/html/bug-bash/2011-10/msg00052.html
-        env -u SHELLOPTS makepkg --config "$tmp"/makepkg.conf "${makepkg_args[@]}"
+        makepkg --config "$tmp"/makepkg.conf "${makepkg_args[@]}"
     fi
 
     cd_safe "$var_tmp"

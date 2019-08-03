@@ -125,6 +125,16 @@ a terminal, while
 or any unrecognized value will disable colorization completely. The default value is
 .BR auto .
 
+.TP
+.B AUR_SHELLOPTS
+Shell options passed to
+.B aur
+programs. Valid options are
+.BR x " (xtrace),"
+.BR e " (errexit),"
+and
+.BR u " (nounset)."
+
 .SH CREATING A LOCAL REPOSITORY
 A local repository may be configured directly in
 .BR /etc/pacman.conf ,

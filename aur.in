@@ -26,8 +26,17 @@ if [[ "$PATH" != "$lib_dir:"* ]]; then
     readonly PATH=$lib_dir:$PATH
 fi
 
+unset shellopts
+while getopts eux opt "$AUR_SHELLOPTS"; do
+    case $opt in
+        e) shellopts+=('-e') ;;
+        u) shellopts+=('-u') ;;
+        x) shellopts+=('-x') ;;
+    esac
+done
+
 if type -P "aur-$1" >/dev/null; then
-    exec "aur-$1" "${@:2}"
+    bash "${shellopts[@]}" "aur-$1" "${@:2}"
 else
     printf >&2 '%s: %q is not an aur command\n' "$argv0" "$1"
     exit 1
