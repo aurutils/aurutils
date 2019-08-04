@@ -7,7 +7,7 @@ readonly PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
 readonly AUR_COLOR=${AUR_COLOR-auto}
 
 # default options
-verbose=0 recurse=0 fetch_args=('--verbose') confirm_seen=0
+verbose=0 recurse=0 confirm_seen=0 pull_args=('--verbose')
 
 gen_patchfile() {
     git diff-tree --patch --stat "${2:-$(git hash-object -t tree /dev/null)}" "$1"
@@ -18,7 +18,7 @@ usage() {
 ICAgICAgICAgICAgIC4tLX5+LF9fCjotLi4uLiwtLS0tLS0tYH5+Jy5fLicKIGAtLCwsICAs
 XyAgICAgIDsnflUnCiAgXywtJyAsJ2AtX187ICctLS4KIChfLyd+fiAgICAgICcnJycoOwoK
 !
-    plain 'usage: %s [-L directory] [-rv] pkgname...' "$argv0" >&2
+    plain 'usage: %s [-L directory] [-frv] pkgname...' "$argv0" >&2
     exit 1
 }
 
@@ -29,7 +29,7 @@ if [[ ( -t 1 && -t 2 && ! -o xtrace && $AUR_COLOR == auto ) || $AUR_COLOR == alw
     colorize
 fi
 
-opt_short='rvL:'
+opt_short='frvL:'
 opt_long=('recurse' 'verbose' 'write-log:' 'force' 'confirm-seen')
 opt_hidden=('dump-options')
 
@@ -44,7 +44,7 @@ while true; do
         -L|--write-log) shift; log_dir=$1 ;;
         -r|--recurse)   recurse=1 ;;
         -v|--verbose)   verbose=1 ;;
-        --force)        fetch_args+=('--force') ;;
+        -f|--force)     pull_args+=('--force') ;;
         --confirm-seen) confirm_seen=1 ;;
         --dump-options) printf -- '--%s\n' "${opt_long[@]}" ;
                         printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g' ;
@@ -64,24 +64,23 @@ if ! (( $# )); then
     exit 1
 fi
 
-# Prepare configuration directory.
 mkdir -p "$XDG_CONFIG_HOME"/aurutils/$argv0
 
 # Default to showing PKGBUILD first in patch. (#399)
 orderfile=$XDG_CONFIG_HOME/aurutils/$argv0/orderfile
 
 if [[ ! -s $orderfile ]]; then
-    printf 'PKGBUILD\n' > "$orderfile"
+    printf 'PKGBUILD\n' >"$orderfile"
 fi
 
-if ((confirm_seen)); then
+if (( confirm_seen )); then
     msg "Marking repositories as seen"
 fi
 
 if (( recurse )); then
     aur depends --pkgbase "$@"
 else
-   printf '%s\n' "$@"
+    printf '%s\n' "$@"
 fi | while read -r pkg; do
     if [[ -d $pkg/.git ]]; then
         # Avoid issues with filesystem boundaries. (#274)
@@ -89,17 +88,20 @@ fi | while read -r pkg; do
 
         if (( confirm_seen )); then
             git update-ref AURUTILS_SEEN HEAD
+
             msg2 'Marked %s as seen' "$pkg"
             continue
         fi
 
-        # Discard any local uncommited changes. (#552)
+        # Preserve committed modifications to packages. (#552)
         git reset --hard HEAD >&2
-        if ! git pull --rebase "${fetch_args[@]}"; then
+
+        if ! git pull --rebase "${pull_args[@]}"; then
             error '%s: Failed to integrate changes.' "$pkg"
             exit 1
         fi
 
+        # Generate logs since "last seen" marker. (#552)
         seen=$(git rev-parse --quiet --verify AURUTILS_SEEN)
 
         if [[ "$seen" != $(git rev-parse HEAD) ]]; then
@@ -110,19 +112,22 @@ fi | while read -r pkg; do
             fi
 
             if [[ $log_dir ]]; then
-                logfile="$log_dir/$pkg".patch
+                logfile=$log_dir/$pkg.patch
+
                 gen_patchfile "${log_range[@]}" >"$logfile"
                 plain '%s' "$logfile"
             fi
         fi
     else
-        if git clone "$AUR_LOCATION"/"$pkg".git; then
+        if git clone "$AUR_LOCATION/$pkg".git; then
             if (( confirm_seen )); then
                 warning 'fetch: --confirm-seen for %s ignored on first clone' "$pkg"
             fi
-            # show PKGBUILDS first (#399)
+
+            # Set diff order for new repositories. (#548)
             git -C "$pkg" config diff.orderFile "$orderfile"
-            # only allow fast-forward fetches. (#)
+
+            # Only allow fast-forward fetches. (#552)
             git -C "$pkg" config remote.origin.fetch 'refs/heads/*:refs/remotes/origin/*'
         else
             error '%s: %s: Failed to clone repository' "$argv0" "$pkg"
