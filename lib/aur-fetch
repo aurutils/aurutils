@@ -112,7 +112,7 @@ fi | while read -r pkg; do
             fi
 
             if [[ $log_dir ]]; then
-                logfile=$log_dir/$pkg.patch
+                logfile=$log_dir/$pkg.diff
 
                 gen_patchfile "${log_range[@]}" >"$logfile"
                 plain '%s' "$logfile"
