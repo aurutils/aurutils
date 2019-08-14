@@ -82,56 +82,53 @@ if (( recurse )); then
 else
     printf '%s\n' "$@"
 fi | while read -r pkg; do
-    if [[ -d $pkg/.git ]]; then
-        # Avoid issues with filesystem boundaries. (#274)
-        export GIT_DIR=$pkg/.git GIT_WORK_TREE=$pkg
-
-        if (( confirm_seen )); then
-            git update-ref AURUTILS_SEEN HEAD
-
-            msg2 'Marked %s as seen' "$pkg"
-            continue
-        fi
-
-        # Preserve committed modifications to packages. (#552)
-        git reset --hard HEAD >&2
-
-        if ! git pull --rebase "${pull_args[@]}"; then
-            error '%s: Failed to integrate changes.' "$pkg"
-            exit 1
-        fi
-
-        # Generate logs since "last seen" marker. (#552)
-        seen=$(git rev-parse --quiet --verify AURUTILS_SEEN)
-
-        if [[ "$seen" != $(git rev-parse HEAD) ]]; then
-            log_range=(HEAD ${seen:+^$seen})
-
-            if (( verbose )); then
-                gen_patchfile "${log_range[@]}"
-            fi
-
-            if [[ $log_dir ]]; then
-                logfile=$log_dir/$pkg.diff
-
-                gen_patchfile "${log_range[@]}" >"$logfile"
-                plain '%s' "$logfile"
-            fi
-        fi
-    else
-        if git clone "$AUR_LOCATION/$pkg".git; then
-            if (( confirm_seen )); then
-                warning 'fetch: --confirm-seen for %s ignored on first clone' "$pkg"
-            fi
-
+    if [[ ! -e $pkg ]]; then
+        if git clone "$AUR_LOCATION"/"$pkg".git; then
             # Set diff order for new repositories. (#548)
             git -C "$pkg" config diff.orderFile "$orderfile"
-
             # Only allow fast-forward fetches. (#552)
             git -C "$pkg" config remote.origin.fetch 'refs/heads/*:refs/remotes/origin/*'
         else
             error '%s: %s: Failed to clone repository' "$argv0" "$pkg"
             exit 1
+        fi
+    fi
+    
+    # Avoid issues with filesystem boundaries, (#274)
+    # and ensure we have a valid git repository.
+    GIT_DIR=$(git rev-parse --resolve-git-dir "$pkg"/.git) || exit
+    export GIT_DIR GIT_WORK_TREE=$pkg
+
+    if (( confirm_seen )); then
+        git update-ref AURUTILS_SEEN HEAD
+        
+        msg2 'Marked %s as seen' "$pkg"
+        continue
+    fi
+
+    # Discard any local uncommited changes. (#552)
+    git reset --hard HEAD >&2
+    
+    if ! git pull --rebase "${fetch_args[@]}"; then
+        error '%s: Failed to integrate changes.' "$pkg"
+        exit 1
+    fi
+
+    # Generate logs since "last seen" marker. (#552)
+    seen=$(git rev-parse --quiet --verify AURUTILS_SEEN)
+
+    if [[ "$seen" != $(git rev-parse HEAD) ]]; then
+        log_range=(HEAD ${seen:+^$seen})
+
+        if (( verbose )); then
+            gen_patchfile "${log_range[@]}"
+        fi
+
+        if [[ $log_dir ]]; then
+            logfile="$log_dir/$pkg".patch
+            
+            gen_patchfile "${log_range[@]}" >"$logfile"
+            plain '%s' "$logfile"
         fi
     fi
 done
