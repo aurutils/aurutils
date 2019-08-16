@@ -69,6 +69,19 @@ to check a pacman repository for updates.
 .BR \-\-repo\-list
 List all local pacman repositories.
 
+.TP
+.BR \-\-devel
+Limit output to vcs packages only. A package is considered a
+vcs package if its
+.I pkgname
+ends in one of the following suffixes:
+.BR -cvs , -svn , -git , -hg , -bzr , -darcs .
+
+.B Note:
+These suffixes are simply a convention for vcs package naming as
+established by community guidelines.
+
+
 .SH SEE ALSO
 .BR aur (1),
 .BR aur\-vercmp (1),

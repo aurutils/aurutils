@@ -7,12 +7,15 @@ readonly AUR_COLOR=${AUR_COLOR-auto}
 # default arguments
 modifier=local
 vercmp_args=()
+vcs_only=0
 
 db_namever() {
-    awk '/%NAME%/ {
+    awk -v devel="$vcs_only" '/^%NAME%$/ {
         getline; pkgname=$1
-    } /%VERSION%/ {
-        getline; printf("%s\t%s\n", pkgname, $1)
+    } /^%VERSION%$/ {
+        if (!devel || pkgname ~ /-cvs$|-svn$|-git$|-hg$|-bzr$|-darcs$/) {
+            getline; printf("%s\t%s\n", pkgname, $1)
+        }
     }'
 }
 
@@ -31,7 +34,7 @@ fi
 ## option parsing
 opt_short='c:d:r:aluS'
 opt_long=('database:' 'pacman-conf:' 'root:'
-          'all' 'list' 'repo-list' 'sync' 'upgrades')
+          'all' 'devel' 'list' 'repo-list' 'sync' 'upgrades')
 opt_hidden=('dump-options' 'status-file:')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -49,6 +52,7 @@ while true; do
         -l|--list)          mode=list_packages ;;
         -S|--sync)          modifier=sync ;;
         -u|--upgrades)      mode=list_upgrades ;;
+        --devel)            vcs_only=1 ;;
         --repo-list)        mode=repo_list ;;
         --status-file)      shift; status_file=$1 ;;
         --dump-options)     printf -- '--%s\n' "${opt_long[@]}" ;
