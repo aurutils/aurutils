@@ -36,6 +36,10 @@ Print logs to
 .BR stdout .
 .
 .TP
+.BR \-\-format= [ diff | log ]
+Specifies the format logs are generated.
+.
+.TP
 .B \-\-reset
 Reset to the upstream commit, discarding local changes.
 .IP
@@ -92,7 +96,7 @@ updates to existing repositories.
 .
 .SS LOGS
 The logs shown by
-.B aur\-fetch
+.BR aur\-fetch (1)
 show changes that happened since the commit referenced by the
 special reference
 .B AUR_SEEN
@@ -105,14 +109,14 @@ This reference can be created with with:
 .EE
 .PP
 which will mark the current commit as seen, signaling
-.B aur\-fetch
+.BR aur\-fetch (1)
 that current changes should not be shown in future logs.
 .
 .
 .SS REBASE
 This option should be used with care. While it enables users
 to keep personalized changes to PKGBUILDS, it will cause failures if
-.B "git\-rebase"
+.BR git\-rebase (1)
 does not apply cleanly. The user is expected to fix those issues
 before continuing.
 .PP
@@ -127,6 +131,7 @@ Trusted Users have removed from the git history.
 .BR git (1),
 .BR git\-clone (1),
 .BR git\-config (1),
+.BR git\-diff (1),
 .BR git\-fetch (1),
 .BR git\-log (1),
 .BR git\-pull (1),

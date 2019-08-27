@@ -11,7 +11,7 @@ pull_args=('--verbose')
 diff_args=('--patch' '--stat')
 
 # default options
-verbose=0 recurse=0 confirm_seen=0 rebase=-1 results=0
+verbose=0 recurse=0 confirm_seen=0 rebase=-1 results=0 log_fmt=diff
 
 # empty tree object
 git_empty_tree=$(git hash-object -t tree /dev/null)
@@ -34,7 +34,7 @@ fi
 
 opt_short='rRvL:'
 opt_long=('recurse' 'verbose' 'write-log:' 'confirm-seen'
-          'rebase' 'reset' 'results:')
+          'rebase' 'reset' 'results:' 'format:')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -51,6 +51,8 @@ while true; do
             recurse=1 ;;
         -v|--verbose)
             verbose=1 ;;
+        --format)
+            shift; log_fmt=$1 ;;
         -R|--rebase)
             rebase=1 ;;
         --reset)
@@ -67,6 +69,10 @@ while true; do
     esac
     shift
 done
+
+if ! [[ $log_fmt =~ ^(log|diff)$ ]]; then
+    error '%s: %s format is not supported' "$argv0" "$log_fmt" && exit 1
+fi
 
 if [[ -v $log_dir ]] && [[ ! -d $log_dir ]]; then
     error '%s: %s: Not a directory' "$argv0" "$log_dir"
@@ -139,11 +145,11 @@ fi | while read -r pkg; do
 
             # Contents have changed since last inspection; print differences.
             if (( verbose )); then
-                git --no-pager log "${diff_args[@]}" "$range"
+                git --no-pager "$log_fmt" "${diff_args[@]}" "$range"
             fi
 
             if [[ $log_dir ]]; then
-                git --no-pager log "${diff_args[@]}" "$range" >"$log_dir/$pkg.log"
+                git --no-pager "$log_fmt" "${diff_args[@]}" "$range" >"$log_dir/$pkg.$log_fmt"
             fi
         fi
 
