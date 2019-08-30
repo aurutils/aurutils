@@ -138,11 +138,17 @@ upgrades are taken as target regardless of this setting.
 
 .RS
 .B Note:
-This option does not take other repositories than the local repository 
-into account. Furthermore, the version output from
+The version output from
 .BR aur\-vercmp (1)
 is unaffected by this option.
 .RE
+
+.TP
+.B \-\-provides\-any
+As
+.BR \-\-provides ,
+but considers virtual dependencies in any available pacman
+repository.
 
 .TP
 .BI \-d " NAME" "\fR,\fP \-\-database=" NAME
