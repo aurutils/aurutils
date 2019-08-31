@@ -280,11 +280,12 @@ while IFS= read -ru "$fd" path; do
     else
         replaces=$(grep -Fxf <(db_replaces "$db_path") <(pacman -Qq) | paste -s -d, -)
 
-        sudo pacman -Fy  --config="$tmp"/custom.conf
         sudo pacman -Syu --config="$tmp"/custom.conf --ignore="$replaces" --noconfirm
     fi
 done
-
 exec {fd}<&-
+
+# Download file databases after the build (#594)
+sudo pacman -Fy --config="$tmp"/custom.conf
 
 # vim: set et sw=4 sts=4 ft=sh:
