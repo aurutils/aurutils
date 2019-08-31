@@ -8,13 +8,21 @@ readonly AUR_COLOR=${AUR_COLOR-auto}
 modifier=local
 vercmp_args=()
 vcs_only=0
+table_format='%1$s\t%3$s\n' # pkgname\tpkgver\n by default
 
 db_namever() {
-    awk -v devel="$vcs_only" '/^%NAME%$/ {
+    awk -v devel="$vcs_only" -v format="$table_format" '
+    /^%NAME%$/ {
         getline; pkgname=$1
-    } /^%VERSION%$/ {
+    }
+    /^%BASE%$/ {
+        getline; pkgbase=$1
+    }
+    /^%VERSION%$/ {
         if (!devel || pkgname ~ /-cvs$|-svn$|-git$|-hg$|-bzr$|-darcs$/) {
-            getline; printf("%s\t%s\n", pkgname, $1)
+            getline; pkgver=$1;
+            printf format, pkgname, pkgbase, pkgver;
+            pkgname=pkgbase=pkgver="-"; #clear variables
         }
     }'
 }
@@ -34,7 +42,7 @@ fi
 ## option parsing
 opt_short='c:d:r:aluS'
 opt_long=('database:' 'pacman-conf:' 'root:'
-          'all' 'devel' 'list' 'repo-list' 'sync' 'upgrades')
+          'all' 'devel' 'list' 'repo-list' 'sync' 'upgrades' 'table')
 opt_hidden=('dump-options' 'status-file:')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -52,6 +60,7 @@ while true; do
         -l|--list)          mode=list_packages ;;
         -S|--sync)          modifier=sync ;;
         -u|--upgrades)      mode=list_upgrades ;;
+        --table)            table_format='%s\t%s\t%s\n' ;; # pkgver\tpkgname\tpkgversion\n
         --devel)            vcs_only=1 ;;
         --repo-list)        mode=repo_list ;;
         --status-file)      shift; status_file=$1 ;;

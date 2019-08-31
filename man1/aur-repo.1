@@ -47,12 +47,21 @@ when checking for updates. Implies
 .TP
 .BR \-l ", " \-\-list
 List the contents of the repository in
-.BI pkgname \et pkgver
+.BI pkgname \et pkgver \en
 format. If the
 .B \-S
 option is not enabled, the repository is queried directly through the
 .BI .db
 file on-disk.
+
+.TP
+.B \-\-table
+Change the format used by
+.B --list
+from
+.BI pkgname \et pkgver \en
+to
+.BI \%pkgname \et pkgbase \et pkgver \en'
 
 .TP
 .BR \-S ", " \-\-sync
