@@ -12,9 +12,17 @@ diff_args=('--patch' '--stat')
 
 # default options
 verbose=0 recurse=0 confirm_seen=0 rebase=-1 results=0 log_fmt=diff
+n_procs=$(nproc)
 
 # empty tree object
 git_empty_tree=$(git hash-object -t tree /dev/null)
+
+trap_exit() {
+    # Do not remove error files if an error occured (#593)
+    if [[ ! -v AUR_DEBUG ]]; then
+        rm -rf "$tmp"
+    fi
+}
 
 usage() {
     cat <<! | base64 -d
@@ -34,7 +42,7 @@ fi
 
 opt_short='rRvL:'
 opt_long=('recurse' 'verbose' 'write-log:' 'confirm-seen'
-          'rebase' 'reset' 'results:' 'format:')
+          'rebase' 'reset' 'results:' 'format:' 'jobs:')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -53,6 +61,9 @@ while true; do
             verbose=1 ;;
         --format)
             shift; log_fmt=$1 ;;
+        --jobs)
+            shift
+            n_procs=$1 ;;
         -R|--rebase)
             rebase=1 ;;
         --reset)
@@ -104,11 +115,12 @@ if (( confirm_seen )); then
     msg "Marking repositories as seen"
 fi
 
-if (( recurse )); then
-    aur depends --pkgbase "$@"
-else
-   printf '%s\n' "$@"
-fi | while read -r pkg; do
+tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX") || exit
+trap 'trap_exit' EXIT
+
+
+aur_fetch_job() {
+    pkg=$1
     # Avoid issues with filesystem boundaries. (#274)
     export GIT_DIR=$pkg/.git GIT_WORK_TREE=$pkg
 
@@ -118,7 +130,7 @@ fi | while read -r pkg; do
             git update-ref AUR_SEEN HEAD
 
             msg2 'Marked repository %s as seen' "$pkg"
-            continue # skip diff logic
+            exit 0 # skip diff logic
         fi
 
         if (( rebase > 0 )) || {
@@ -173,6 +185,35 @@ fi | while read -r pkg; do
     else
         error '%s: %s: Failed to clone repository' "$argv0" "$pkg"
     fi
-done
+}
 
+
+if (( recurse )); then
+    aur depends --pkgbase "$@"
+else
+    printf '%s\n' "$@"
+fi >"$tmp/queue"
+
+i=0 # "allocate" slots
+while (( i++ < n_procs )); do true & done
+
+# run jobs. We need to go through the loop n_proc more times to
+# to ensure we read exit codes from processes that are still running
+# when the queue finishes.
+while { read -r pkg || (( --i > 0 )); } ; do
+    wait -n || { ret=$?; break; }               #simulate fail=1 from now,fail=1
+    if [[ $pkg ]]; then
+        aur_fetch_job "$pkg" >"$tmp/$pkg.out" 2>"$tmp/$pkg.err" &
+    fi
+done < <(sort -u "$tmp/queue" | sed '/^$/d')
+
+if (( ret )); then # simulate now from now,fail=1
+    # shellcheck disable=SC2046
+    kill $(jobs -np)
+fi
+
+wait # wait for process to terminate
+cat "$tmp/"*.out
+cat "$tmp/"*.err >&2
+exit $ret
 # vim: set et sw=4 sts=4 ft=sh:
