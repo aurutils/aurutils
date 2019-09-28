@@ -110,7 +110,7 @@ sync operations regardless of this setting. See also
 .TP
 .BR \-\-pkgver
 Run
-.B "makepkg --noprepare -od"
+.B "makepkg \-\-noprepare \-od"
 before checking existing packages (effectively running an existing
 .B pkgver()
 function). This option adds
@@ -121,7 +121,7 @@ options.
 
 .SS makepkg options
 The default build command is
-.BR "makepkg --clean --syncdeps" .
+.BR "makepkg \-\-clean \-\-syncdeps" .
 
 .TP
 .BR \-A ", " \-\-ignorearch
