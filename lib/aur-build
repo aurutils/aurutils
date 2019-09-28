@@ -18,7 +18,7 @@ repo_add_args=()
 chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 results=0
 
 conf_single() {
-    awk -v "repo=[$1]" '
+    pacman-conf --config "$1" | awk -v "repo=[$2]" '
     /^\[.*\]$/ {
         do_print = ($1 == "[options]" || $1 == repo)
     }
@@ -63,19 +63,19 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset queue db_name db_path db_root build_cmd m_conf p_conf results_file
+unset queue db_name db_path db_root build_cmd makepkg_conf pacman_conf results_file
 while true; do
     case "$1" in
         # build options
         -a|--arg-file)      shift; queue=$1 ;;
         -B|--build-command) shift; build_cmd+=("$1") ;;
-        -M|--makepkg-conf)  shift; chroot_args+=(-M "$1"); m_conf=$1 ;;
+        -M|--makepkg-conf)  shift; chroot_args+=(-M "$1"); makepkg_conf=$1 ;;
         -f|--force)         overwrite=1 ;;
         # database options
         -d|--database)      shift; db_name=$1
                             chroot_args+=(-d "$1") ;;
         -r|--root)          shift; db_root=$1 ;;
-        -C|--pacman-conf)   shift; chroot_args+=(-C "$1"); p_conf=$1 ;;
+        -C|--pacman-conf)   shift; chroot_args+=(-C "$1"); pacman_conf=$1 ;;
         -N|--no-sync)       no_sync=1 ;;
         # chroot options
         -D|--directory)     shift; chroot_args+=(-D "$1") ;;
@@ -187,17 +187,22 @@ if ((chroot)); then
 fi
 
 # Configuration for host builds.
-pacman-conf --config "${p_conf:-/etc/pacman.conf}" | conf_single "$db_name" >"$tmp"/custom.conf
+conf_single "${pacman_conf:-/etc/pacman.conf}" "$db_name" >"$tmp"/custom.conf
 
 # PKGDEST is defined later through makepkg.conf (#513)
 unset PKGDEST
 
-{ cat -s "${m_conf:-/etc/makepkg.conf}"
+{ if [[ -v makepkg_conf ]]; then
+      cat -s "$makepkg_conf"
+  else
+      # Write makepkg configuration in the order as parsed by makepkg
+      cat -s /etc/makepkg.conf
 
-  if [[ -r $XDG_CONFIG_HOME/pacman/makepkg.conf ]]; then
-      cat -s "$XDG_CONFIG_HOME"/pacman/makepkg.conf
-  elif [[ -r $HOME/.makepkg.conf ]]; then
-      cat -s "$HOME"/.makepkg.conf
+      if [[ -r $XDG_CONFIG_HOME/pacman/makepkg.conf ]]; then
+          cat -s "$XDG_CONFIG_HOME"/pacman/makepkg.conf
+      elif [[ -r $HOME/.makepkg.conf ]]; then
+          cat -s "$HOME"/.makepkg.conf
+      fi
   fi
 
   # PKGDEST defined here is NOT exported to the build environment.
