@@ -85,7 +85,7 @@ Continue the build process if a package with the same name is found.
 Do not sync the local repository after building.
 
 .TP
-.BI \-r " DIR" "\fR,\fP \-\-root=" DIR
+.BI \-\-root= DIR
 The root directory for the repository. The
 .I root
 is the location for the pacman database
@@ -108,6 +108,42 @@ sync operations regardless of this setting. See also
 .RE
 
 .TP
+.BR \-\-pkgver
+Run
+.B "makepkg --noprepare -od"
+before checking existing packages (effectively running an existing
+.B pkgver()
+function). This option adds
+.B \-\-holdver
+to the default
+.BR makepkg (8)
+options.
+
+.SS makepkg options
+The default build command is
+.BR "makepkg --clean --syncdeps" .
+
+.TP
+.BR \-A ", " \-\-ignorearch
+Ignore a missing or incomplete
+.I arch
+field in the build script. (\fBmakepkg \-A\fR)
+
+.TP
+.BR \-L ", " \-\-log
+Enable logging to a text file in the build directory. (\fBmakepkg
+\-L\fR)
+
+.TP
+.BR \-n ", " \-\-noconfirm
+Do not wait for user input. (\fBmakepkg \-\-noconfirm\fR)
+
+.TP
+.BR \-r ", " \-\-rmdeps ", " \-\-rm\-deps
+Remove dependencies installed by makepkg. (\fBmakepkg \-\-rmdeps\fR)
+
+.SS repo\-add options
+.TP
 .B \-R
 Remove old package files from disk when updating their entry in the
 database
@@ -128,18 +164,6 @@ environment variable can be set to the appopriate key identifier.
 Verify the PGP signature of the database before
 updating.
 .RB ( "repo\-add \-v" ).
-
-.TP
-.BR \-\-pkgver
-Run
-.B "makepkg --noprepare -od"
-before checking existing packages (effectively running an existing
-.B pkgver()
-function). This option adds
-.B \-\-holdver
-to the default
-.BR makepkg (8)
-options.
 
 .SH ENVIRONMENT
 .B AUR_REPO

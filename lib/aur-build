@@ -52,10 +52,11 @@ if [[ ! -v NO_COLOR ]] && [[ ! -o xtrace ]]; then
 fi
 
 ## option parsing
-opt_short='a:B:C:d:D:M:r:cfNRXsv'
+opt_short='a:B:d:D:AcfnrsvLNR'
 opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'sign'
           'verify' 'directory:' 'no-sync' 'pacman-conf:' 'results:'
-          'makepkg-conf:' 'remove' 'build-command:' 'pkgver')
+          'makepkg-conf:' 'remove' 'build-command:' 'pkgver'
+          'rmdeps' 'noconfirm' 'ignorearch' 'log')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -69,28 +70,36 @@ while true; do
         # build options
         -a|--arg-file)      shift; queue=$1 ;;
         -B|--build-command) shift; build_cmd+=("$1") ;;
-        -M|--makepkg-conf)  shift; chroot_args+=(-M "$1"); makepkg_conf=$1 ;;
+        --makepkg-conf)     shift; chroot_args+=(-M "$1"); makepkg_conf=$1 ;;
         -f|--force)         overwrite=1 ;;
         # database options
         -d|--database)      shift; db_name=$1
                             chroot_args+=(-d "$1") ;;
-        -r|--root)          shift; db_root=$1 ;;
-        -C|--pacman-conf)   shift; chroot_args+=(-C "$1"); pacman_conf=$1 ;;
+        --root)             shift; db_root=$1 ;;
+        --pacman-conf)      shift; chroot_args+=(-C "$1")
+                            pacman_conf=$1 ;;
         -N|--no-sync)       no_sync=1 ;;
         # chroot options
         -D|--directory)     shift; chroot_args+=(-D "$1") ;;
         -c|--chroot)        chroot=1 ;;
-        # other options
+        # common repo-add options
         -s|--sign)          sign_pkg=1
                             repo_add_args+=(-s) ;;
         -v|--verify)        repo_add_args+=(-v) ;;
         -R|--remove)        repo_add_args+=(-R) ;;
+        # common makepkg options
+        -r|--rmdeps)        makepkg_args+=(--rmdeps) ;;
+        -n|--noconfirm)     makepkg_args+=(--noconfirm) ;;
+        -A|--ignorearch)    makepkg_args+=(--ignorearch) ;;
+        -L|--log)           makepkg_args+=(--log) ;;
+        # other options
         --pkgver)           run_pkgver=1
                             makepkg_args+=(--holdver) ;;
         --results)          shift; results_file=$1 ;;
-        --dump-options) printf -- '--%s\n' "${opt_long[@]}"
-                        printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g'
-                        exit ;;
+        --dump-options)
+            printf -- '--%s\n' "${opt_long[@]}"
+            printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g'
+            exit ;;
         --) shift; break ;;
     esac
     shift
