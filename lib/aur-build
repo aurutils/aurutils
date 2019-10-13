@@ -13,6 +13,7 @@ gpg_args=(--detach-sign --no-armor --batch)
 makechrootpkg_args=(-cu)
 makepkg_args=(--clean --syncdeps)
 repo_add_args=()
+pacman_conf="/etc/pacman.conf"
 
 # default options
 chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 results=0
@@ -63,7 +64,7 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset queue db_name db_path db_root build_cmd m_conf p_conf results_file
+unset queue db_name db_path db_root build_cmd m_conf results_file
 while true; do
     case "$1" in
         -a|--arg-file)      shift; queue=$1 ;;
@@ -77,7 +78,7 @@ while true; do
         -v|--verify)        repo_add_args+=(-v) ;;
         -B|--build-command) shift; build_cmd+=("$1") ;;
         -D|--directory)     shift; chroot_args+=(-D "$1") ;;
-        -C|--pacman-conf)   shift; chroot_args+=(-C "$1"); p_conf=$1 ;;
+        -C|--pacman-conf)   shift; chroot_args+=(-C "$1"); pacman_conf=$1 ;;
         -M|--makepkg-conf)  shift; chroot_args+=(-M "$1"); m_conf=$1 ;;
         -N|--no-sync)       no_sync=1 ;;
         -R|--remove)        repo_add_args+=(-R) ;;
@@ -114,7 +115,7 @@ fi
 case $db_name in
     "")
         case $db_root in
-            "") db_path=$(aur repo)
+            "") db_path=$(aur repo --pacman-conf "$pacman_conf")
                 db_name=$(basename "$db_path" .db)
                 db_root=$(dirname "$db_path")
                 ;;
@@ -183,7 +184,7 @@ if ((chroot)); then
 fi
 
 # Configuration for host builds.
-pacman-conf --config "${p_conf:-/etc/pacman.conf}" | conf_single "$db_name" >"$tmp"/custom.conf
+pacman-conf --config "$pacman_conf" | conf_single "$db_name" >"$tmp"/custom.conf
 
 # PKGDEST is defined later through makepkg.conf (#513)
 unset PKGDEST

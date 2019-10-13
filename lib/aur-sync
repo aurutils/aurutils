@@ -99,14 +99,14 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset pkg pkg_i ignore_file
+unset pkg pkg_i ignore_file pacman_conf
 while true; do
     case "$1" in
         -d|--database)        shift; repo_args+=(-d "$1") ;;
         -B|--build-command)   shift; build_args+=(-B "$1") ;;
         -D|--directory)       shift; build_args+=(-D "$1") ;;
         -M|--makepkg-conf)    shift; build_args+=(--makepkg-conf "$1") ;;
-        -C|--pacman-conf)     shift; build_args+=(--pacman-conf "$1") ;;
+        -C|--pacman-conf)     shift; pacman_conf="$1"; build_args+=(--pacman-conf "$1") ;;
         --bind)               shift; makechrootpkg_args+=(-D "$1") ;;
         --bind-rw)            shift; makechrootpkg_args+=(-d "$1") ;;
         --ignore)             shift; IFS=, read -a pkg -r <<< "$1"
@@ -169,7 +169,7 @@ mkdir -p "$AURDEST"
 cd_safe "$tmp"
 
 # retrieve path to local repo (#448)
-aur repo "${repo_args[@]}" --list --status-file=db >db_info
+aur repo --pacman-conf "${pacman_conf:-/etc/pacman.conf}" "${repo_args[@]}" --list --status-file=db >db_info
 
 { IFS= read -r db_name
   IFS= read -r db_root
