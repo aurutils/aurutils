@@ -311,7 +311,6 @@ and build the result:
 .EE
 
 .SS Official repositories
-.EE
 Print Perl modules that are both in the AUR and official repositories:
 .EX
 
@@ -342,7 +341,7 @@ files):
 
   $ aur graph */.SRCINFO | tsort | tac > queue # Remove unwanted targets
   $ aur build -a queue
-
+.EE
 Build a package for a different architecture, here \fIi686\fR:
 .EX
 
