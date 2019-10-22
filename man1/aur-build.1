@@ -117,7 +117,7 @@ for a list of available
 .B makechrootpkg
 options.
 
-The pre-requisites for this option are as follows:
+The prerequisites for this option are as follows:
 .RS
 .IP \(bu 2
 Ensure the optional dependency
@@ -128,7 +128,7 @@ Make a symbolic link to
 .B /usr/bin/archbuild
 named
 .IR <chroot\-prefix> \- <arch> \-build
-available somwehere in your
+available somewhere in your
 .BR PATH .
 .br
 E.g.,
@@ -218,7 +218,7 @@ with
 .BR gpg (1).
 To use another key than the default, the
 .B GPGKEY
-environment variable can be set to the appopriate key identifier.
+environment variable can be set to the appropriate key identifier.
 
 .TP
 .BR \-v ", " \-\-verify
@@ -443,7 +443,7 @@ installed dependencies will be removed through
 .BR "pacman -Rn" .
 When answering "n" to the resulting prompt,
 .B makepkg
-will exit with "An unknown error has occured", and send SIGUSR1 to its
+will exit with "An unknown error has occurred", and send SIGUSR1 to its
 parent group. As
 .B aur\-build
 does not catch this signal, the
