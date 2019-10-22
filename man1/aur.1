@@ -277,7 +277,7 @@ As above, but for orphaned packages:
 .EX
 
   $ pacman -Slq custom | aur query -t info | \e
-       jq -r '.[].results[] | select(.Maintainer == null)'
+       jq -r \(aq.[].results[] | select(.Maintainer == null)\(aq
 
 .EE
 Update packages in the
@@ -296,7 +296,7 @@ and
 in the name:
 .EX
 
-  $ aur pkglist -P '(?=.*wm)(?=.*git)' | xargs aur search -i
+  $ aur pkglist -P \(aq(?=.*wm)(?=.*git)\(aq | xargs aur search -i
 
 .EE
 Select an AUR package with name matching
@@ -312,7 +312,7 @@ and build the result:
 Print Perl modules that are both in the AUR and official repositories:
 .EX
 
-  $ aur pkglist -P '^perl-.+' > perl.txt
+  $ aur pkglist -P \(aq^perl-.+\(aq > perl.txt
   $ grep -Fxf <(aur repo-filter < perl.txt) perl.txt
 
 .EE
@@ -335,7 +335,7 @@ files):
 
   $ git clone https://www.github.com/Earnestly/pkgbuilds
   $ cd pkgbuilds
-  $ find -name PKGBUILD -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO' \e;
+  $ find -name PKGBUILD -execdir sh -c \(aqmakepkg --printsrcinfo > .SRCINFO\(aq \e;
 
   $ aur graph */.SRCINFO | tsort | tac > queue # Remove unwanted targets
   $ aur build -a queue
@@ -365,7 +365,7 @@ in $PATH, for example
   
   # Print directories which do not contain a PKGBUILD file
   for d in "$AURDEST"/*; do
-    [[ -f $d/PKGBUILD ]] || printf '%s\en' "$d"
+    [[ -f $d/PKGBUILD ]] || printf \(aq%s\en\(aq "$d"
   done
 .EE
 
@@ -376,7 +376,7 @@ in $PATH, for example
   # aur-remove - remove listed packages from all local repositories
 
   if [ "$#" -eq 0 ]; then
-    printf 'usage: aur remove package [package ...]\en' >&2
+    printf \(aqusage: aur remove package [package ...]\en\(aq >&2
     exit 1
   fi
 
