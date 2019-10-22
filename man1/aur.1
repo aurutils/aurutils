@@ -277,7 +277,7 @@ repository that are unavailable in the AUR:
 As above, but for orphaned packages:
 .EX
 
-  $ pacman -Slq custom | aur query -t info | \\
+  $ pacman -Slq custom | aur query -t info | \e
        jq -r '.[].results[] | select(.Maintainer == null)'
 
 .EE
@@ -336,7 +336,7 @@ files):
 
   $ git clone https://www.github.com/Earnestly/pkgbuilds
   $ cd pkgbuilds
-  $ find -name PKGBUILD -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO' \\;
+  $ find -name PKGBUILD -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO' \e;
 
   $ aur graph */.SRCINFO | tsort | tac > queue # Remove unwanted targets
   $ aur build -a queue
@@ -362,11 +362,11 @@ in $PATH, for example
   AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
   
   # Assumes build files were retrieved through git(1)
-  find "$AURDEST" -name .git -execdir git clean -xf \\;
+  find "$AURDEST" -name .git -execdir git clean -xf \e;
   
   # Print directories which do not contain a PKGBUILD file
   for d in "$AURDEST"/*; do
-    [[ -f $d/PKGBUILD ]] || printf '%s\\n' "$d"
+    [[ -f $d/PKGBUILD ]] || printf '%s\en' "$d"
   done
 .EE
 
