@@ -13,7 +13,7 @@ zsh/_aur: command_opts.m4 zsh/aurutils.in ../lib/*
 
 install-bash: bash/aur
 	@install -Dm644 bash/aur -t '$(DESTDIR)$(SHRDIR)/bash-completion/completions'
-
+vvvvvvvvvvvvvvvvvvvvvvvvvv
 install-zsh: zsh/_aur
 	@install -Dm644 zsh/_aur -t '$(DESTDIR)$(SHRDIR)/zsh/site-functions'
 	@install -Dm755 zsh/run-help-aur -t '$(DESTDIR)$(SHRDIR)/zsh/functions/Misc'
