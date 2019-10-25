@@ -99,7 +99,7 @@ opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:'
           'force' 'ignore-arch' 'log' 'no-confirm' 'no-ver' 'no-graph'
           'no-ver-shallow' 'no-view' 'print' 'provides' 'rm-deps'
           'sign' 'temp' 'upgrades' 'pkgver' 'rebuild' 'rebuild-tree'
-          'build-command:' 'ignore-file:' 'remove')
+          'build-command:' 'ignore-file:' 'remove' 'provides-from:')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile'
             'noconfirm' 'nover' 'nograph' 'nover-shallow' 'noview'
             'rebuildtree' 'rmdeps')
@@ -109,7 +109,7 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset pkg pkg_i ignore_file
+unset pkg pkg_i repo repo_p ignore_file
 while true; do
     case "$1" in
         -d|--database)
@@ -144,6 +144,10 @@ while true; do
             makepkg_args+=(--log) ;;
         -P|--provides)
             provides=1 ;;
+        --provides-from)
+            shift; IFS=, read -a repo -r <<< "$1"
+            repo_p+=("${repo[@]}")
+            provides=0 ;;
         -n|--noconfirm|--no-confirm)
             makepkg_args+=(--noconfirm) ;;
         -p|--print)
@@ -264,9 +268,11 @@ cut -f2 --complement depends | sort -u >pkginfo
       esac
   fi
 
+  # note: this uses pacman's copy of the repo (as used by makepkg -s)
   if (( provides )); then
-      # note: this uses pacman's copy of the repo (as used by makepkg -s)
-      cut -f1 pkginfo | complement argv | aur repo-filter -d "$db_name"
+      cut -f1 pkginfo | complement argv | aur repo-filter
+  elif (( ${#repo_p[@]} )); then
+      cut -f1 pkginfo | complement argv | aur-repo-filter "${repo_p[@]/#/--repo=}"
   fi
 } >filter
 

@@ -113,17 +113,16 @@ Do not present build files for inspection.
 .BR \-P ", " \-\-provides
 Take virtual dependencies
 .RB ( provides )
-in the local repository into account. Version information is not
+in pacman sync repository into account. Version information is not
 considered. Packages specified on the command line or available
 upgrades are taken as target regardless of this setting.
 
-.RS
-.B Note:
-This option does not take other repositories than the local repository 
-into account. Furthermore, the version output from
-.BR aur\-vercmp (1)
-is unaffected by this option.
-.RE
+.TP
+.BI \-\-provides\-from= DIR1,...
+As
+.BR \-\-provides ,
+but only the specified (comma\-separated) repositories are taken into
+account.
 
 .TP
 .BI \-d " NAME" "\fR,\fP \-\-database=" NAME
