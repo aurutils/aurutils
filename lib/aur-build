@@ -20,7 +20,7 @@ makepkg_args=(--clean --syncdeps)
 repo_add_args=()
 
 # default options
-chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 results=0
+chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 results=0 remove_stale_cache=0
 
 conf_single() {
     pacman-conf --config "$1" | awk -v "repo=[$2]" '
@@ -73,7 +73,7 @@ opt_short='a:B:d:D:AcfnrsvLNR'
 opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'sign'
           'verify' 'directory:' 'no-sync' 'pacman-conf:' 'results:'
           'makepkg-conf:' 'remove' 'build-command:' 'pkgver' 'prefix:'
-          'rmdeps' 'noconfirm' 'ignorearch' 'log' 'recreate')
+          'rmdeps' 'noconfirm' 'ignorearch' 'log' 'recreate' 'rm-stale-cache')
 opt_hidden=('dump-options')
 
 if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
@@ -93,6 +93,8 @@ while true; do
             shift; makepkg_conf=$1 ;;
         -f|--force)
             overwrite=1 ;;
+        --rm-stale-cache)
+            remove_stale_cache=1 ;;
         # database options
         -d|--database)
             shift; db_name=$1 ;;
@@ -320,6 +322,27 @@ while IFS= read -ru "$fd" path; do
     if [[ ${pkglist[*]} == '!(*.sig)' ]]; then
         error '%s: invalid argument (no packages found)' "$argv0"
         exit 22
+    fi
+
+    if (( remove_stale_cache )); then
+        # XXX: not performance ideal due to nested loops, but should still be faster
+        # (and easier to implement) than pacsift --cache --satisfies
+        while IFS= read -r cache_dir; do
+            if [[ $cache_dir == $db_root ]]; then
+                msg2 '%s: cachedir %s is repository root, skipping' "$argv0" "$cache_dir"
+                continue
+            fi
+
+            for p in "${pkglist[@]}"; do
+                if [[ -f $cache_dir/$p ]]; then
+                    warning '%s: removing stale package %s' "$argv0" "$cache_dir/$p"
+                    # XXX: command might fail due to CacheDir permissions if a different
+                    # db_root is used for built packages. workaround: write results to
+                    # file or stdout?
+                    rm -v "$cache_dir/$p"
+                fi
+            done
+        done < <(pacman-conf CacheDir)
     fi
 
     for p in "${pkglist[@]}"; do
