@@ -37,7 +37,9 @@ source /usr/share/makepkg/util/message.sh
 source /usr/share/makepkg/util/parseopts.sh
 
 if [[ ! -v NO_COLOR ]] && [[ ! -v AUR_DEBUG ]]; then
-    [[ -t 2 ]] && colorize
+    if [[ -t 2 ]]; then
+        colorize; diff_args+=('--color')
+    fi
 fi
 
 opt_short='rRvL:'
