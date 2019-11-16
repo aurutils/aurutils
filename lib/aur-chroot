@@ -25,11 +25,11 @@ ignore_defaults() {
 
 host_with_cache() {
     printf '[%s]\n' options
-    pacman-conf --verbose CacheDir
+    pacman-conf -c "$pacman_conf" --verbose CacheDir
 
     for a in "$@"; do
         printf '[%s]\n' "$a"
-        pacman-conf --repo "$a"
+        pacman-conf -c "$pacman_conf" --repo "$a"
     done
 }
 
