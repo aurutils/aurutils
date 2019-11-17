@@ -23,15 +23,25 @@ ignore_defaults() {
     } { print }'
 }
 
-host_with_cache() {
-    printf '[%s]\n' options
-    pacman-conf -c "$pacman_conf" --verbose CacheDir
-
-    for a in "$@"; do
-        printf '[%s]\n' "$a"
-        pacman-conf -c "$pacman_conf" --repo "$a"
-    done
-}
+host_with_cache() {    
+    printf '[%s]\n' options    
+     
+    pacman-conf -c "$pacman_conf" --verbose CacheDir    
+     
+    for a in "$@"; do    
+        printf '[%s]\n' "$a"    
+        set +e    
+        pacman-conf -c "$pacman_conf" --repo "$a" > /dev/null 2>&1    
+        if [[ $? = 0 ]]    
+        then    
+            set -e                  
+            pacman-conf -c "$pacman_conf" --repo "$a"    
+        else    
+            set -e                  
+            pacman-conf --repo "$a"    
+        fi        
+    done    
+}    
 
 trap_exit() {
     if ! [[ -o xtrace ]]; then
