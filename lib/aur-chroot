@@ -29,7 +29,13 @@ host_with_cache() {
 
     for a in "$@"; do
         printf '[%s]\n' "$a"
-        pacman-conf --repo "$a"
+        set +e
+        if ! pacman-conf -c "$pacman_conf" --repo "$a" 2>&1; then
+            set -e
+            pacman-conf --repo "$a"
+        else
+            set -e
+        fi    
     done
 }
 
@@ -82,7 +88,7 @@ if (($#)); then
 fi
 
 # baseline configuration
-pacman_conf=${pacman_conf-/usr/share/devtools/pacman-multilib.conf}
+pacman_conf=${pacman_conf-/usr/share/devtools/pacman-extra.conf}
 makepkg_conf=${makepkg_conf-/usr/share/devtools/makepkg-$machine.conf}
 
 # CacheDir will be replaced by devtools (#416)
