@@ -121,7 +121,9 @@ while true; do
         -M|--makepkg-conf)
             shift; build_args+=(--makepkg-conf "$1") ;;
         -C|--pacman-conf)
-            shift; build_args+=(--pacman-conf "$1") ;;
+            shift;
+            build_args+=(--pacman-conf "$1");
+            repo_args+=(--pacman-conf "$1") ;;
         --bind)
             shift; makechrootpkg_args+=(-D "$1") ;;
         --bind-rw)
