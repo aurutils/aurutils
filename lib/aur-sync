@@ -38,7 +38,7 @@ select_pkgbase() {
     $1 in map {
         base = map[$1]
 
-        # only print pkgbase on first occurence
+        # only print pkgbase on first occurrence
         if (base in seen) {
             next
         } else {
