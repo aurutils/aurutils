@@ -28,7 +28,7 @@ Upgrade notices are posted to the
 
 The main binary is `aur`.
 
-All further capabilities are called as commands of 
+All further capabilities are called by specifying the command as an option
 ```sh
 $ aur <command>
 ```
@@ -48,7 +48,7 @@ available user commands:
 
 ```
 
-For most complete documentation check the [manual](https://github.com/JhonnyJason/aurutils/blob/master/man1/aur.1) ;-)
+For most complete documentation check the [manual](man1/aur.1) ;-)
 
 ```sh
 $ man aur
