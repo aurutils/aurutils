@@ -28,7 +28,7 @@ Upgrade notices are posted to the
 
 The main binary is `aur`.
 
-All further capabilities are called by specifying the command as an option
+All further capabilities are called by providing its specific command as the first argument
 ```sh
 $ aur <command>
 ```
