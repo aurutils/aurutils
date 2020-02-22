@@ -26,9 +26,33 @@ Upgrade notices are posted to the
 
 ## USAGE
 
-Documentation is included as groff manuals. [`aur(1)`](man1/aur.1) contains a
-general overview, instructions on creating a local repository, and
-several examples.
+The main binary is `aur`.
+
+All further capabilities are called as commands of 
+```sh
+$ aur <command>
+```
+
+See:
+
+```
+[user@machine ~]$ aur
+usage: aur [command]
+
+available commands:
+build		fetch		pkglist		rpc		sync
+chroot		graph		repo		search		vercmp
+depends		jobs		repo-filter	srcver		vercmp-devel
+
+available user commands:
+
+```
+
+For most complete documentation check the [manual](https://github.com/JhonnyJason/aurutils/blob/master/man1/aur.1) ;-)
+
+```sh
+$ man aur
+```
 
 ## VERSIONING
 
