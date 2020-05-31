@@ -263,8 +263,12 @@ while IFS= read -ru "$fd" path; do
 
     # Run pkgver before --packagelist (#500)
     if (( run_pkgver )); then
-        # Ignore architecture inside pkgver() function (#536)
-        makepkg -od --ignorearch
+        # Use the given config, if any
+        if (( makepkg_conf )); then
+            makepkg -od --ignorearch --config "$makepkg_conf"
+        else
+            makepkg -od --ignorearch
+        fi
     fi
 
     if (( ! overwrite )); then
