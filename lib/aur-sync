@@ -91,7 +91,7 @@ opt_long=('bind:' 'bind-rw:' 'database:' 'repo:' 'directory:' 'ignore:' 'root:'
           'makepkg-conf:' 'pacman-conf:' 'chroot' 'continue' 'force'
           'ignore-arch' 'log' 'no-confirm' 'no-ver' 'no-graph' 'no-ver-argv'
           'no-view' 'no-provides' 'no-build' 'rm-deps' 'sign' 'temp' 'upgrades'
-          'pkgver' 'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:'
+          'pkgver' 'pkgrel' 'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:'
           'remove' 'provides-from:' 'new' 'prevent-downgrade' 'verify'
           'results:' 'makepkg-args:')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile:' 'noconfirm'
@@ -158,6 +158,8 @@ while true; do
             repo_args+=(--pacman-conf "$1") ;;
         --pkgver)
             build_args+=(--pkgver) ;;
+        --pkgrel)
+            build_args+=(--pkgrel) ;;
         --results)
             shift; build_args+=(--results "$1") ;;
         -S|--sign|--gpg-sign)

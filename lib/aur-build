@@ -9,7 +9,7 @@ XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 results=0
+chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 bump_pkgrel=0 results=0
 
 # default arguments (empty)
 chroot_args=() pacconf_args=() repo_add_args=() makepkg_args=() makechrootpkg_makepkg_args=() makepkg_common_args=()
@@ -61,7 +61,7 @@ fi
 opt_short='a:d:D:U:AcCfnrsvLNRST'
 opt_long=('arg-file:' 'chroot' 'database:' 'repo:' 'force' 'root:' 'sign'
           'verify' 'directory:' 'no-sync' 'pacman-conf:' 'results:' 'remove'
-          'pkgver' 'prefix:' 'rmdeps' 'no-confirm' 'ignore-arch' 'log' 'new'
+          'pkgver' 'pkgrel' 'prefix:' 'rmdeps' 'no-confirm' 'ignore-arch' 'log' 'new'
           'makepkg-conf:' 'bind:' 'bind-rw:' 'prevent-downgrade' 'temp'
           'syncdeps' 'clean' 'namcap' 'checkpkg' 'user:' 'makepkg-args:')
 opt_hidden=('dump-options' 'gpg-sign' 'ignorearch' 'noconfirm' 'nosync' 'margs:')
@@ -87,6 +87,8 @@ while true; do
             no_sync=1 ;;
         --pkgver)
             run_pkgver=1; makepkg_args+=(--noextract) ;;
+        --pkgrel)
+            bump_pkgrel=1; makepkg_args+=(--noextract) ;;
         --results)
             shift; results_file=$1 ;;
         --root)
@@ -251,6 +253,13 @@ fi
 
 while IFS= read -ru "$fd" path; do
     cd_safe "$startdir/$path"
+
+    # Update pkgrel on rebuild
+    if (( bump_pkgrel )) ; then
+        mv PKGBUILD PKGBUILD.old
+        awk -F"=" '{ OFS="=" } {if ($1 == "pkgrel") print($1,$2+1); else print $0;}' PKGBUILD.old > PKGBUILD
+        rm PKGBUILD.old
+    fi
 
     # Run pkgver before --packagelist (#500)
     if (( run_pkgver )); then
