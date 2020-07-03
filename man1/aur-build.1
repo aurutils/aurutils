@@ -75,7 +75,7 @@ Run
 .B "makepkg \-od
 before checking existing packages (effectively running an existing
 .B pkgver()
-function). Th
+function). The
 .BR \-\-noconfirm
 option is added to the default
 .BR makepkg (8)
@@ -83,7 +83,6 @@ options.
 .
 .B Note:
 The
-.RE
 .BR \-r ,
 .BR \-s ,
 and
@@ -92,6 +91,13 @@ options are passed on to the above command. Other
 .BR makepkg (8)
 options are ignored.
 .RE
+.
+.TP
+.BR \-\-pkgrel
+Increments the 
+.B pkgrel
+variable in the PKGBUILD before checking existing packages. This ensures
+that rebuilt packages will be detected as updates by \fBpacman \-Syu\fR.
 .
 .TP
 .BI \-\-results= file
