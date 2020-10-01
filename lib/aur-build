@@ -71,7 +71,7 @@ if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
 fi
 set -- "${OPTRET[@]}"
 
-unset db_name db_path db_root makepkg_conf results_file queue
+unset db_name db_path db_root makepkg_conf makepkg_user results_file queue
 while true; do
     case "$1" in
         # build options
@@ -109,7 +109,8 @@ while true; do
         -T|--temp)
             makechrootpkg_args+=(-T) ;;
         -U|--user)
-            shift; makechrootpkg_args+=(-U "$1") ;;
+            shift; makechrootpkg_args+=(-U "$1")
+            makepkg_user=$1 ;;
         # makepkg options (common)
         -A|--ignorearch|--ignore-arch)
             makepkg_common_args+=(--ignorearch)
@@ -199,6 +200,14 @@ fi
 # Write successfully built packages to file (#437)
 if [[ -v results_file ]]; then
     : >"$results_file" # truncate file
+fi
+
+if [[ -v makepkg_user ]]; then
+    id -- "$makepkg_user" >/dev/null
+
+    makepkg() {
+        command sudo -u "$makepkg_user" makepkg "$@"
+    }
 fi
 
 # Defaults to /usr/share/devtools/pacman-<prefix>.conf

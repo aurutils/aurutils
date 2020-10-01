@@ -88,14 +88,14 @@ if (( UID == 0 )) && [[ ! -v AUR_ASROOT ]]; then
     exit 1
 fi
 
-opt_short='d:D:AcfLnorRSTuv'
+opt_short='d:D:U:AcfLnorRSTuv'
 opt_long=('bind:' 'bind-rw:' 'database:' 'repo:' 'directory:' 'ignore:' 'root:'
           'makepkg-conf:' 'pacman-conf:' 'chroot' 'continue' 'force'
           'ignore-arch' 'log' 'no-confirm' 'no-ver' 'no-graph' 'no-ver-argv'
           'no-view' 'no-provides' 'no-build' 'rm-deps' 'sign' 'temp' 'upgrades'
           'pkgver' 'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:'
           'remove' 'provides-from:' 'new' 'prevent-downgrade' 'verify'
-          'results:' 'makepkg-args:' 'format:')
+          'results:' 'makepkg-args:' 'format:' 'user:')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile:' 'noconfirm'
             'nover' 'nograph' 'nover-argv' 'noview' 'noprovides' 'nobuild'
             'rebuildall' 'rebuildtree' 'rmdeps' 'gpg-sign' 'margs:')
@@ -175,6 +175,8 @@ while true; do
             shift; build_args+=(--bind-rw "$1") ;;
         -T|--temp)
             build_args+=(-T) ;;
+        -U|--user)
+            shift; build_args+=(--user "$1") ;;
         # build options (makepkg)
         -A|--ignorearch|--ignore-arch)
             build_args+=(--ignorearch) ;;
