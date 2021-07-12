@@ -243,7 +243,7 @@ view_db=$XDG_DATA_HOME/aurutils/view
 mkdir -p "$view_db"
 
 # Default to showing PKGBUILD first in patch. (#399)
-orderfile=$XDG_CONFIG_HOME/aurutils/$argv0/orderfile
+orderfile=$XDG_CACHE_HOME/aurutils/$argv0/orderfile
 mkdir -p "${orderfile%/*}"
 
 if [[ ! -s $orderfile ]]; then
