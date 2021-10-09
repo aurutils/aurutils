@@ -323,7 +323,9 @@ while IFS= read -ru "$fd" path; do
             # makepkg invocation may take place
             warning '%s: skipping existing package (use -f to overwrite)' "$argv0"
 
-            printf '%q\n' >&2 "${exists[@]}"
+            cd_safe "$db_root"
+            LANG=C repo-add "${repo_add_args[@]}" "$db_path" "${exists[@]}"
+
             continue
         fi
     fi
