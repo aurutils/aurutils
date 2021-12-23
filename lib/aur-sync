@@ -10,7 +10,7 @@ AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/$argv0}
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default arguments
-build_args=(--clean --syncdeps) depends_args=() repo_args=() view_args=()
+build_args=(--clean --syncdeps) depends_args=() repo_args=() view_args=() graph_args=()
 
 # default options
 build=1 chkver_depth=2 download=1 view=1 provides=1 graph=1
@@ -64,7 +64,7 @@ complement_pattern() {
 srcinfo_graph() {
     while read -r pkg; do
         [[ $pkg ]] && printf '%s\0' "$pkg/.SRCINFO"
-    done | xargs -0 cat -- | aur graph >/dev/null
+    done | xargs -0 cat -- | aur graph "${graph_args[@]}" >/dev/null
 }
 
 trap_exit() {
@@ -131,6 +131,7 @@ while true; do
             build=0 ;;
         --nocheck|--no-check)
             depends_args+=(--no-checkdepends)
+            graph_args+=(--no-checkdepends)
             build_args+=(--no-check) ;;
         --nograph|--no-graph)
             graph=0 ;;

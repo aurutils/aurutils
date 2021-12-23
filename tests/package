@@ -17,3 +17,7 @@ test_package_huge=(
     'plasma-git-meta' # 100+ depends
     'ros-lunar-desktop' # 250+ depends 
 )
+
+test_package_checkcycle=(
+    'ruby-activemodel' # contain dependency cycles if checkdepends is considered
+)
