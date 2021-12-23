@@ -25,6 +25,23 @@ files may be concatenated before processing:
     $ cat */.SRCINFO | aur graph | tsort | tac
 .EE
 .
+.SH OPTIONS
+.SS Dependency options
+When ordering packages,
+.B aur\-graph
+considers all types (
+.IR depends ,
+.IR makedepends ,
+and
+.IR checkdepends )
+of dependencies by default. Types can be removed selectively with
+the
+.BR \-\-no\-depends ,
+.BR \-\-no\-makedepends ,
+and
+.B \-\-no\-checkdepends
+options. In particular, these options may be used to bypass cycles between dependencies of differing types.
+.
 .SH EXAMPLES
 .B aur\-graph
 supports

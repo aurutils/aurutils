@@ -1,6 +1,60 @@
-#!/bin/awk -f
+#!/bin/bash
 # aur-graph - print package/dependency pairs
 
+resolve_depends=1
+resolve_makedepends=1
+resolve_checkdepends=1
+
+usage() {
+    printf >&2 'usage: %s [.SRCINFO...]\n' "$argv0"
+    exit 1
+}
+
+source /usr/share/makepkg/util/parseopts.sh
+
+opt_short=''
+opt_long=('no-depends' 'no-makedepends' 'no-checkdepends')
+opt_hidden=()
+
+if ! parseopts "$opt_short" "${opt_long[@]}" "${opt_hidden[@]}" -- "$@"; then
+    usage
+fi
+set -- "${OPTRET[@]}"
+
+while true; do
+    case "$1" in
+        --no-depends)
+            resolve_depends=0 ;;
+        --no-makedepends)
+            resolve_makedepends=0 ;;
+        --no-checkdepends)
+            resolve_checkdepends=0 ;;
+        --dump-options)
+            printf -- '--%s\n' "${opt_long[@]}" ${AUR_DEBUG+"${opt_hidden[@]}"}
+            printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g'
+            exit ;;
+        --) shift; break ;;
+    esac
+    shift
+done
+
+depends_types=''
+if (( resolve_depends == 1 )); then
+    depends_types+="|depends"
+fi
+if (( resolve_makedepends == 1 )); then
+    depends_types+="|makedepends"
+fi
+if (( resolve_checkdepends == 1 )); then
+    depends_types+="|checkdepends"
+fi
+if [ "$depends_types" == '' ]; then
+    depends_types="|depends"
+    no_depends=1
+fi
+depends_types="${depends_types:1}"
+
+awk '
 # < 0 : if ver1 < ver2
 # = 0 : if ver1 == ver2
 # > 0 : if ver1 > ver2
@@ -48,8 +102,8 @@ function get_vercmp(ver1, ver2, op) {
     }
 }
 
-/^\t(make|check)?depends/ {
-    if (!in_split_pkg) {
+/^\t('"$depends_types"')/ {
+    if (!in_split_pkg'"${no_depends:+" && 0"}"') {
         # POSIX array of arrays!
         pkg_deps[pkgbase, ++dep_counts[pkgbase]] = $3 # versioned
     }
@@ -130,4 +184,4 @@ END {
 
     if (_vercmp_exit)
         exit _vercmp_exit
-}
+}' "$@"
