@@ -54,6 +54,9 @@ tr_ver() {
 chain() {
     local a num sub
 
+    select_args=("$1" "$2" "$3")
+    shift 3
+
     aur query -t info "$@" > json/0 || exit
     num=$(count json/0)
 
@@ -69,7 +72,15 @@ chain() {
     # dependencies) the difference is unlikely to be noticeable.
     for (( a = 1; a <= max_request; ++a )); do
         sub=$(( a - 1 ))
-        tabulate json/$sub | tee -a tsv/n > tsv/$sub
+        tabulate json/$sub > tsv/x$sub
+
+        # filter dependencies by type
+        if [[ "${select_args[*]}" == *0* ]]; then
+            select_deps "${select_args[@]}" tsv/x$sub > tsv/$sub
+        else
+            mv tsv/x$sub tsv/$sub
+        fi
+        cat tsv/$sub >> tsv/n
 
         # Avoid querying duplicates (#4)
         cut -f1 tsv/$sub >> seen # pkgname
@@ -154,7 +165,9 @@ trap 'trap_exit' EXIT
 
 rings=0
 if cd "$tmp" && mkdir json tsv; then
-    chain "$@" || rings=$? # tsv/n: pkgname\tdepends\tpkgbase\pkgver
+    # tsv/n: pkgname\tdepends\tpkgbase\pkgver
+    chain "$resolve_depends" "$resolve_makedepends" "$resolve_checkdepends" "$@" || rings=$?
+    deptable=tsv/n
 
     # check iteration number
     case $rings in
@@ -164,14 +177,6 @@ if cd "$tmp" && mkdir json tsv; then
             printf >&2 '%s: total requests: %d (out of range)\n' "$argv0" $(( max_request + 1 ))
             exit 34 ;;
     esac
-
-    # filter dependencies by type
-    if (( resolve_depends == 0 || resolve_makedepends == 0 || resolve_checkdepends == 0 )); then
-        select_deps "$resolve_depends" "$resolve_makedepends" "$resolve_checkdepends" tsv/n > tsv/x
-        deptable=tsv/x
-    else
-        deptable=tsv/n
-    fi
 
     case $mode in
         # pkgbase (AUR, total order)
