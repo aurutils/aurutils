@@ -1,6 +1,7 @@
 #!/bin/bash
 # aur-graph - print package/dependency pairs
 
+argv0=graph
 resolve_depends=1
 resolve_makedepends=1
 resolve_checkdepends=1
