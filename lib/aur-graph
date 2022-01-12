@@ -40,6 +40,7 @@ while true; do
 done
 
 depends_types=''
+no_depends=0
 if (( resolve_depends == 1 )); then
     depends_types+="|depends"
 fi
@@ -55,7 +56,7 @@ if [ "$depends_types" == '' ]; then
 fi
 depends_types="${depends_types:1}"
 
-awk '
+awk -v no_depends=$no_depends '
 # < 0 : if ver1 < ver2
 # = 0 : if ver1 == ver2
 # > 0 : if ver1 > ver2
@@ -104,7 +105,7 @@ function get_vercmp(ver1, ver2, op) {
 }
 
 /^\t('"$depends_types"')/ {
-    if (!in_split_pkg'"${no_depends:+" && 0"}"') {
+    if (!no_depends && !in_split_pkg) {
         # POSIX array of arrays!
         pkg_deps[pkgbase, ++dep_counts[pkgbase]] = $3 # versioned
     }
