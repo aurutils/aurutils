@@ -113,7 +113,7 @@ info_short() {
         LC_ALL='' LC_NUMERIC=C printf -v Popularity '%.2f' "$Popularity"
 
         Url="${AUR_LOCATION}/packages/${Name}"
-        Link="$(hyperlink "$Url" "${BLUE}aur/${ALL_OFF}${BOLD}${Name}")"
+        Link="$(hyperlink "$Url" "$(printf '%b' "${BLUE}aur/${ALL_OFF}${BOLD}${Name}")")"
 
         printf "%s ${GREEN}%s ${ALL_OFF}(+%s %s%%) ${RED}%s%s${ALL_OFF}\\n    %s\\n" \
                "$Link" "$Version" "$NumVotes" "$Popularity" "$Maintainer" "$OutOfDate" "$Description"
