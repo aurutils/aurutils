@@ -12,7 +12,7 @@ PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 unset -v CDPATH
 
 # default options
-chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 truncate=1
+chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 truncate=1 create_chroot=1
 
 # default arguments (empty)
 chroot_args=() pacconf_args=() repo_args=() repo_add_args=() pkglist_args=()
@@ -100,9 +100,9 @@ opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'sign' 'gpg-sign'
           'rmdeps' 'no-confirm' 'no-check' 'ignore-arch' 'log' 'new'
           'makepkg-conf:' 'bind:' 'bind-rw:' 'prevent-downgrade' 'temp'
           'syncdeps' 'clean' 'namcap' 'checkpkg' 'makepkg-args:' 'user:'
-          'margs:' 'buildscript:' 'null')
+          'margs:' 'buildscript:' 'null' 'no-create')
 opt_hidden=('dump-options' 'ignorearch' 'noconfirm' 'nocheck' 'nosync' 'repo:'
-            'results:' 'results-append:')
+            'results:' 'results-append:' 'nocreate')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -155,6 +155,8 @@ while true; do
             makechrootpkg_args+=(-T) ;;
         -U|--user)
             shift; makechrootpkg_args+=(-U "$1") ;;
+        --nocreate|--no-create)
+            create_chroot=0 ;;
         # makepkg options (common)
         -A|--ignorearch|--ignore-arch)
             makepkg_common_args+=(--ignorearch)
@@ -338,7 +340,7 @@ if [[ -v results_file ]]; then
     (( truncate )) && true | tee "$results_file"
 fi
 
-if (( chroot )); then
+if (( chroot )) && (( create_chroot )); then
     # Update pacman and makepkg configuration for the chroot build
     # queue. A full system upgrade is run on the /root container to
     # avoid lenghty upgrades for makechrootpkg -u.
