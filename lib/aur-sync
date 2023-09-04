@@ -14,7 +14,7 @@ PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 unset -v CDPATH
 
 # default arguments
-build_args=(--clean --syncdeps)
+build_args=(--clean --syncdeps) chroot_args=()
 depends_args=() repo_args=() view_args=() filter_args=() fetch_args=() graph_args=()
 
 # default options
@@ -209,12 +209,6 @@ while true; do
             build_args+=(--force) ;;
         --makepkg-args|--margs)
             shift; build_args+=(--margs "$1") ;;
-        --makepkg-conf)
-            shift; build_args+=(--makepkg-conf "$1") ;;
-        --pacman-conf)
-            shift; build_args+=(--pacman-conf "$1")
-            repo_args+=(--config "$1")
-            filter_args+=(--config "$1") ;;
         --pkgver)
             build_args+=(--pkgver) ;;
         -S|--sign|--gpg-sign)
@@ -222,12 +216,20 @@ while true; do
         -U|--user)
             shift; build_args+=(--user "$1") ;;
         # build options (devtools)
+        --makepkg-conf)
+            shift; build_args+=(--makepkg-conf "$1")
+            chroot_args+=(--makepkg-conf "$1") ;;
+        --pacman-conf)
+            shift; build_args+=(--pacman-conf "$1")
+            chroot_args+=(--pacman-conf "$1")
+            filter_args+=(--config "$1")
+            repo_args+=(--config "$1") ;;
         -D|--directory)
-            shift; build_args+=(--directory "$1") ;;
+            shift; chroot_args+=(--directory "$1") ;;
         --bind)
-            shift; build_args+=(--bind "$1") ;;
+            shift; chroot_args+=(--bind "$1") ;;
         --bind-rw)
-            shift; build_args+=(--bind-rw "$1") ;;
+            shift; chroot_args+=(--bind-rw "$1") ;;
         -T|--temp)
             build_args+=(-T) ;;
         # build options (makepkg)
@@ -483,7 +485,7 @@ elif (( AUR_SYNC_USE_NINJA )); then
     # input:  $AURDEST/pkgbase/PKGBUILD
     # output: $ninja_dir/pkgbase.stamp
     aur sync--ninja "$AURDEST" <"$tmp"/graph.ninja >"$ninja_dir"/build.ninja \
-        -- aur build "${build_args[@]}" -d "$db_name" --root "$db_root"
+        -- aur build "${build_args[@]}" "${chroot_args[@]}" -d "$db_name" --root "$db_root"
 
     if NINJA_STATUS='[%s/%t] ' ninja -C "$ninja_dir" -k "$keep_going"; then
         # Remove ninja directory on successful build
@@ -510,7 +512,7 @@ else
     if [[ -v stdout_file ]]; then
         cat "$tmp"/queue.realpath >"$stdout_file"
     fi
-    aur build "${build_args[@]}" -a "$tmp"/queue.realpath -d "$db_name" --root "$db_root"
+    aur build "${build_args[@]}" "${chroot_args[@]}" -a "$tmp"/queue.realpath -d "$db_name" --root "$db_root"
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
