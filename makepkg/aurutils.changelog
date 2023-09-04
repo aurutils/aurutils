@@ -5,6 +5,10 @@
 
 * `aur-build`
   + shell escape file names in diagnostics
+  + add `--no-create`
+
+* `aur-sync`
+  + run `aur-chroot` before `aur-repo-filter` (#1042)
 
 ## 17.3
 

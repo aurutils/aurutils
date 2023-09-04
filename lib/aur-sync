@@ -18,7 +18,7 @@ build_args=(--clean --syncdeps) chroot_args=()
 depends_args=() repo_args=() view_args=() filter_args=() fetch_args=() graph_args=()
 
 # default options
-build=1 chkver_depth=2 download=1 view=1 provides=1 graph=1 keep_going=1
+build=1 chkver_depth=2 download=1 view=1 provides=1 graph=1 keep_going=1 chroot=0
 
 # default options (disabled)
 rotate=0 update=0 repo_targets=0 columns=0
@@ -204,7 +204,7 @@ while true; do
             view_args+=(--prefix) ;;  # experimental
         # build options
         -c|--chroot)
-            build_args+=(--chroot) ;;
+            chroot=1; build_args+=(--chroot) ;;
         -f|--force)
             build_args+=(--force) ;;
         --makepkg-args|--margs)
@@ -357,6 +357,19 @@ fi
 
 # pkginfo: $1 pkgname $2 pkgbase $3 pkgver
 cut -f2,5 --complement "$tmp"/depends | sort -u >"$tmp"/pkginfo
+
+if (( chroot )); then
+    chroot_path=$(aur chroot "${chroot_args[@]}" --create --update --path)
+
+    # Skip default creation/update is in later `aur-build` calls. This is also
+    # relevant to `AUR_SYNC_USE_NINJA=1` with one `aur-build` call per package.
+    build_args+=(--no-create)
+
+    # `pacman` state may differ between host and containers. To ensure
+    # accurate results for `makepkg`, use the container location as
+    # pacutils-sysroot(7) for `aur-repo-filter`.
+    filter_args+=(--sysroot "$chroot_path")
+fi
 
 { cat "$tmp"/igni # ignored packages (already included by aur-depends --assume-installed)
 
