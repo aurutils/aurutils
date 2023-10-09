@@ -262,6 +262,11 @@ Do not wait for user input when installing or removing build dependencies.
 Print target packages and their paths instead of building them.
 .
 .TP
+.BR \-\-nokeyretrieve ", " \-\-no\-key\-retrieve
+Do not automatically import PGP keys to
+.BR AUR_SYNC_GNUPGHOME .
+.
+.TP
 .BR \-\-pkgver
 Run
 .B "makepkg \-od \-\-noprepare"
@@ -314,6 +319,13 @@ or
 .BR \-\-ff ,
 it is advised to set a persistent path such as
 .IR /home/aurpkgs .
+.
+.TP
+.B AUR_SYNC_GNUPGHOME
+The path where
+.B validpgpkeys
+are imported. Defaults to
+.IR XDG_DATA_HOME/aurutils/sync/gnupg .
 .
 .TP
 .B AUR_SYNC_USE_NINJA

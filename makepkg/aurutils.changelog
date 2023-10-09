@@ -21,13 +21,16 @@
 * `aur-build`
   + propagate `--pacman-conf` to local repository upgrade
 
+* `aur-sync`
+  + retrieve PGP keys to `AUR_SYNC_GNUPGHOME` keyring
+    - keyring defaults to `$XDG_DATA_HOME/aurutils/sync/gnupg`
+    - disable with `--no-key-retrieve`
+  + `makepkg --clean` is now optional (`--clean` / `-C`)
+
 ## 18.4
 
 * `aur-repo`
   + fix incomplete output with `--search` (`--json`, #1120)
-
-* `aur-sync`
-  + `makepkg --clean` is now optional (`--clean` / `-C`)
 
 ## 18.3
 

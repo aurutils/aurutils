@@ -6,8 +6,10 @@ argv0=sync
 XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 XDG_STATE_HOME=${XDG_STATE_HOME:-$HOME/.local/state}
+XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/$argv0}
 AUR_SYNC_USE_NINJA=${AUR_SYNC_USE_NINJA:-0}
+AUR_SYNC_GNUPGHOME=${AUR_SYNC_GNUPGHOME:-$XDG_DATA_HOME/aurutils/$argv0/sync/gnupg}
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # Avoid CDPATH screwing with cd (#1047)
@@ -18,7 +20,7 @@ build_args=(--syncdeps)
 depends_args=() repo_args=() view_args=() filter_args=() fetch_args=() graph_args=()
 
 # default options
-build=1 chkver_depth=2 download=1 view=1 provides=1 graph=1 keep_going=1
+build=1 chkver_depth=2 download=1 view=1 provides=1 graph=1 keep_going=1 auto_key_retrieve=1
 
 # default options (disabled)
 rotate=0 update=0 repo_targets=0 columns=0
@@ -113,15 +115,15 @@ opt_short='d:D:k:U:ACcfLnorRSTuv'
 opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:' 'clean'
           'makepkg-conf:' 'pacman-conf:' 'chroot' 'continue' 'force'
           'ignore-arch' 'log' 'no-confirm' 'no-ver' 'no-graph' 'no-sync' 'no-ver-argv'
-          'no-view' 'no-provides' 'no-build' 'rmdeps' 'sign' 'temp' 'upgrades'
-          'pkgver' 'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:'
+          'no-view' 'no-provides' 'no-build' 'no-key-retrieve' 'rmdeps' 'sign' 'temp'
+          'upgrades' 'pkgver' 'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:'
           'remove' 'provides-from:' 'new' 'prevent-downgrade' 'verify'
           'makepkg-args:' 'format:' 'no-check' 'keep-going:' 'user:'
           'rebase' 'reset' 'ff' 'exclude:' 'columns' 'prefix' 'save:')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile:' 'noconfirm'
             'nover' 'nograph' 'nosync' 'nover-argv' 'noview' 'noprovides' 'nobuild'
             'rebuildall' 'rebuildtree' 'rm-deps' 'gpg-sign' 'margs:' 'nocheck'
-            'no-checkdepends' 'nocheckdepends' 'optdepends' 'repo:')
+            'no-checkdepends' 'nocheckdepends' 'nokeyretrieve' 'optdepends' 'repo:')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -169,6 +171,8 @@ while true; do
             view=0 ;;
         --noprovides|--no-provides)
             provides=0 ;;
+        --nokeyretrieve|--no-key-retrieve)
+            auto_key_retrieve=0 ;;
         --provides-from)
             shift; IFS=, read -a repo -r <<< "$1"
             repo_p+=("${repo[@]}")
@@ -428,6 +432,19 @@ if (( download )); then
     done < "$tmp"/fetch_results
 else
     xargs -a "$tmp"/queue stat >/dev/null || exit 2 # ensure all directories are available
+fi
+
+if (( auto_key_retrieve )); then
+    # shellcheck disable=SC2174
+    mkdir -pm 0700 -- "$AUR_SYNC_GNUPGHOME"
+
+    while IFS= read -r path; do
+        mapfile -t keys < <(pacini "$path"/.SRCINFO 'validpgpkeys')
+
+        if (( ${#keys[@]} )); then
+            GNUPGHOME="$AUR_SYNC_GNUPGHOME" gpg --recv-keys "${keys[@]}"
+        fi
+    done < "$tmp"/queue
 fi
 
 # Verify dependency tree (#20)
