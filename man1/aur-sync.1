@@ -223,7 +223,7 @@ for all repositories.
 .
 .SS Build options
 The default build command is
-.BR "aur-build \-\-clean \-\-syncdeps" .
+.BR "aur-build \-\-syncdeps" .
 Specifying
 .BR aur\-build (1)
 options such as
@@ -236,6 +236,11 @@ will append these options to the build command. This section only lists
 common options. See
 .BR aur\-build (1)
 for more information.
+.
+.TP
+.BR \-C ", " \-\-clean
+Clean up leftover work files and directories after a successful build.
+.RB ( "aur build \-C" )
 .
 .TP
 .BR \-c ", " \-\-chroot

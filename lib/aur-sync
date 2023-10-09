@@ -14,7 +14,7 @@ PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 unset -v CDPATH
 
 # default arguments
-build_args=(--clean --syncdeps)
+build_args=(--syncdeps)
 depends_args=() repo_args=() view_args=() filter_args=() fetch_args=() graph_args=()
 
 # default options
@@ -109,8 +109,8 @@ if (( UID == 0 )) && [[ ! -v AUR_ASROOT ]]; then
 fi
 
 # option parsing
-opt_short='d:D:k:U:AcfLnorRSTuv'
-opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:'
+opt_short='d:D:k:U:ACcfLnorRSTuv'
+opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:' 'clean'
           'makepkg-conf:' 'pacman-conf:' 'chroot' 'continue' 'force'
           'ignore-arch' 'log' 'no-confirm' 'no-ver' 'no-graph' 'no-sync' 'no-ver-argv'
           'no-view' 'no-provides' 'no-build' 'rmdeps' 'sign' 'temp' 'upgrades'
@@ -203,6 +203,8 @@ while true; do
         --prefix)
             view_args+=(--prefix) ;;  # experimental
         # build options
+        -C|--clean)
+            build_args+=(--clean) ;;
         -c|--chroot)
             build_args+=(--chroot) ;;
         -f|--force)

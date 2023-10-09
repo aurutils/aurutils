@@ -26,6 +26,9 @@
 * `aur-repo`
   + fix incomplete output with `--search` (`--json`, #1120)
 
+* `aur-sync`
+  + `makepkg --clean` is now optional (`--clean` / `-C`)
+
 ## 18.3
 
 * `aur-build--pkglist`

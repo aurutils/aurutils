@@ -389,7 +389,7 @@ in $PATH, for example
     AURDEST=${AURDEST:\-$XDG_CACHE_HOME/aurutils/sync}
 
     # Assumes build files were retrieved through git(1)
-    find "$AURDEST" \-name .git \-execdir git clean \-xf \e;
+    find "$AURDEST" \-name .git \-execdir git clean \-dxf \e;
 
     # Print directories which do not contain a PKGBUILD file
     for d in "$AURDEST"/*; do
