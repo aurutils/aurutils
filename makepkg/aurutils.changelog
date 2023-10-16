@@ -175,6 +175,7 @@
 
 * `aur-build`
   + propagate `--pacman-conf` to local repository upgrade
+  + re-add `aur-build--sync` helper
 
 ## 18.4
 

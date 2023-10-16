@@ -1,0 +1,71 @@
+#!/bin/bash
+# shellcheck disable=SC2086
+# build--sync - helper for upgrading local repository
+set -o errexit
+[[ -v AUR_DEBUG ]] && set -o xtrace
+AUR_PACMAN_AUTH=${AUR_PACMAN_AUTH:-sudo}
+argv0=build--sync
+PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+# default options
+conf_args=() install_args=()
+
+args_csv() {
+    # shellcheck disable=SC2155
+    local str=$(printf '%s,' "$@")
+    printf '%s' "${str%,}"
+}
+
+get_local_upgrades() {
+    # pacman prints diagnostics (::) to standard output, but does not accept
+    # repositories starting in `:: `. Redirect output accordingly.
+    LANG=C pacman -Sup "${@:2}" --print-format '%r/%n' | awk -F/ -v repo="$1" '
+        $1 ~ repo   {print $1 "/" $2}
+        $1 ~ /^:: / {print $0 >"/dev/stderr"}
+    '
+    return "${PIPESTATUS[0]}"
+}
+
+# option parsing
+opt_short='d:n'
+opt_long=('database:' 'config:' 'noconfirm')
+
+if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}")" -n "$argv0" -- "$@"); then
+    eval set -- "$opts"
+else
+    printf >&2 'usage: %s [-n] [-d repo]\n' "$argv0"
+    exit 1
+fi
+
+unset db_name
+while true; do
+    case "$1" in
+        -d|--database)
+            shift; db_name=$1 ;;
+        --config)
+            shift; conf_args+=(--config "$1") ;;
+        -n|--noconfirm)
+            install_args+=(--noconfirm) ;;
+        --) shift; break ;;
+    esac
+    shift
+done
+
+if [[ ! -v db_name ]]; then
+    printf >&2 '%s: database required\n' "$argv0"
+    exit 1
+fi
+# propagate local repo contents
+$AUR_PACMAN_AUTH pacsync "${conf_args[@]}" "$db_name"
+$AUR_PACMAN_AUTH pacsync "${conf_args[@]}" "$db_name" --dbext=.files
+
+# retrieve upgrade targets
+mapfile -t targets < <(get_local_upgrades "$db_name" "${conf_args[@]}")
+wait "$!"
+
+if (( ${#targets[@]} )); then
+    printf >&2 "%s: upgrading packages in repository '%s'\n" "$argv0" "$db_name"
+    printf '%s\n' "${targets[@]}" | $AUR_PACMAN_AUTH pacman -S "${conf_args[@]}" "${install_args[@]}" -
+else
+    printf >&2 "%s: there is nothing to do\n" "$argv0"
+fi
