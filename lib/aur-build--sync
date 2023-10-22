@@ -8,7 +8,7 @@ argv0=build--sync
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-conf_args=() install_args=()
+conf_args=()
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -27,8 +27,8 @@ get_local_upgrades() {
 }
 
 # option parsing
-opt_short='d:n'
-opt_long=('database:' 'config:' 'noconfirm')
+opt_short='d:'
+opt_long=('database:' 'config:')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -44,8 +44,6 @@ while true; do
             shift; db_name=$1 ;;
         --config)
             shift; conf_args+=(--config "$1") ;;
-        -n|--noconfirm)
-            install_args+=(--noconfirm) ;;
         --) shift; break ;;
     esac
     shift
@@ -65,7 +63,7 @@ wait "$!"
 
 if (( ${#targets[@]} )); then
     printf >&2 "%s: upgrading packages in repository '%s'\n" "$argv0" "$db_name"
-    printf '%s\n' "${targets[@]}" | $AUR_PACMAN_AUTH pacman -S "${conf_args[@]}" "${install_args[@]}" -
+    printf '%s\n' "${targets[@]}" | $AUR_PACMAN_AUTH pacman -S "${conf_args[@]}" - "$@"
 else
     printf >&2 "%s: there is nothing to do\n" "$argv0"
 fi

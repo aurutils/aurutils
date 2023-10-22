@@ -433,7 +433,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     if (( chroot )) || (( no_sync )); then
         continue
     else
-        aur build--sync "${sync_args[@]}" --noconfirm
+        aur build--sync "${sync_args[@]}" -- --noconfirm
     fi
 done
 
