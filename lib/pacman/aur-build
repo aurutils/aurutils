@@ -252,7 +252,7 @@ fi
 # Propagate `pacman` configuration (`aur chroot`, `--pacman-conf`)
 if [[ -v pacman_conf ]]; then
     repo_args+=(--config "$pacman_conf")                # `aur repo`
-    sync_args+=(--config "$pacman_conf")                # `pacman --sync`
+    sync_args+=(--config "$pacman_conf")                # `aur build--sync`
 
     if [[ ! -r $pacman_conf ]]; then
         printf >&2 '%s: %s: permission denied\n' "$argv0" "$pacman_conf"
@@ -457,7 +457,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     if (( chroot )) || (( no_sync )); then
         continue
     else
-        aur build--sync "${sync_args[@]}" --noconfirm
+        aur build--sync "${sync_args[@]}" -d "$db_name" -nyu
     fi
 done
 
