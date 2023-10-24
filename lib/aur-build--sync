@@ -3,12 +3,11 @@
 # build--sync - helper for upgrading local repository
 set -o errexit
 [[ -v AUR_DEBUG ]] && set -o xtrace
-AUR_PACMAN_AUTH=${AUR_PACMAN_AUTH:-sudo}
 argv0=build--sync
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-conf_args=()
+conf_args=() sync_args=() refresh=0 sysupgrade=0
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -16,19 +15,20 @@ args_csv() {
     printf '%s' "${str%,}"
 }
 
-get_local_upgrades() {
-    # pacman prints diagnostics (::) to standard output, but does not accept
-    # repositories starting in `:: `. Redirect output accordingly.
-    LANG=C pacman -Sup "${@:2}" --print-format '%r/%n' | awk -F/ -v repo="$1" '
-        $1 ~ repo   {print $1 "/" $2}
-        $1 ~ /^:: / {print $0 >"/dev/stderr"}
-    '
-    return "${PIPESTATUS[0]}"
+get_local_config() {
+    printf '[options]\n'
+    pacconf "${conf_args[@]}" --options --raw
+
+    local repo
+    for repo in "$@"; do
+        printf '[%s]\n' "$repo"
+        pacconf "${conf_args[@]}" --repo="$repo" --raw
+    done
 }
 
 # option parsing
-opt_short='d:'
-opt_long=('database:' 'config:')
+opt_short='d:inuy'
+opt_long=('database:' 'config:' 'refresh' 'sysupgrade' 'install' 'noconfirm' 'asdeps')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -37,33 +37,38 @@ else
     exit 1
 fi
 
-unset db_name
+unset db_names
 while true; do
     case "$1" in
         -d|--database)
-            shift; db_name=$1 ;;
+            shift; db_names+=("$1") ;;
+        -y|--refresh)
+            refresh=1 ;;
+        -u|--sysupgrade)
+            sync_args+=(--sysupgrade --resolve-replacements=none) ;;
+        -i|--install)
+            sync_args+=(--install) ;;
+        -n|--noconfirm)
+            sync_args+=(--no-confirm) ;;
+        --asdeps)
+            sync_args+=(--as-deps) ;;
         --config)
-            shift; conf_args+=(--config "$1") ;;
+            shift; conf_args+=(--config "$1") ;;        
         --) shift; break ;;
     esac
     shift
 done
 
-if [[ ! -v db_name ]]; then
-    printf >&2 '%s: database required\n' "$argv0"
-    exit 1
+if (( refresh )); then
+    pacsync "${conf_args[@]}" "${db_names[@]}"
+    pacsync "${conf_args[@]}" "${db_names[@]}" --dbext=.files
 fi
-# propagate local repo contents
-$AUR_PACMAN_AUTH pacsync "${conf_args[@]}" "$db_name"
-$AUR_PACMAN_AUTH pacsync "${conf_args[@]}" "$db_name" --dbext=.files
 
-# retrieve upgrade targets
-mapfile -t targets < <(get_local_upgrades "$db_name" "${conf_args[@]}")
-wait "$!"
-
-if (( ${#targets[@]} )); then
-    printf >&2 "%s: upgrading packages in repository '%s'\n" "$argv0" "$db_name"
-    printf '%s\n' "${targets[@]}" | $AUR_PACMAN_AUTH pacman -S "${conf_args[@]}" - "$@"
+if (( ${#db_names[@]} )); then
+    pactrans "${sync_args[@]}" --config <(get_local_config "${db_names[@]}") "$@"
+    wait "$!"
 else
-    printf >&2 "%s: there is nothing to do\n" "$argv0"
+    pactrans "${sync_args[@]}" "$@"
 fi
+
+# vim: set et sw=4 sts=4 ft=sh:
