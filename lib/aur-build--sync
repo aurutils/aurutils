@@ -7,7 +7,7 @@ argv0=build--sync
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-conf_args=() sync_args=() refresh=0 sysupgrade=0
+conf_args=() sync_args=() refresh=0
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -16,19 +16,38 @@ args_csv() {
 }
 
 get_local_config() {
+    #global conf_args
+    local repo
+
     printf '[options]\n'
     pacconf "${conf_args[@]}" --options --raw
 
-    local repo
     for repo in "$@"; do
         printf '[%s]\n' "$repo"
         pacconf "${conf_args[@]}" --repo="$repo" --raw
     done
 }
 
+# https://lists.archlinux.org/pipermail/pacman-dev/2013-August/017743.html
+try_lock() {
+    local lockfile=$1 
+
+    # Adapted from `run_pacman()` in `makepkg`
+    while [[ -f $lockfile ]]; do
+        local timer=0
+        printf >&2 '%s: pacman is currently in use, please wait...\n' "$argv0"
+
+        while [[ -f $lockfile ]] && (( timer < 10 )); do
+            (( ++timer ))
+            sleep 3
+        done
+    done
+    command -- "${@:2}"
+}
+
 # option parsing
 opt_short='d:inuy'
-opt_long=('database:' 'config:' 'refresh' 'sysupgrade' 'install' 'noconfirm' 'asdeps')
+opt_long=('database:' 'config:' 'refresh' 'sysupgrade' 'install' 'remove' 'noconfirm' 'asdeps')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -45,9 +64,11 @@ while true; do
         -y|--refresh)
             refresh=1 ;;
         -u|--sysupgrade)
-            sync_args+=(--sysupgrade --resolve-replacements=none) ;;
+            sync_args+=(--sysupgrade) ;;
         -i|--install)
             sync_args+=(--install) ;;
+        -r|--remove)
+            sync_args+=(--remove) ;;
         -n|--noconfirm)
             sync_args+=(--no-confirm) ;;
         --asdeps)
@@ -59,16 +80,22 @@ while true; do
     shift
 done
 
+lockfile=$(paclock "${conf_args[@]}" --print)
+
 if (( refresh )); then
-    pacsync "${conf_args[@]}" "${db_names[@]}"
-    pacsync "${conf_args[@]}" "${db_names[@]}" --dbext=.files
+    try_lock "$lockfile" pacsync "${conf_args[@]}" "${db_names[@]}"
+    try_lock "$lockfile" pacsync "${conf_args[@]}" "${db_names[@]}" --dbext=.files
 fi
 
 if (( ${#db_names[@]} )); then
-    pactrans "${sync_args[@]}" --config <(get_local_config "${db_names[@]}") "$@"
+    # Do not replace packages installed from other repositories
+    sync_args+=(--resolve-replacements=none)
+
+    # Restrain configuration to specified repositories
+    try_lock "$lockfile" pactrans "${sync_args[@]}" --config <(get_local_config "${db_names[@]}") "$@"
     wait "$!"
 else
-    pactrans "${sync_args[@]}" "$@"
+    try_lock "$lockfile" pactrans "${sync_args[@]}" "${conf_args[@]}" "$@"
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
