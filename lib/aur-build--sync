@@ -7,7 +7,7 @@ argv0=build--sync
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-conf_args=() sync_args=() refresh=0
+conf_args=() sync_args=() db_names=() refresh=0
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -48,37 +48,41 @@ try_lock() {
 # option parsing
 opt_short='d:inuy'
 opt_long=('database:' 'config:' 'refresh' 'sysupgrade' 'install' 'remove' 'noconfirm' 'asdeps')
+orig_argv=("$@")
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
 else
-    printf >&2 'usage: %s [-n] [-d repo]\n' "$argv0"
+    printf >&2 'usage: %s [-inruy] [-d repo]\n' "$argv0"
     exit 1
 fi
 
-unset db_names
 while true; do
     case "$1" in
         -d|--database)
             shift; db_names+=("$1") ;;
-        -y|--refresh)
-            refresh=1 ;;
-        -u|--sysupgrade)
-            sync_args+=(--sysupgrade) ;;
-        -i|--install)
-            sync_args+=(--install) ;;
-        -r|--remove)
-            sync_args+=(--remove) ;;
-        -n|--noconfirm)
-            sync_args+=(--no-confirm) ;;
+        --config)
+            shift; conf_args+=(--config "$1") ;;
         --asdeps)
             sync_args+=(--as-deps) ;;
-        --config)
-            shift; conf_args+=(--config "$1") ;;        
+        -i|--install)
+            sync_args+=(--install);;
+        -n|--noconfirm)
+            sync_args+=(--no-confirm) ;;
+        -r|--remove)
+            sync_args+=(--remove) ;;
+        -u|--sysupgrade)
+            sync_args+=(--sysupgrade) ;;
+        -y|--refresh)
+            refresh=1 ;;
         --) shift; break ;;
     esac
     shift
 done
+
+if (( EUID != 0 )); then
+    exec ${AUR_PACMAN_AUTH:-sudo} "${BASH_SOURCE[0]}" "${orig_argv[@]}"
+fi
 
 lockfile=$(paclock "${conf_args[@]}" --print)
 
