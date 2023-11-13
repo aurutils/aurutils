@@ -433,7 +433,8 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     if (( chroot )) || (( no_sync )); then
         continue
     else
-        aur build--sync "${sync_args[@]}" -d "$db_name" -nyu
+        #shellcheck disable=SC2086
+        ${AUR_BUILD_SYNC:-aur build--sync} "${sync_args[@]}" -d "$db_name" -yu --noconfirm
     fi
 done
 
