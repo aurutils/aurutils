@@ -24,45 +24,38 @@ Alad Wenter <https://github.com/AladW/aurutils>
 
 =cut
 
-# Attributes which (where applicable) match AurJson, such that output can be
-# reused with `aur-format`.
-# Note: `Version` has no matching .SRCINFO attribute, since it consists of
-# epoch+pkgver+pkgrel.
-# XXX: reuse types defined in `aur-format` (KEY => [<type>, <field>])
-# XXX: some attributes (eg. changelog) have no equivalent AUR keys,
-# and the transformation could be left in a different module
-our %srcinfo_attributes = (
-    'pkgbase'      => ['string', 'PackageBase' ],
-    'pkgname'      => ['string', 'Name'        ],
-    'pkgdesc'      => ['string', 'Description' ],
-    'url'          => ['string', 'URL'         ],
-    'arch'         => ['string', 'Arch'        ],
-    'license'      => ['array',  'License'     ],
-    'depends'      => ['array',  'Depends'     ],
-    'makedepends'  => ['array',  'MakeDepends' ],
-    'checkdepends' => ['array',  'CheckDepends'],
-    'optdepends'   => ['array',  'OptDepends'  ],
-    'provides'     => ['array',  'Provides'    ],
-    'conflicts'    => ['array',  'Conflicts'   ]
-);
+our @arrays = ('pkgname', 'arch', 'license', 'groups', 'options', 'conflicts', 'provides',
+              'replaces', 'source', 'noextract', 'backup', 'validpgpkeys', 'b2sums', 'md5sums',
+              'sha1sums', 'sha224sums', 'sha256sums', 'sha384sums', 'sha512sums', 'depends',
+              'makedepends', 'checkdepends', 'optdepends'
+          );
 
 =item parse
+
+Parameters:
+
+=over
+
+=item $fh
+
+=back
 
 =cut
 
 sub parse {
     my ($fh) = @_;
-    my $split_pkg;
+    my $pkg_split;
+
     my %pkg = ();
-    $pkg{'Packages'} = ();
+    $pkg{'packages'} = {};
     my ($set_pkgbase, $set_pkgver, $set_pkgrel, $set_epoch) = (0, 0, 0, 0);
 
     while (my $row = <$fh>) {
         chomp($row);
 
         if ($row =~ /^$/) {
-            # Use `pkgname` as marker, reset on empty line
-            $split_pkg = "";
+            # Use $pkgname as marker, reset on empty line
+            $pkg_split = "";
         }
         else {
             my ($key, $value) = split(/=/, $row, 2);
@@ -72,63 +65,33 @@ sub parse {
 
             # Global fields
             if ($key eq 'pkgbase') {
-                # $split_pkg = 0
                 # Consider package processed upon subsequent `pkgbase`
-                last if (defined $pkg{'PackageBase'});
+                last if (defined $pkg{'pkgbase'});
 
-                $pkg{'PackageBase'} = $value;
-                $pkg{'Version'} = "";
+                $pkg{$key}   = $value;
                 $set_pkgbase = 1;
-            }
-            # XXX: verify python-srcinfo behavior on ambiguous version keys
-            elsif ($key eq 'pkgver') {                
-                if ($set_pkgver) {
-                    die __PACKAGE__ . ": $key ambiguous";
-                }
-                $pkg{'Version'} = $pkg{'Version'} . $value;
-                $set_pkgver = 1;
-            }
-            elsif ($key eq 'pkgrel') {
-                if ($set_pkgrel) {
-                    die __PACKAGE__ . ": $key ambiguous";
-                }
-                $pkg{'Version'} = $pkg{'Version'} . "-" . $value;
-                $set_pkgrel = 1;
-            }
-            elsif ($key eq 'epoch') {
-                if ($set_epoch) {
-                    die __PACKAGE__ . ": $key ambiguous";
-                }
-                $pkg{'Version'} = $value . ":" . $pkg{'Version'};
-                $set_epoch = 1;
+                $pkg_split   = "";
             }
             # Handle remaining fields
             elsif ($key eq 'pkgname') {
-                if ($split_pkg) {
-                    die __PACKAGE__ . ": $key not delimited by newline";
+                if (not $set_pkgbase) {
+                    die __PACKAGE__ . ": pkgbase declared after pkgname";
                 }
-                $pkg{'Packages'}{$value} = ();
-                $split_pkg = $value;
+                $pkg{'packages'}{$value} = {};
+                $pkg_split = $value;
             }
-            # XXX: `pkgname` for a split package should be handled as `pkgbase`
-            elsif (defined $srcinfo_attributes{$key} and
-                   $srcinfo_attributes{$key}->[0] eq 'string') {
-                my $label = $srcinfo_attributes{$key}->[1];
-
-                if ($split_pkg) {
-                    $pkg{'Packages'}{$split_pkg}{$label} = $value;
+            elsif (grep /^$key/, @arrays) {
+                if (length $pkg_split) {
+                    push(@{$pkg{'packages'}{$pkg_split}{$key}}, $value);
                 } else {
-                    $pkg{$label} = $value;
+                    push(@{$pkg{$key}}, $value);
                 }
             }
-            elsif (defined $srcinfo_attributes{$key} and
-                   $srcinfo_attributes{$key}->[0] eq 'array') {
-                my $label = $srcinfo_attributes{$key}->[1];
-
-                if ($split_pkg) {
-                    push(@{$pkg{'Packages'}{$split_pkg}{$label}}, $value);
+            else {
+                if (length $pkg_split) {
+                    $pkg{'packages'}{$pkg_split}{$key} = $value;
                 } else {
-                    push(@{$pkg{$label}}, $value);
+                    $pkg{$key} = $value;
                 }
             }
         }
@@ -136,7 +99,7 @@ sub parse {
     if (not $set_pkgbase) {
         die __PACKAGE__ . ": pkgbase not set";
     }
-    if (not defined $pkg{'Packages'}) {
+    if (not scalar keys %{$pkg{'packages'}}) {
         die __PACKAGE__ . ": no packages defined";
     }
     return %pkg;
@@ -146,6 +109,28 @@ sub parse {
 
 =cut
 
+# TODO
 sub expand {
-
+    # XXX: verify python-srcinfo behavior on ambiguous version keys
+    #     if ($key eq 'pkgver') {                
+    #         if ($set_pkgver) {
+    #             die __PACKAGE__ . ": $key ambiguous";
+    #         }
+    #         $pkg{'Version'} = $pkg{'Version'} . $value;
+    #         $set_pkgver = 1;
+    #     }
+    #     elsif ($key eq 'pkgrel') {
+    #         if ($set_pkgrel) {
+    #             die __PACKAGE__ . ": $key ambiguous";
+    #         }
+    #         $pkg{'Version'} = $pkg{'Version'} . "-" . $value;
+    #         $set_pkgrel = 1;
+    #     }
+    #     elsif ($key eq 'epoch') {
+    #         if ($set_epoch) {
+    #             die __PACKAGE__ . ": $key ambiguous";
+    #         }
+    #         $pkg{'Version'} = $value . ":" . $pkg{'Version'};
+    #         $set_epoch = 1;
+    #     }
 }
