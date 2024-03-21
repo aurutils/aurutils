@@ -189,15 +189,25 @@ on the built package.
 .
 .TP
 .BR \-T ", " \-\-temp
-Build in a temporary container. (\fBmakechrootpkg \-T\fR) Temporary
-means that the user container has a random name and is removed on
-build completion.
+Build in a temporary container.
+.RB ( "makechrootpkg \-T" ) 
+.IP
+.B Note:
+This means that the user container has a random name and is removed on build completion.
 .
 .TP
 .BI \-\-user= USER
 Run the host
 .BR makepkg (8)
-instance as the specified user. (\fBmakechrootpkg \-U\fR)
+instance as the specified user.
+.RB ( "makechrootpkg \-U" ) 
+.
+.TP
+.BI \-I " PACKAGE" "\fR,\fP \-\-install=" PACKAGE
+Install
+.I PACKAGE
+into the container prior to building the package.
+.RB ( "makechrootpkg \-i" )
 .
 .SH ENVIRONMENT
 .TP

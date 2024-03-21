@@ -9,7 +9,8 @@ machine=$(uname -m)
 
 # default arguments
 directory=/var/lib/aurbuild/$machine
-makechrootpkg_args=(-cu)  # XXX: allow unsetting these options?
+makechrootpkg_defaults=(-cu)
+makechrootpkg_args=()
 makechrootpkg_makepkg_args=()
 
 # default options
@@ -54,11 +55,12 @@ usage() {
     exit 1
 }
 
-opt_short='C:D:M:x:ABNTU'
+opt_short='C:D:M:x:I:ABNTU'
 opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
           'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
-          'margs:' 'cargs:' 'nocheck' 'suffix:')
+          'margs:' 'cargs:' 'nocheck' 'suffix:' 'install:'
+          'cargs-no-default' 'makechrootpkg-args-no-default')
 opt_hidden=('dump-options' 'status' 'path')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
@@ -110,10 +112,14 @@ while true; do
             makechrootpkg_args+=(-T) ;;
         --user)
             shift; makechrootpkg_args+=(-U "$1") ;;
+        -I|--install)
+			shift; makechrootpkg_args+=(-i "$1") ;;
         # XXX: cannot take arguments that contain commas (e.g. for file paths)
         --makechrootpkg-args|--cargs)
             shift; IFS=, read -a arg -r <<< "$1"
             makechrootpkg_args+=("${arg[@]}") ;;
+        --makechrootpkg-args-no-default|--cargs-no-default)
+            makechrootpkg_defaults=() ;;
         # other options
         --dump-options)
             printf -- '--%s\n' "${opt_long[@]}" ${AUR_DEBUG+"${opt_hidden[@]}"}
@@ -123,6 +129,8 @@ while true; do
     esac
     shift
 done
+
+makechrootpkg_args=( "${makechrootpkg_defaults[@]}" "${makechrootpkg_args[@]}" )
 
 # XXX: default paths can be set through the Makefile (`aur-chroot.in`)
 etcdir=/etc/aurutils shrdir=/usr/share/devtools
