@@ -364,7 +364,7 @@ files):
     $ git clone https://www.github.com/Earnestly/pkgbuilds
     $ cd pkgbuilds
     $ find \-name PKGBUILD \-execdir sh \-c \(aqmakepkg \-\-printsrcinfo > .SRCINFO\(aq \e;
-    $ aur graph */.SRCINFO | tsort | tac > queue # Remove unwanted targets
+    $ aur graph **/.SRCINFO | tsort | tac > queue # Remove unwanted targets
     $ aur build \-a queue
 .EE
 .PP
