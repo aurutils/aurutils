@@ -208,6 +208,7 @@ while true; do
             shift; build_args+=(--bind "$1") ;;
         --bind-rw)
             shift; build_args+=(--bind-rw "$1") ;;
+        # XXX: remove this if and when aur chroot--standalone is made standard
         -T|--temp)
             build_args+=(-T) ;;
         # build options (makepkg)
