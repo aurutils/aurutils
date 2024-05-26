@@ -52,6 +52,10 @@ get_local_upgrades() {
     return "${PIPESTATUS[0]}"
 }
 
+auth_cmd() {
+    ${AUR_PACMAN_AUTH:-sudo --preserve-env} "$@"
+}
+
 trap_exit() {
     if [[ ! -v AUR_DEBUG ]]; then
         rm -rf -- "$tmp"
@@ -122,8 +126,7 @@ while true; do
             shift; pacman_conf=$1
             chroot_args+=(--pacman-conf "$1") ;;
         --pkgver)
-            run_pkgver=1; makepkg_args+=(--noextract)
-            chroot_build_args+=(--margs '--holdver') ;;
+            run_pkgver=1; makepkg_args+=(--noextract) ;;
         --root)
             shift; db_root=$1
             repo_args+=(--root "$1") ;;
@@ -141,13 +144,14 @@ while true; do
             shift; chroot_args+=(--user "$1") ;;
         -N|--namcap)
             chroot_args+=(--namcap) ;;
+        # XXX: remove this if and when aur chroot--standalone is made standard
         --checkpkg)
             chroot_args+=(--checkpkg) ;;
+        # XXX: remove this if and when aur chroot--standalone is made standard
         -T|--temp)
             chroot_args+=(--temp) ;;
         # makepkg options (common)
         -A|--ignorearch|--ignore-arch)
-            chroot_build_args+=(--ignorearch)
             makepkg_common_args+=(--ignorearch) ;;
         -n|--noconfirm|--no-confirm)
             makepkg_common_args+=(--noconfirm) ;;
@@ -163,7 +167,6 @@ while true; do
         -L|--log)
             makepkg_args+=(--log) ;;
         --nocheck|--no-check)
-            chroot_build_args+=(--nocheck)
             makepkg_args+=(--nocheck) ;;
         # XXX: cannot take arguments that contain commas (e.g. for file paths)
         --makepkg-args|--margs)
@@ -196,6 +199,13 @@ while true; do
     esac
     shift
 done
+
+# If --pkgver is enabled, VCS sources are updated with makepkg -od.
+# Therefore they do not need to be updated a second time with makepkg
+# --verifysource in makechrootpkg.
+if (( chroot )) && (( run_pkgver )); then
+    makepkg_args+=(--holdver)
+fi
 
 # Assign environment variables
 db_ext=${db_ext:-$AUR_DBEXT} db_name=${db_name:-$AUR_REPO} db_root=${db_root:-$AUR_DBROOT}
@@ -331,7 +341,7 @@ if (( chroot )); then
     # Update pacman and makepkg configuration for the chroot build
     # queue. A full system upgrade is run on the /root container to
     # avoid lenghty upgrades for makechrootpkg -u.
-    aur chroot "${chroot_args[@]}" --create --update
+    auth_cmd aur "${AUR_BUILD_CHROOT:-chroot--standalone}" "${chroot_args[@]}" --create --update
 fi
 
 # Early check for `makepkg` buildscript
@@ -385,7 +395,8 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
 
     if (( create_package )); then
         if (( chroot )); then
-            PKGDEST="$var_tmp" aur chroot "${chroot_args[@]}" --build "${chroot_build_args[@]}"
+            PKGDEST="$var_tmp" AUR_CHROOT_UID=$(id -u) \
+                auth_cmd aur "${AUR_BUILD_CHROOT:-chroot}" "${chroot_args[@]}" --build "${chroot_build_args[@]}" -- "${makepkg_common_args[@]}" "${makepkg_args[@]}"
         else
             #shellcheck disable=SC2086
             PKGDEST="$var_tmp" LOGDEST="${LOGDEST:-$PWD}" \
@@ -443,9 +454,9 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         continue
     else
         #shellcheck disable=SC2086
-        ${AUR_PACMAN_AUTH:-sudo} pacsync "${sync_args[@]}" "$db_name"
+        auth_cmd pacsync "${sync_args[@]}" "$db_name"
         #shellcheck disable=SC2086
-        ${AUR_PACMAN_AUTH:-sudo} pacsync "${sync_args[@]}" "$db_name" --dbext=.files
+        auth_cmd pacsync "${sync_args[@]}" "$db_name" --dbext=.files
 
         # Retrieve upgrade targets in local repository. May error in case of
         # conflicts or dependency errors.
@@ -455,7 +466,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         if (( ${#targets[@]} )); then
             printf >&2 "%s: upgrading packages in repository '%s'\n" "$argv0" "$db_name"
             #shellcheck disable=SC2086
-            printf '%s\n' "${targets[@]}" | ${AUR_PACMAN_AUTH:-sudo} pacman "${sync_args[@]}" -S --noconfirm -
+            printf '%s\n' "${targets[@]}" | auth_cmd pacman "${sync_args[@]}" -S --noconfirm -
         fi
     fi
 done
