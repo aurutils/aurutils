@@ -6,7 +6,7 @@ use v5.20;
 use List::Util   qw(first);
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query_multi);
-use AUR::Depends qw(get);
+use AUR::Depends qw(solve);
 use AUR::Options qw(add_from_stdin);
 my $argv0 = 'depends';
 
@@ -128,7 +128,7 @@ unless(caller) {
 
     # Retrieve AUR results
     #    JSON -> hash -> extract depends[] -> repeat until none -> prune
-    my ($results, $dag, $dag_foreign) = get(\@ARGV, \@types, \&callback_query,
+    my ($results, $dag, $dag_foreign) = solve(\@ARGV, \@types, \&callback_query,
         $opt_verify, $opt_provides, $opt_installed);
 
     # Add `RequiredBy` to results

@@ -6,7 +6,7 @@ use v5.20;
 use List::Util qw(first);
 use Carp;
 use Exporter qw(import);
-our @EXPORT_OK = qw(vercmp extract prune graph get);
+our @EXPORT_OK = qw(vercmp recurse prune graph solve);
 our $VERSION = 'unstable';
 
 # Maximum number of calling the callback
@@ -18,7 +18,7 @@ AUR::Depends - Resolve dependencies from AUR package information
 
 =head1 SYNOPSIS
 
-  use AUR::Depends qw(vercmp extract depends prune graph);
+  use AUR::Depends qw(vercmp recurse prune graph solve);
 
 =head1 DESCRIPTION
 
@@ -85,12 +85,11 @@ sub vercmp {
     }
 }
 
-=head2 extract()
+=head2 recurse()
 
-Extracts dependency (C<$pkgdeps>) and provider (C<$pkgmap>)
-information from an array of package information hashes, retrieved
-through a callback function. An example is <callback_query> from
-C<Query.pm> combined with <parse_json_aur> from C<Json.pm>.
+Solve dependencies rescursively with a callback function (C<$callback>), for a
+matching series of dependency types (C<$types>). An example is <callback_query>
+from C<Query.pm> combined with <parse_json_aur> from C<Json.pm>.
 
 Dependencies are tallied and only queried when newly encountered.
 
@@ -103,6 +102,8 @@ Parameters:
 
 =item C<$targets>
 
+The pkgnames for which to compute the dependency tree(s) of.
+
 =item C<$types>
 
 =item C<$callback>
@@ -111,21 +112,15 @@ Parameters:
 
 =cut
 
-sub extract {
+sub recurse {
     my ($targets, $types, $callback) = @_;
+    my (%results, %tally);  # indexed by pkgname
+
+    # Main loop
+    my $a;
     my @depends = @{$targets};
 
-    my (%results, %pkgdeps, %pkgmap, %tally);
-
-    # Populate depends map with command-line targets (#1136)
-    for my $target (@{$targets}) {
-        push(@{$pkgdeps{$target}}, [$target, 'Self']);
-    }
-
-    # XXX: return $a for testing number of requests, e.g. 7 for ros-noetic-desktop
-    my $a = 1;
-    while ($a < $aur_callback_max)
-    {
+    for ($a = 1; $a < $aur_callback_max; $a++) {
         if (defined $ENV{'AUR_DEBUG'}) {
             say STDERR join(" ", "callback: [$a]", @depends);
         }
@@ -135,42 +130,28 @@ sub extract {
         if (not scalar(@level) and $a == 1) {
             last;  # no results
         }
-        $a++;
-
         # Retrieve next level of dependencies from results
         @depends = ();
 
         for my $node (@level) {
-            my $name    = $node->{'Name'};
-            my $version = $node->{'Version'};
+            my $name = $node->{'Name'};
             $results{$name} = $node;
-
-            # Iterate over explicit provides
-            for my $spec (@{$node->{'Provides'} // []}) {
-                my ($prov, $prov_version) = split(/=/, $spec);
-
-                # XXX: the first provider takes precedence
-                #      keep multiple providers and warn on ambiguity instead
-                if (not defined $pkgmap{$prov} and $prov ne $name) {
-                    $pkgmap{$prov} = [$name, $prov_version];
-                }
-            }
 
             # Filter out dependency types early (#882)
             $tally{$name} = $a;
 
             for my $deptype (@{$types}) {
-                next if (not defined($node->{$deptype}));  # no dependency of this type
-
+                if (not defined($node->{$deptype})) {
+                    next;  # no dependency of this type
+                }
                 for my $spec (@{$node->{$deptype}}) {
-                    # Push versioned dependency to depends map
-                    push(@{$pkgdeps{$name}}, [$spec, $deptype]);
-
-                    # Valid operators (important: <= before <)
+                     # Valid operators (important: <= before <)
                     my ($dep, $op, $ver) = split(/(<=|>=|<|=|>)/, $spec);
 
                     # Avoid querying duplicate packages (#4)
-                    next if defined $tally{$dep};
+                    if (defined $tally{$dep}) {
+                        next;
+                    }
                     push(@depends, $dep);
 
                     # Mark as incomplete (retrieved in next level or repo package)
@@ -198,15 +179,14 @@ sub extract {
         say STDERR __PACKAGE__ . ": total requests: $a (out of range)";
         exit(34);
     }
-    return \%results, \%pkgdeps, \%pkgmap;
+    return \%results, $a
 }
 
 =head2 graph()
 
-For a set of package-dependency relations (C<$pkgdeps>) and providers
-(C<$pkgmap>), verify if all dependencies and their versions can be
-fulfilled by the available set of packages. Version relations are
-checked with C<vercmp>.
+For a set of results (C<$results>), verify if all dependencies and their
+versions can be fulfilled by the available set of packages. Version relations
+are checked with C<vercmp>.
 
 Two hashes are kept: one for packages in the set (C<$dag>), and
 another for packages outside it (C<$dag_foreign>). Only relations in
@@ -218,9 +198,7 @@ Parameters:
 
 =item C<$results>
 
-=item C<$pkgdeps>
-
-=item C<$pkgmap>
+=item C<$types>
 
 =item C<$verify>
 
@@ -230,38 +208,54 @@ Parameters:
 
 =cut
 
-# XXX: <results> only used for versions and checking if AUR target
 sub graph {
-    my ($results, $pkgdeps, $pkgmap, $verify, $provides) = @_;
-    my (%dag, %dag_foreign);
+    my ($results, $types, $verify, $provides) = @_;
+    my (%dag, %dag_foreign, %pkgdeps, %pkgmap);
 
     my $dag_valid = 1;
     $verify //= 1;  # run vercmp by default
 
-    # Iterate over packages
-    for my $name (keys %{$pkgdeps}) {
-        # Add a loop to command-line targets (#402, #1065, #1136)
-        if (defined $pkgdeps->{$name} and $pkgdeps->{$name} eq $name) {
-            $dag{$name}{$name} = 'Self';
+    # Iterate over packages, retrieve provides
+    for my $name (keys %{$results}) {
+        my $node = $results->{$name};
+
+        # Iterate over explicit provides
+        for my $spec (@{$node->{'Provides'} // []}) {
+            my ($prov, $prov_version) = split(/=/, $spec);
+
+            # XXX: the first provider takes precedence
+            #      keep multiple providers and warn on ambiguity instead
+            if (not defined $pkgmap{$prov} and $prov ne $name) {
+                $pkgmap{$prov} = [$name, $prov_version];
+            }
         }
-
-        # Iterate over dependencies
-        for my $dep (@{$pkgdeps->{$name}}) {
-            my ($dep_spec, $dep_type) = @{$dep};  # ['foo>=1.0', 'Depends']
-
+        for my $deptype (@{$types}) {
+            if (not defined($node->{$deptype})) {
+                next;  # no dependency of this type
+            }
+            for my $spec (@{$node->{$deptype}}) {
+                # Push versioned dependency to depends map
+                push(@{$pkgdeps{$name}}, [$spec, $deptype]);
+            }
+        }
+    }
+    # Iterate over depends
+    for my $name (keys %pkgdeps)
+    {
+        for my $dep (@{$pkgdeps{$name}}) {
             # Retrieve dependency requirements
+            my ($dep_spec, $dep_type) = @{$dep};  # ['foo>=1.0', 'Depends']
             my ($dep_name, $dep_op, $dep_req) = split(/(<=|>=|<|=|>)/, $dep_spec);
 
             if (defined $results->{$dep_name}) {
                 # Split results version to pkgver and pkgrel
                 my @dep_ver = split("-", $results->{$dep_name}->{'Version'}, 2);
 
-                # Provides take precedence over regular packages, unless
-                # $provides is false.
-                my  ($prov_name, $prov_ver) = ($dep_name, $dep_ver[0]);
+                # Provides precede regular packages, unless $provides is false.
+                my ($prov_name, $prov_ver) = ($dep_name, $dep_ver[0]);
 
-                if ($provides and defined $pkgmap->{$dep_name}) {
-                    ($prov_name, $prov_ver) = @{$pkgmap->{$dep_name}};
+                if ($provides and defined $pkgmap{$dep_name}) {
+                    ($prov_name, $prov_ver) = @{$pkgmap{$dep_name}};
                 }
 
                 # Run vercmp with provider and versioned dependency
@@ -285,7 +279,7 @@ sub graph {
     if (not $dag_valid) {
         exit(1);
     }
-    return \%dag, \%dag_foreign;
+    return \%dag, \%dag_foreign, \%pkgmap;
 }
 
 =head2 prune()
@@ -339,9 +333,9 @@ sub prune {
     return \@removals;
 }
 
-=head2 get()
+=head2 solve()
 
-High-level function which combines C<depends>, C<prune> and C<graph>.
+High-level function which combines C<recurse>, C<prune> and C<graph>.
 
 Parameters:
 
@@ -355,22 +349,30 @@ Parameters:
 
 =item C<$opt_verify>
 
+=item C<$opt_provides>
+
+=item C<$opt_installed>
+
 =back
 
 =cut
 
-sub get {
+sub solve {
     my ($targets, $types, $callback, $opt_verify, $opt_provides, $opt_installed) = @_;
     
     # Retrieve AUR results (JSON -> dict -> extract depends -> repeat until none)
-    my ($results, $pkgdeps, $pkgmap) = extract($targets, $types, $callback);
+    my ($results, undef) = recurse($targets, $types, $callback);
 
     # Verify dependency requirements
-    my ($dag, $dag_foreign) = graph($results, $pkgdeps, $pkgmap,
-                                    $opt_verify, $opt_provides);
+    my ($dag, $dag_foreign, $pkgmap) = graph($results, $types, $opt_verify, $opt_provides);
     my $removals = [];
 
+    # Add a loop to command-line targets (#402, #1065, #1136)
+    for my $name (@{$targets}) {
+        $dag->{$name}{$name} = 'Self';
+    }
     # Remove virtual dependencies from dependency graph (#1063)
+    # XXX: handle this logic in graph()
     if ($opt_provides) {
         my @virtual = keys %{$pkgmap};
 

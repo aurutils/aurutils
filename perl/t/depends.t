@@ -7,7 +7,7 @@ use Test::More;
 # Check if module can be imported
 require_ok "AUR::Depends";
 
-use AUR::Depends qw(vercmp extract prune graph get);
+use AUR::Depends qw(vercmp recurse prune graph solve);
 
 ok(vercmp("1.0", "1.0", '='));
 ok(vercmp("1.0a", "1.0b", '<'));
