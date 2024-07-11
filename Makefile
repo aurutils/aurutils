@@ -9,7 +9,7 @@ AURUTILS_VERSION ?= $(shell git describe --tags || true)
 ifeq ($(AURUTILS_VERSION),)
 AURUTILS_VERSION := 20
 endif
-AURUTILS_SHELLCHECK = $(wildcard lib/*)
+AURUTILS_LIB = $(shell find lib/ -name 'aur-*')
 
 .PHONY: shellcheck install build completion aur
 
@@ -23,7 +23,7 @@ completion:
 	@$(MAKE) -C completions bash zsh
 
 shellcheck: aur
-	@shellcheck -x -f gcc -e 1071 $(AURUTILS_SHELLCHECK)
+	@shellcheck -x -f gcc -e 1071 $(AURUTILS_LIB)
 
 test: aur shellcheck
 	@tests/parseopt-consistency
@@ -33,7 +33,7 @@ install-aur: aur
 	@install -Dm755 aur       -t '$(DESTDIR)$(BINDIR)'
 
 install: install-aur
-	@install -Dm755 lib/aur-*  -t '$(DESTDIR)$(AURUTILS_LIB_DIR)'
+	@install -Dm755 $(AURUTILS_LIB) -t '$(DESTDIR)$(AURUTILS_LIB_DIR)'
 	@install -Dm644 man1/*     -t '$(DESTDIR)$(SHRDIR)/man/man1'
 	@install -Dm644 man7/*     -t '$(DESTDIR)$(SHRDIR)/man/man7'
 	@install -Dm644 LICENSE    -t '$(DESTDIR)$(SHRDIR)/licenses/$(PROGNM)'

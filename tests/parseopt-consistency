@@ -25,7 +25,7 @@ parse_loop() {
 ret=0
 have_optdump=(aur-build aur-chroot aur-fetch aur-pkglist aur-repo aur-repo-filter aur-srcver aur-sync aur-vercmp aur-view)
 for cmd in "${have_optdump[@]}"; do
-      aurcmd=${BASH_SOURCE%/*}/../lib/$cmd
+      aurcmd=$(find "${BASH_SOURCE%/*}/../lib" -name $cmd)
 
       diff --color -U0 --label "$aurcmd Options" --label "$aurcmd Loop" \
         <(bash --pretty-print -O extglob "$aurcmd" | parse_loop | sort) \
