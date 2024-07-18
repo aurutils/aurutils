@@ -21,7 +21,7 @@ usage() {
 # option parsing
 opt_short='c:f:d:i:r:s:F:almqtuJS'
 opt_long=('config:' 'database:' 'root:' 'all' 'list' 'path' 'list-path' 'list-repo'
-          'search:' 'search-by:' 'list-attr' 'sync' 'upgrades' 'table' 'quiet' 
+          'search:' 'search-by:' 'list-attr' 'sync' 'upgrades' 'table' 'quiet' 'init'
           'attr:' 'json' 'jsonl' 'format:' 'delim:' 'dbext:' 'missing' 'ignore:' 'ignore-by:')
 opt_hidden=('dump-options' 'repo:' 'repo-list' 'path-list' 'attr-list' 'status' 'field:')
 
@@ -60,6 +60,8 @@ while true; do
             mode=upgrades; vercmp_args+=(-a) ;;
         -u|--upgrades)
             mode=upgrades ;;
+        --init)
+            mode=init ;;
         -q|--quiet)
             parse_args+=(-q); vercmp_args+=(-q) ;;
         -S|--sync)
@@ -136,7 +138,7 @@ else
 fi
 
 # existing path is optional for printf modes (#1142)
-if (( missing )); then
+if (( missing )) || [[ $mode == 'init' ]]; then
     realpath_args=(-m)
 else
     # require all path components to exist
@@ -225,6 +227,21 @@ case $mode in
     attr)
         aur repo-parse "${parse_args[@]}" -p "$db_path" --attr "$attr"
         ;;
+    init)
+        # repo-add does not create empty databases for pacman>=6.0, <7.0 (#1168)
+        filename=$db_root/$db_name.${db_ext:-db.tar.gz}
+        dblink=${filename%.tar*}
+
+        if [[ $filename == "$dblink" ]]; then
+            printf '%s: error: invalid database archive extension' "$argv0"
+            exit 1
+        fi
+        tar zcf "$filename" -T /dev/null --backup=simple --suffix='.old'
+
+        # repo-add symlinks >:(
+        if ! { ln -sf "$filename" "$dblink" || ln -f "$filename" "$dblink"; } 2>/dev/null; then
+            cp "$filename" "$dblink"
+        fi ;;
     path)
         printf '%s\n' "$db_path"
         ;;
