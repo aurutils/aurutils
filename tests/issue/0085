@@ -21,7 +21,7 @@ Server = file://$tmp
 EOF
 
 # create local repository
-repo-add "$tmp/$tmp_uid".db.tar
+aur repo --root "$tmp" --repo "$tmp_uid" --init
 
 # create temporary pacman database
 mkdir -p "$tmp"/pacman/{local,sync}

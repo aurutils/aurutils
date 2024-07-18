@@ -20,7 +20,7 @@ Server = file://$tmp
 EOF
 
 # create local repository
-repo-add "$tmp/$tmp_uid".db.tar
+aur repo --root "$tmp" --repo "$tmp_uid" --init
 
 # issue 216: aur-sync with unset variables
 env -u AUR_REPO -u AUR_DBROOT -u AUR_DBEXT -u XDG_CACHE_HOME -u AURDEST -u AUR_SYNC_NINJA AUR_ENV=/dev/null \

@@ -22,7 +22,7 @@ Server = file://$tmp
 EOF
 
 # create local repository
-repo-add "$tmp/$tmp_uid".db.tar
+aur repo --root "$tmp" --repo "$tmp_uid" --init
 
 env -u AUR_REPO -u AUR_DBROOT -u AUR_DBEXT AUR_ENV=/dev/null AUR_SYNC_USE_NINJA=0 AURDEST="$tmp" \
     aur sync --no-view --no-build --pacman-conf "$tmp"/pacman.conf "$cycles_target"

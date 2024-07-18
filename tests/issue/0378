@@ -30,9 +30,9 @@ Server = file://$tmp3
 EOF
 
 # create local repository
-repo-add "$tmp1/$tmp1_uid".db.tar
-repo-add "$tmp2/$tmp2_uid".db.tar
-repo-add "$tmp3/$tmp3_uid".db.tar
+aur repo --root "$tmp1" --repo "$tmp1_uid" --init
+aur repo --root "$tmp2" --repo "$tmp2_uid" --init
+aur repo --root "$tmp3" --repo "$tmp3_uid" --init
 
 # issue 378: repository selection with AUR_REPO
 { IFS=: read -r _ repo

@@ -1,6 +1,6 @@
 #!/bin/bash
 tmp=$(mktemp -d)
-repo-add "$tmp"/extra.db.tar.gz || exit
+aur repo --root "$tmp" --repo extra --init || exit
 
 aur repo -d extra
 (( $? == 66 )) || exit

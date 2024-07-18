@@ -33,7 +33,7 @@ package() {
 EOF
 
 # create local repository
-repo-add "$tmp/$tmp_uid".db.tar
+aur repo --root "$tmp" --repo "$tmp_uid" --init
 
 # issue 714: select repository without -d or --root
 # TODO: use --dbpath to avoid privilege escalation

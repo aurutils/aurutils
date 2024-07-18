@@ -31,7 +31,7 @@ package() {
 EOF
 
 # create local repository
-repo-add "$tmp/$tmp_uid".db.tar
+aur repo --root "$tmp" --repo "$tmp_uid" --init
 
 # issue 513: PKGDEST (environment) should be ignored
 env -C "$tmp" -u AUR_REPO -u AUR_DBROOT -u AUR_DBEXT -u MAKEPKG AUR_ENV=/dev/null PKGDEST=/does/not/exist \
