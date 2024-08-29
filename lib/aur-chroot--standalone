@@ -10,7 +10,7 @@ machine=$(uname -m)
 # default arguments
 directory=/var/lib/aurbuild/$machine
 makepkg_args=()
-makepkg_user=build
+makepkg_user=
 
 # default options
 update=0 build=0 create=0 status=0 run_namcap=0
@@ -84,7 +84,7 @@ _chroot_run_namcap() {
     pacman -S --needed --noconfirm namcap
 
     for pkgfile in PKGBUILD /pkgdest/*; do
-        namcap "$pkgfile" 2>&1 | tee "/logdest/${pkgfile##*/}-namcap.log"
+        sudo -u builduser namcap "$pkgfile" 2>&1 | tee "/logdest/${pkgfile##*/}-namcap.log"
     done
 }
 
@@ -156,6 +156,15 @@ while true; do
     esac
     shift
 done
+
+# define user mapping for container
+makepkg_user=${makepkg_user:-${SUDO_USER:-$USER}}
+builduser_uid=$(id -u "$makepkg_user")
+
+if [[ -z $builduser_uid ]]; then
+    printf >&2 'error: invalid makepkg user\n'
+    exit 1
+fi
 
 # XXX: default paths can be set through the Makefile (`aur-chroot.in`)
 etcdir=/etc/aurutils shrdir=/usr/share/devtools
@@ -304,6 +313,11 @@ fi >&2
 
 # commands run inside the container for build step
 if (( build )); then
+    if [[ $builduser_uid == 0 ]]; then
+        printf >&2 'error: running makepkg as root is not allowed\n'
+        exit 1
+    fi
+
     # add configurable directories for makepkg (and PWD as BUILDDIR)
     bindmounts_rw+=(
         "$PWD"
@@ -315,13 +329,13 @@ if (( build )); then
 
     # create makepkg_user
     systemd-sysusers --root "$directory"/root --replace=/usr/lib/sysusers.d/build.conf - \
-        < <(printf 'u %s %s "makepkg user" /build /bin/bash\n' "$makepkg_user" "$AUR_CHROOT_UID")
+        < <(printf 'u %s %s "makepkg user" /build /bin/bash\n' builduser "$builduser_uid")
 
     # allow makepkg_user to install packages (e.g. --syncdeps)
-    cat <<EOF >"$directory/root/etc/sudoers.d/makepkg_user"
-$makepkg_user ALL = NOPASSWD: /usr/bin/pacman
+    cat <<EOF >"$directory/root/etc/sudoers.d/builduser-pacman"
+builduser ALL = NOPASSWD: /usr/bin/pacman
 EOF
-    chmod 440 "$directory/root/etc/sudoers.d/makepkg_user"
+    chmod 440 "$directory/root/etc/sudoers.d/builduser-pacman"
 
     { printf 'makepkg %s || exit\n' "${makepkg_args[@]}"
 
@@ -343,7 +357,7 @@ EOF
     systemd-nspawn \
         -D "$directory"/root \
         --chdir="$PWD" \
-        --user="$makepkg_user" \
+        --user=builduser \
         --volatile=overlay \
         --setenv=PKGDEST=/pkgdest \
         --setenv=LOGDEST=/logdest \
