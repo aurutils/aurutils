@@ -56,7 +56,7 @@ usage() {
 
 opt_short='C:D:M:x:ABNTU'
 opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
-          'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:'
+          'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:' 'holdver'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
           'margs:' 'cargs:' 'nocheck' 'suffix:')
 opt_hidden=('dump-options' 'status')
@@ -81,11 +81,18 @@ _chroot_create() {
 
 # https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/makechrootpkg.in?ref_type=heads#L235
 _chroot_run_namcap() {
-    sudo pacman -S --needed --noconfirm namcap
+    pacman -S --needed --noconfirm namcap
+
     for pkgfile in PKGBUILD /pkgdest/*; do
         namcap "$pkgfile" 2>&1 | tee "/logdest/${pkgfile##*/}-namcap.log"
     done
 }
+
+keepenv=SOURCE_DATE_EPOCH,BUILDTOOL,BUILDTOOLVER,GNUPGHOME,SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER
+
+if (( EUID != 0 )); then
+	exec sudo --preserve-env="$keepenv" -- "${BASH_SOURCE[0]}" "$@"
+fi
 
 unset bindmounts_ro bindmounts_rw makepkg_conf pacman_conf suffix
 while true; do
@@ -105,6 +112,8 @@ while true; do
             makepkg_args+=(--ignorearch) ;;
         --nocheck)
             makepkg_args+=(--nocheck) ;;
+        --holdver)
+            makepkg_args+=(--holdver) ;;
         # XXX: cannot take arguments that contain commas (e.g. for file paths)
         --makepkg-args|--margs)
             shift; IFS=, read -a arg -r <<< "$1"
@@ -217,17 +226,18 @@ if (( status )); then
     exit 0
 fi
 
-is_multilib=0
-cache_dirs=()
+is_multilib=0 cache_dirs=()
 while read -r key _ value; do
     case $key=$value in
         Server=file://*)
             # bind mount file:// paths to container (#461)
             # required for update/build steps
-            bindmounts_rw+=("${value#file://}") ;;
+            bindmounts_rw+=("${value#file://}")
+            ;;
         CacheDir=*)
             cache_dirs+=("${value}")
-            bindmounts_rw+=("${value}") ;;
+            bindmounts_rw+=("${value}")
+            ;;
         \[multilib\]=)
             is_multilib=1 ;;
     esac
@@ -235,19 +245,13 @@ done < <(pacman-conf --config "$pacman_conf")
 wait "$!"
 
 cleanup() {
-    rm "$directory"/root/aur-chroot--helper
+    rm "$directory"/root/aur-chroot--helper.$$
 }
 
 trap cleanup EXIT
 
 # create new container, required for update/build steps
-if [[ ! -d $directory/root ]]; then
-    if (( !create )); then
-        printf >&2 '%s: %s is not a directory\n' "$argv0" "$directory"/root
-        printf >&2 '%s: did you run aur chroot --create?\n' "$argv0"
-        exit 20
-    fi
-
+if (( create )); then
     # default to base-devel or multilib-devel, unless packages are
     # specified on the command-line.
     # available packages depend on the configured pacman configuration
@@ -259,34 +263,46 @@ if [[ ! -d $directory/root ]]; then
         base_packages=('base-devel')
     fi
 
-    # # create both the root container and a directory for pacman db
-    install -d "$directory"/root/var/lib/pacman -m 755
+    if [[ ! -d $directory/root ]]; then
+        # create both the root container and a directory for pacman db
+        install -d "$directory"/root/var/lib/pacman -m 755
 
-    # # XXX: allow setting machine-id from host (and provide default) to enable .nspawn file usage
-    systemd-firstboot --root="$directory"/root --copy-locale --copy-timezone --setup-machine-id
+        # XXX: allow setting machine-id from host (and provide default) to enable .nspawn file usage
+        systemd-firstboot --root="$directory"/root --copy-locale --copy-timezone --setup-machine-id
 
-    pacman -Sy "${base_packages[@]}" \
-        --config "$pacman_conf" \
-        -r "$directory"/root \
-        "${cache_dirs[@]/#/--cachedir=}" \
-        --noconfirm
-
-    {
-        declare -f _chroot_create
-        printf '_chroot_create || exit\n'
-    } >> "$directory"/root/aur-chroot--helper
+        # install packages to root container
+        pacman -Sy "${base_packages[@]}" --config "$pacman_conf" -r "$directory"/root \
+               "${cache_dirs[@]/#/--cachedir=}" --noconfirm
+    else
+        printf '%s: --create: there is nothing to do\n' "$argv0"
+        create=0
+    fi
 fi >&2
 
-if (( update )); then
-    printf 'pacman -Syu --noconfirm --config %q %s || exit' "$pacman_conf" "${*@Q}" >> "$directory"/root/aur-chroot--helper
+if [[ ! -d $directory/root ]]; then
+    printf '%s: %s is not a directory\n' "$argv0" "$directory"/root
+    printf '%s: did you run aur chroot --create?\n' "$argv0"
+    exit 20
 fi >&2
+
+# commands run inside the container for create/update steps
+{ if (( create )); then
+      declare -f _chroot_create
+      printf '_chroot_create || exit\n'
+  fi
+
+  if (( update )); then
+      printf 'pacman -Syu --noconfirm --config %q %s || exit' "$pacman_conf" "${*@Q}"
+  fi
+} >"$directory"/root/aur-chroot--helper.$$
 
 if (( create )) || (( update )); then
-    systemd-nspawn -D "$directory"/root "${bindmounts_ro[@]/#/--bind-ro=}" "${bindmounts_rw[@]/#/--bind=}" /bin/bash /aur-chroot--helper
-
-    exit
+    systemd-nspawn -D "$directory"/root \
+        "${bindmounts_ro[@]/#/--bind-ro=}" "${bindmounts_rw[@]/#/--bind=}" \
+        /bin/bash /aur-chroot--helper.$$
 fi >&2
 
+# commands run inside the container for build step
 if (( build )); then
     # add configurable directories for makepkg (and PWD as BUILDDIR)
     bindmounts_rw+=(
@@ -302,19 +318,18 @@ if (( build )); then
         < <(printf 'u %s %s "makepkg user" /build /bin/bash\n' "$makepkg_user" "$AUR_CHROOT_UID")
 
     # allow makepkg_user to install packages (e.g. --syncdeps)
-    tee "$directory/root/etc/sudoers.d/makepkg_user" \
-        < <(printf '%s ALL = NOPASSWD: /usr/bin/pacman' "$makepkg_user") \
-        1> /dev/null
+    cat <<EOF >"$directory/root/etc/sudoers.d/makepkg_user"
+$makepkg_user ALL = NOPASSWD: /usr/bin/pacman
+EOF
     chmod 440 "$directory/root/etc/sudoers.d/makepkg_user"
 
-    printf 'makepkg %s || exit\n' "${*@Q}" >> "$directory"/root/aur-chroot--helper
+    { printf 'makepkg %s || exit\n' "${makepkg_args[@]}"
 
-    if (( run_namcap )); then
-        {
-            declare -f _chroot_run_namcap
-            printf '_chroot_run_namcap || exit\n'
-        } >> "$directory"/root/aur-chroot--helper
-    fi
+      if (( run_namcap )); then
+          declare -f _chroot_run_namcap
+          printf '_chroot_run_namcap || exit\n'
+      fi
+    } >"$directory"/root/aur-chroot--helper.$$
 
     preserved_envvars=(
         GNUPGHOME
@@ -340,7 +355,7 @@ if (( build )); then
         "${preserved_envvars[@]/#/--setenv=}" \
         "${bindmounts_ro[@]/#/--bind-ro=}" \
         "${bindmounts_rw[@]/#/--bind=}" \
-        /bin/bash /aur-chroot--helper
+        /bin/bash /aur-chroot--helper.$$
 fi >&2
 
 # vim: set et sw=4 sts=4 ft=sh:
