@@ -207,12 +207,16 @@ case $AUR_PACMAN_AUTH in
                       '--setenv=MAKEFLAGS' '--setenv=PACKAGER'   '--setenv=GNUPGHOME' '--setenv=SSH_AUTH_SOCK') ;;
 esac
 
-# bind mount file:// paths to container (#461)
-# required for update/build steps
+is_multilib=0
 while read -r key _ value; do
     case $key=$value in
         Server=file://*)
+            # bind mount file:// paths to container (#461)
+            # required for update/build steps
             bindmounts_rw+=("${value#file://}") ;;
+        \[multilib\]=)
+            # also matches [multilib] sections from Include directives (pacini does not)
+            is_multilib=1 ;;
     esac
 done < <(pacman-conf --config "$pacman_conf")
 wait "$!"
@@ -224,10 +228,7 @@ if (( create )); then
     # available packages depend on the configured pacman configuration
     if (( $# )); then
         base_packages=("$@")
-
-    # XXX: use pacini to not process Include directives in pacman.conf
-    # (not supported by devtools)
-    elif [[ $(pacini --section=multilib "$pacman_conf") ]] && [[ $machine == "x86_64" ]]; then
+    elif (( is_multilib )) && [[ $machine == "x86_64" ]]; then
         base_packages=('base-devel' 'multilib-devel')
     else
         base_packages=('base-devel')
