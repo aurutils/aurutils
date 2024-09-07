@@ -14,7 +14,7 @@ machine=$(uname -m)
 # default arguments
 directory=/var/lib/aurbuild/$machine
 makechrootpkg_args=(-cu)  # XXX: allow unsetting these options?
-makechrootpkg_makepkg_args=()
+makepkg_args=()
 
 # default options
 update=0 build=0 create=0 status=0 print_path=0
@@ -27,24 +27,13 @@ args_csv() {
 
 # XXX: a missing makepkg.conf usually indicates a missing devtools, whereas
 # a missing pacman.conf usually indicates the local repository was not configured
-diag_makepkg_conf() {
+diag_conf() {
+    local file=$1
+    shift
     echo >&2 'Error:'
 
     cat <<EOF | pr -to 4 >&2
-aur-$argv0 could not find a makepkg.conf(5) file for container usage. Before
-using aur-$argv0, make sure this file is created and valid. See OPTIONS in
-aur-$argv0(1) for configuration details.
-
-The following file paths were checked:
-EOF
-    printf '%s\n' "${@@Q}" | pr -to 8 >&2
-}
-
-diag_pacman_conf() {
-    echo >&2 'Error:'
-
-    cat <<EOF | pr -to 4 >&2
-aur-$argv0 could not find a pacman.conf(5) file for container usage. Before
+aur-$argv0 could not find a $file file for container usage. Before
 using aur-$argv0, make sure this file is created and valid. See OPTIONS in
 aur-$argv0(1) for configuration details.
 
@@ -88,16 +77,15 @@ while true; do
             print_path=1 ;;
         # makepkg options (`--build`)
         -A|--ignorearch)
-            makechrootpkg_makepkg_args+=(--ignorearch) ;;
+            makepkg_args+=(--ignorearch) ;;
         --nocheck)
-            makechrootpkg_makepkg_args+=(--nocheck) ;;
+            makepkg_args+=(--nocheck) ;;
         --holdver)
-            makechrootpkg_makepkg_args+=(--holdver) ;;
+            makepkg_args+=(--holdver) ;;
         # XXX: cannot take arguments that contain commas (e.g. for file paths)
         --makepkg-args|--margs)
             shift; IFS=, read -a arg -r <<< "$1"
-            makechrootpkg_makepkg_args+=("${arg[@]}") ;;
-        # devtools options (`--build`)
+            makepkg_args+=("${arg[@]}") ;;
         -C|--pacman-conf)
             shift; pacman_conf=$1 ;;
         -D|--directory)
@@ -177,16 +165,16 @@ done
 # No pacman configuration is available for the container, or it points to a
 # non-existing file. Print a matching diagnostic and exit.
 if [[ ! -v pacman_conf ]]; then
-    diag_pacman_conf "${default_pacman_paths[@]}"
+    diag_conf 'pacman.conf(5)' "${default_pacman_paths[@]}"
     exit 2
 elif [[ ! -f $pacman_conf ]]; then
-    diag_pacman_conf "$pacman_conf"
+    diag_conf 'pacman.conf(5)' "$pacman_conf"
     exit 2
 elif [[ ! -v makepkg_conf ]]; then
-    diag_makepkg_conf "${default_makepkg_paths[@]}"
+    diag_conf 'makepkg.conf(5)' "${default_makepkg_paths[@]}"
     exit 2
 elif [[ ! -f $makepkg_conf ]]; then
-    diag_makepkg_conf "$makepkg_conf"
+    diag_conf 'makepkg.conf(5)' "$makepkg_conf"
     exit 2
 fi
 
@@ -260,8 +248,9 @@ if (( update )); then
     # locking is done by systemd-nspawn
     # shellcheck disable=SC2086
     $AUR_PACMAN_AUTH arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root \
-         "${bindmounts_ro[@]/#/--bind-ro=}" \
-         "${bindmounts_rw[@]/#/--bind=}" pacman -Syu --noconfirm "$@"
+        "${bindmounts_ro[@]/#/--bind-ro=}" \
+        "${bindmounts_rw[@]/#/--bind=}"    \
+        pacman -Syu --noconfirm "$@"
 fi >&2
 
 # print path for processing by other tools (e.g. makepkg --packagelist)
@@ -275,8 +264,9 @@ if (( build )); then
     # arguments after -- are used as makechrootpkg arguments
     # shellcheck disable=SC2086
     $AUR_PACMAN_AUTH "${auth_args[@]}" makechrootpkg -r "$directory" \
-         "${bindmounts_ro[@]/#/-D}" "${bindmounts_rw[@]/#/-d}" \
-         "${makechrootpkg_args[@]}" -- "${makechrootpkg_makepkg_args[@]}"
+        "${bindmounts_ro[@]/#/-D}" \
+        "${bindmounts_rw[@]/#/-d}" \
+        "${makechrootpkg_args[@]}" -- "${makepkg_args[@]}"
 fi >&2
 
 # vim: set et sw=4 sts=4 ft=sh:
