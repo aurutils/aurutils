@@ -167,6 +167,7 @@ while true; do
             shift; chroot_build_args+=(--margs "$1")
             IFS=, read -a arg -r <<< "$1"
             makepkg_args+=("${arg[@]}") ;;
+        # XXX: add equivalent for systemd-nspawn options (--nargs)
         --makechrootpkg-args|--cargs)
             shift; chroot_build_args+=(--cargs "$1") ;;
         # repo-add options
