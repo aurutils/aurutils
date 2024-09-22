@@ -62,8 +62,8 @@ opt_short='C:D:M:x:ABNTU'
 opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
           'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:' 'holdver'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
-          'margs:' 'cargs:' 'nocheck' 'suffix:')
-opt_hidden=('dump-options' 'status' 'path')
+          'margs:' 'cargs:' 'nocheck' 'suffix:' 'path')
+opt_hidden=('dump-options' 'status')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -84,7 +84,7 @@ while true; do
             create=1 ;;
         --status)
             status=1 ;;
-        --path)  # deprecated
+        --path)
             print_path=1 ;;
         # makepkg options (`--build`)
         -A|--ignorearch)
