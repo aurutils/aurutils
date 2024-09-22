@@ -20,7 +20,7 @@ makechrootpkg_args=(-cu)  # XXX: allow unsetting these options?
 makepkg_args=()
 
 # default options
-update=0 build=0 create=0 status=0 run_namcap=0
+update=0 build=0 create=0 status=0 print_path=0 run_namcap=0
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -65,7 +65,7 @@ opt_short='C:D:M:x:ABNTU'
 opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
           'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:' 'holdver'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
-          'margs:' 'cargs:' 'nocheck' 'suffix:')
+          'margs:' 'cargs:' 'nocheck' 'suffix:' 'path')
 opt_hidden=('dump-options' 'status')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
@@ -93,6 +93,8 @@ while true; do
             create=1 ;;
         --status)
             status=1 ;;
+        --path)
+            print_path=1 ;;
         # makepkg options (`--build`)
         -A|--ignorearch)
             makepkg_args+=(--ignorearch) ;;
@@ -325,6 +327,12 @@ elif (( update )) || (( create )); then
         "${bindmounts_rw[@]/#/--bind=}"    \
         /bin/bash /aur-chroot--helper.$$
 fi >&2
+
+# print path for processing by other tools (e.g. makepkg --packagelist)
+if (( print_path )); then
+    realpath -- "$directory"/root
+    exit $?
+fi
 
 # commands run inside the container for build step
 if (( build )) && (( AUR_CHROOT_DEVTOOLS )); then
