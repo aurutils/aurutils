@@ -74,13 +74,8 @@ else
     usage
 fi
 
-keepenv=SOURCE_DATE_EPOCH,BUILDTOOL,BUILDTOOLVER,GNUPGHOME,SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER
-
-if (( EUID != 0 )); then
-	exec sudo --preserve-env="$keepenv" -- "${BASH_SOURCE[0]}" "$@"
-fi
-
 unset bindmounts_ro bindmounts_rw makepkg_conf makepkg_user pacman_conf suffix
+orig_argv=("$@")
 while true; do
     case "$1" in
         -x|--suffix)
@@ -138,6 +133,12 @@ while true; do
     esac
     shift
 done
+
+keepenv=SOURCE_DATE_EPOCH,BUILDTOOL,BUILDTOOLVER,GNUPGHOME,SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER
+
+if (( EUID != 0 )); then
+	exec sudo --preserve-env="$keepenv" -- "${BASH_SOURCE[0]}" "${orig_argv[@]}"
+fi
 
 # XXX: default paths can be set through the Makefile (`aur-chroot.in`)
 etcdir=/etc/aurutils shrdir=/usr/share/devtools
