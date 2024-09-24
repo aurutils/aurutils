@@ -117,8 +117,7 @@ while true; do
             shift; pacman_conf=$1
             chroot_args+=(--pacman-conf "$1") ;;
         --pkgver)
-            run_pkgver=1; makepkg_args+=(--noextract)
-            chroot_build_args+=(--margs '--holdver') ;;
+            run_pkgver=1; makepkg_args+=(--noextract) ;;
         --root)
             shift; db_root=$1
             repo_args+=(--root "$1") ;;
@@ -218,6 +217,13 @@ trap 'trap_exit' EXIT
 trap 'exit' INT
 
 if (( chroot )); then
+    # If --pkgver is enabled, VCS sources are updated with makepkg -od.
+    # Therefore they do not need to be updated a second time with makepkg
+    # --verifysource in makechrootpkg.
+    if (( run_pkgver )); then
+        chroot_build_args+=(--holdver)
+    fi
+
     # If the database name is specified (no auto-detection), use it for
     # retrieving pacman and makepkg configuration in /etc/aurutils.
     [[ -n $db_name ]] && chroot_args+=(--suffix "$db_name")
