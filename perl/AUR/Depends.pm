@@ -253,6 +253,10 @@ Parameters:
 
 sub prune {
     my ($dag, $installed) = @_;
+
+    if (not scalar @{$installed}) {
+        return ();
+    }
     my @removals;
 
     # Remove reverse dependencies for installed targets
@@ -265,22 +269,27 @@ sub prune {
             }
         }
     }
+
     for my $dep (keys %{$dag}) {
         if (not scalar keys %{$dag->{$dep}}) {
-            delete $dag->{$dep};  # remove targets that are no longer required
+            delete $dag->{$dep};  # Remove targets that are no longer required
             push(@removals, $dep);
         }
         my $found = first { $dep eq $_ } @{$installed};
 
         if (defined $found) {
-            delete $dag->{$dep};  # remove targets that are installed
+            delete $dag->{$dep};  # Remove targets that are installed
             push(@removals, $dep);
         }
     }
     # Remove non-unique elements
     @removals = keys %{{ map { $_ => 1 } @removals }};
+
+    # Remove dependencies recursively (#1184)
+    push(@removals, prune($dag, \@removals));
+
     # XXX: return complement dict instead of array
-    return \@removals;
+    return @removals;
 }
 
 # vim: set et sw=4 sts=4 ft=perl:
