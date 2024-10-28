@@ -1,3 +1,8 @@
+## 20.3
+
+* `perl`
+  + recursively remove targets with `Depends::prune` (#1184)
+
 ## 20.2
 
 * `aur-build`

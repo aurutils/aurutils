@@ -18,23 +18,23 @@ sub solve {
 
     # Verify dependency requirements
     my ($dag, $dag_foreign) = graph($results, $pkgdeps, $pkgmap, $opt_verify, $opt_provides);
-    my $removals = [];
+    my @removals = ();
 
     # Remove virtual dependencies from dependency graph (#1063)
     if ($opt_provides) {
         my @virtual = keys %{$pkgmap};
 
         # XXX: assumes <pkgmap> only contains keys with provides != pkgname
-        $removals = prune($dag, \@virtual);
+        @removals = prune($dag, \@virtual);
     }
     # Remove transitive dependencies for installed targets (#592)
     # XXX: prune from $dag_foreign as well?
     if (scalar @{$opt_installed}) {
-        $removals = prune($dag, $opt_installed);
+        @removals = prune($dag, $opt_installed);
     }
     # Remove packages no longer in graph from results
-    if (scalar @{$removals}) {
-        map { delete $results->{$_} } @{$removals};
+    if (scalar @removals) {
+        map { delete $results->{$_} } @removals;
     }
     # Return $dag for subsequent application of C<prune>
     return $results, $dag, $dag_foreign;
