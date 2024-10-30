@@ -373,20 +373,26 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     # repo-add (create_package=0). If no paths are available, the package is
     # assumed to not exist and the build proceeds as usual (create_package=1).
     if (( ! overwrite )); then
-        exists=()
-        #shellcheck disable=SC2086
-        while read -r pkgpath; do
-            [[ -f $pkgpath ]] && exists+=("$pkgpath")
-        done < <(PKGDEST="$db_root" ${AUR_BUILD_PKGLIST:-aur build--pkglist} "${makepkg_pkglist_args[@]}")
-
+        mapfile -t pkglist < <(PKGDEST="$db_root" ${AUR_BUILD_PKGLIST:-aur build--pkglist} "${makepkg_pkglist_args[@]}")
         wait "$!" # Check `build--pkglist` exit status
 
-        if (( ${#exists[@]} )); then
+        exists=()
+        for pkgpath in "${pkglist[@]}"; do
+            [[ -f $pkgpath ]] && exists+=("$pkgpath")
+        done
+
+        # Ensure partial results do not skip the build (#1186)
+        if (( ${#exists[@]} == ${#pkglist[@]} )); then
             printf >&2 '%s: warning: skipping existing package (use -f to overwrite)\n' "$argv0"
+            printf '%q\n' >&2 "${exists[@]}"
             create_package=0
 
+        elif (( ${#exists[@]} )); then
+            # Since `makepkg` does not allow building split packages
+            # individually, we restart the build when part of the
+            # package group is unavailable (including -debug packages)
+            printf >&2 '%s: warning: package group partially built\n' "$argv0"
             printf '%q\n' >&2 "${exists[@]}"
-            pkglist=("${exists[@]}")
         fi
 
         if (( ${#exists[@]} )) && [[ -v results_file ]]; then
