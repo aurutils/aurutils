@@ -1,3 +1,10 @@
+## unstable
+
+* `aur-build`
+  + move local repository sync to `build--sync`
+  + implement file-based locking (`makepkg` implementation)
+  + implement `pactrans` upgrade
+
 ## 20.4
 
 * `aur-build`
