@@ -145,6 +145,7 @@ while true; do
             chroot_build_args+=(--ignorearch)
             makepkg_common_args+=(--ignorearch) ;;
         -n|--noconfirm|--no-confirm)
+            sync_args+=(--noconfirm)
             makepkg_common_args+=(--noconfirm) ;;
         -r|--rmdeps)
             makepkg_common_args+=(--rmdeps) ;;
@@ -457,7 +458,8 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     if (( chroot )) || (( no_sync )); then
         continue
     else
-        aur build--sync "${sync_args[@]}" -d "$db_name" -nyu
+        #shellcheck disable=SC2086
+        aur build--sync "${sync_args[@]}" -d "$db_name"
     fi
 done
 
