@@ -7,7 +7,7 @@ argv0=build--sync
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-conf_args=() sync_args=() db_names=()
+conf_args=() sync_args=() db_names=() pacman_conf= confirm=1
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -62,9 +62,9 @@ while true; do
         -d|--database)
             shift; db_names+=("$1") ;;
         --config)
-            shift; conf_args+=(--config "$1") ;;
+            shift; pacman_conf=$1 ;;
         -n|--noconfirm)
-            sync_args+=(--no-confirm) ;;
+            confirm=0 ;;
         --) shift; break ;;
     esac
     shift
@@ -72,6 +72,13 @@ done
 
 if (( EUID != 0 )); then
     exec ${AUR_PACMAN_AUTH:-sudo} "${BASH_SOURCE[0]}" "${orig_argv[@]}"
+fi
+
+if [[ -f $pacman_conf ]]; then
+    conf_args+=(--config "$pacman_conf")
+fi
+if (( ! confirm )); then
+    sync_args+=(--noconfirm)
 fi
 
 lockfile=$(paclock "${conf_args[@]}" --print)
