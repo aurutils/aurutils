@@ -7,7 +7,7 @@ argv0=build--sync
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-conf_args=() sync_args=() db_names=() pacman_conf= confirm=1
+conf_args=() sync_args=() db_names=() pacman_conf='' confirm=1
 
 args_csv() {
     # shellcheck disable=SC2155
