@@ -1,3 +1,8 @@
+## 20.5
+
+* `aur-chroot`
+  + preserve `LOGDEST` and `SRCDEST` by default (#1196)
+
 ## 20.4
 
 * `aur-build`
