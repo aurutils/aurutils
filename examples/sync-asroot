@@ -1,71 +1,242 @@
-#!/bin/bash
-# run as: `sudo sync-asroot ...`
-[[ -v AUR_DEBUG ]] && set -o xtrace
-SUDO_HOME=$(eval echo "~$SUDO_USER")
-XDG_CACHE_HOME=${XDG_CACHE_HOME:-$SUDO_HOME/.cache}
-AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
-argv0=sync-asroot
+#!/usr/bin/env python
 
-# default options
-build_args=(-LR --chroot) sync_args=() keep_going=1
+import argparse
+import contextlib
+import os
+import re
+import shutil
+import subprocess
+import sys
+import textwrap
+from collections.abc import Generator
+from pathlib import Path
 
-# colors (for build summary)
-source /usr/share/makepkg/util/message.sh
 
-if [[ ! -v NO_COLOR ]] && [[ ! -v AUR_DEBUG ]]; then
-    [[ -t 2 ]] && colorize
-fi
+class Params(argparse.Namespace):
+    user: str | None
+    keep_going: int
 
-# option parsing
-unset build_user
-while getopts :U:d:k:fSuN OPT; do
-    case $OPT in
-        d) build_args+=(-d "$OPTARG"); sync_args+=(-d "$OPTARG") ;;
-        f) build_args+=(-f "$OPTARG") ;;
-        S) build_args+=(-S) ;;
-        U) build_user=$OPTARG ;;
-        k) keep_going=$OPTARG ;;
-        u) sync_args+=(-u) ;;
-        N) sync_args+=(--no-ver) ;;
-    esac
-done
-shift $(( OPTIND-1 ))
 
-# 1. define unprivileged commands ------------------------------------------------->
-build_user=${build_user:-${SUDO_USER:-$USER}}
-build_args+=(-U "$build_user")
+def main() -> int:
+    params, build_args, sync_args, packages = parse_arguments()
 
-build_env=(AUR_MAKEPKG="runuser -u $build_user -- makepkg"
-           AUR_GPG="runuser -u $build_user -- gpg"
-           AUR_REPO_ADD="runuser -u $build_user -- repo-add"
-           AUR_BUILD_PKGLIST="runuser -u $build_user -- aur build--pkglist")
+    sudo_user = get_sudo_user()
+    sudo_home = Path(f"~{sudo_user}").expanduser()
+    xdg_cache_home = Path(os.environ.get("XDG_CACHE_HOME", sudo_home / ".cache"))
+    aur_dest = Path(os.environ.get("AURDEST", xdg_cache_home / "aurutils" / "sync"))
+    build_user = params.user or sudo_user
 
-# 2. retrieve sources ------------------------------------------------------------->
-ninja_dir=$(runuser -u "$build_user" -- mktemp -d) || exit
-trap 'rm -rf "$ninja_dir"' EXIT
+    with temp_dir_for_user(build_user) as ninja_dir:
+        graph_path = retrieve_sources(
+            ninja_dir=ninja_dir,
+            sync_args=sync_args,
+            packages=packages,
+            aur_dest=aur_dest,
+            build_user=build_user,
+        )
+        if not graph_path.stat().st_size:
+            return 0
 
-runuser -u "$build_user" -- \
-    env AURDEST="$AURDEST" aur sync "${sync_args[@]}" "$@" --columns --save "$ninja_dir"/graph || exit 1
+        build_ninja_path = generate_ninja_build(
+            ninja_dir=ninja_dir,
+            graph_path=graph_path,
+            build_args=build_args,
+            aur_dest=aur_dest,
+            build_user=build_user,
+        )
 
-# 3. build queue ------------------------------------------------------------------>
-if [[ -s $ninja_dir/graph ]]; then
-    runuser -u "$build_user" -- aur sync--ninja "$AURDEST" <"$ninja_dir"/graph >"$ninja_dir"/build.ninja -- \
-        env AUR_ASROOT=1 "${build_env[@]}" aur build "${build_args[@]}"
+        build_retcode = build(ninja_dir=ninja_dir, keep_going=params.keep_going)
 
-    env NINJA_STATUS='[%s/%t] ' ninja -C "$ninja_dir" -k "$keep_going"
+        print_results(ninja_dir=ninja_dir, build_ninja_path=build_ninja_path)
 
-    # The following is taken from aur-sync, but we want the build results always.
-    #
-    # Print all targets in dependency order
-    NINJA_STATUS='[%s/%t] ' ninja -nC /var/empty -f "$ninja_dir"/build.ninja | \
-        # [\w@\.\-\+]: valid characters for pkgname
-        # alternative: [^\s]+ from rule `env -C ... > pkgbase.stamp`
-        pcregrep -o1 -o3 '(\[\d+/\d+\] )(.+?)([\w@\.\-\+]+)(\.stamp)' | while read -r status pkg
-    do
-        if [[ -f $ninja_dir/$pkg.stamp ]]; then
-            printf "${BOLD}${BLUE}%s${ALL_OFF} %s\t${BOLD}${GREEN}[OK]${ALL_OFF}\n" "$status" "$pkg"
-        else
-            printf "${BOLD}${BLUE}%s${ALL_OFF} %s\t${BOLD}${RED}[FAIL]${ALL_OFF}\n" "$status" "$pkg"
-        fi
-    done | column -t
-fi
+        return build_retcode
+
+
+def parse_arguments() -> tuple[Params, list[str], list[str], list[str]]:
+    """Parse command-line arguments and return parsed args, build args, and sync args."""
+    parser = argparse.ArgumentParser(
+        prog=Path(sys.argv[0]).name,
+        usage='sudo %(prog)s [options] [options for sync and build] {--S [options for sync]} {--B [options for build]} -- {packages}',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=textwrap.dedent("""\
+            Batch-sync multiple AUR packages as root.
+
+            Example usages:
+                sync-asroot -U build -d aur --S --nover --B --pkgver -- pkg1 pkg2
+                sync-asroot -k 0 -d aur --S -u
+        """),
+        epilog=textwrap.dedent("""\
+            Any unrecognized options are forwarded to both `aur sync` and `aur build` sub-calls.
+            Arguments only for the `aur sync` call can be provided by being included after a single `--S` argument.
+            Arguments only for the `aur build` call can be provided by being included after a single `--B` argument.
+            Packages must be specified after a final `--`.
+
+            See also: aur-build(1), aur-sync(1)
+        """),
+    )
+    _ = parser.add_argument("-U", "--user", help="Build as USER; defaults to sudo user.")
+    _ = parser.add_argument("-k", "--keep-going", metavar="N", type=int, default=1,
+                            help="Keep going until N failures occurred.")
+
+    rest = sys.argv[1:]
+    rest, _, packages = list_partition(rest, "--")
+    rest, _, build_args = list_partition(rest, "--B")
+    rest, _, sync_args = list_partition(rest, "--S")
+    params, rest = parser.parse_known_args(rest, namespace=Params())
+
+    build_args = [
+        "--log",
+        "--remove",
+        "--chroot",
+        "--user", params.user or get_sudo_user(),
+        *rest,
+        *build_args,
+    ]
+
+    sync_args = [*rest, *sync_args]
+
+    return params, build_args, sync_args, packages
+
+
+def get_sudo_user() -> str:
+    return os.environ.get("SUDO_USER", os.environ["USER"])
+
+
+def list_partition[T](list_: list[T], item: T) -> tuple[list[T], T | None, list[T]]:
+    try:
+        i = list_.index(item)
+    except ValueError:
+        return list_[:], None, []
+    return list_[:i], list_[i], list_[i + 1:]
+
+def retrieve_sources(
+    *,
+    ninja_dir: Path,
+    sync_args: list[str],
+    packages: list[str],
+    aur_dest: Path,
+    build_user: str,
+) -> Path:
+    graph_path = ninja_dir / "graph"
+    sync_command = [
+        *runuser_cmd(build_user),
+        "aur", "sync",
+        *sync_args,
+        "--columns",
+        "--save", str(graph_path),
+        "--",
+        *packages,
+    ]
+    _ = subprocess.run(
+        sync_command,
+        check=True,
+        env={**os.environ, "AURDEST": str(aur_dest)},
+    )
+    return graph_path
+
+
+def generate_ninja_build(
+    *,
+    ninja_dir: Path,
+    graph_path: Path,
+    build_args: list[str],
+    aur_dest: Path,
+    build_user: str,
+) -> Path:
+    build_ninja_path = ninja_dir / "build.ninja"
+    build_env = {
+        "AUR_ASROOT": "1",
+        # define unprivileged commands
+        "AUR_MAKEPKG": f"runuser -u {build_user} -- makepkg",
+        "AUR_GPG": f"runuser -u {build_user} -- gpg",
+        "AUR_REPO_ADD": f"runuser -u {build_user} -- repo-add",
+        "AUR_BUILD_PKGLIST": f"runuser -u {build_user} -- aur build--pkglist",
+    }
+    build_env_args = [f'{k}={v}' for k, v in build_env.items()]
+    sync_ninja_cmd = [
+        *runuser_cmd(build_user),
+        "aur", "sync--ninja", str(aur_dest),
+        "--",
+        "env", *build_env_args,
+        "aur", "build", *build_args,
+    ]
+    with (
+        graph_path.open("rb") as graph_file,
+        build_ninja_path.open("wb") as ninja_file,
+    ):
+        _ = subprocess.run(
+            sync_ninja_cmd,
+            check=True,
+            stdin=graph_file,
+            stdout=ninja_file,
+            env=build_env,
+        )
+    return build_ninja_path
+
+
+def build(*, ninja_dir: Path, keep_going: int) -> int:
+    ninja_cmd = ["ninja", "-C", str(ninja_dir), "-k", str(keep_going)]
+    ninja_proc = subprocess.run(
+        ninja_cmd,
+        env={**os.environ, "NINJA_STATUS": "[%s/%t] "},
+    )
+    return ninja_proc.returncode
+
+
+def print_results(*, ninja_dir: Path, build_ninja_path: Path) -> None:
+    ninja_dry_run_cmd = ["ninja", "-n", "-C", "/var/empty", "-f", str(build_ninja_path)]
+    inspect_proc = subprocess.run(
+        ninja_dry_run_cmd,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "NINJA_STATUS": ""},
+    )
+    # [\w@.\-+]: valid characters for pkgname
+    matches: list[tuple[str, str]] = re.findall(r"([\w@.\-+]+)\.stamp", inspect_proc.stdout)
+
+    longest_pkg = max(len(pkg) for pkg in matches)
+    longest_num = len(str(len(matches)))
+    print()
+    for i, pkg in enumerate(matches):
+        stamp_path = ninja_dir / f"{pkg}.stamp"
+        print_result(
+            status=f"[{i + 1:{longest_num}}/{len(matches)}]",
+            pkg=f"{pkg:{longest_pkg}}",
+            success=stamp_path.exists(),
+        )
+
+
+def print_result(status: str, pkg: str, success: bool) -> None:
+    colorize = not bool(os.environ.get("NO_COLOR"))
+    if success:
+        if colorize:
+            print(f"\033[1;34m{status}\033[0m {pkg} \033[1;32m[OK]\033[0m")
+        else:
+            print(f"{status} {pkg} [OK]")
+    else:
+        if colorize:
+            print(f"\033[1;34m{status}\033[0m {pkg} \033[1;31m[FAIL]\033[0m")
+        else:
+            print(f"{status} {pkg} [FAIL]")
+
+
+def runuser_cmd(user: str) -> list[str]:
+    return ["runuser", "-u", user, "--"]
+
+
+@contextlib.contextmanager
+def temp_dir_for_user(user: str) -> Generator[Path]:
+    proc = subprocess.run([*runuser_cmd(user), "mktemp", "-d"], text=True, capture_output=True)
+    path = Path(proc.stdout.strip())
+    try:
+        yield path
+    finally:
+        shutil.rmtree(path)
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except subprocess.CalledProcessError as e:
+        print(f"Command {e.cmd} exited with code {e.returncode}")
+        sys.exit(1)
