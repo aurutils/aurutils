@@ -1,3 +1,8 @@
+## 20.5.1
+
+* `aur-build`
+  + do not define `LOGDEST` explicitly
+
 ## 20.5
 
 * `aur-chroot`
