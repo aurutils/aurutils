@@ -44,7 +44,7 @@ directories are available. This suggests to use a persistent directory for
 * interacting with an nspawn container with `aur-chroot`.
 
 Instead of elevating to the root user for these tasks, `aur-build` can be run as
-root, dropping privileges where necessary. `sync-asroot` does do by running
+root, dropping privileges where necessary. `sync-asroot` does this by running
 `makepkg`, `gpg`, `repo-add` and `aur-build--pkglist` with `runuser -u <user>`.
 Sources are also retrieved this way with `runuser -u <user> aur sync`.
 
