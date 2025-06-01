@@ -407,11 +407,11 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
 
     if (( create_package )); then
         if (( chroot )); then
-            env PKGDEST="$var_tmp" LOGDEST="${LOGDEST:-$PWD}" "${makepkg_env[@]}" \
+            env PKGDEST="$var_tmp" "${makepkg_env[@]}" \
                 aur chroot "${chroot_args[@]}" --build "${chroot_build_args[@]}"
         else
             #shellcheck disable=SC2086
-            env PKGDEST="$var_tmp" LOGDEST="${LOGDEST:-$PWD}" "${makepkg_env[@]}" \
+            env PKGDEST="$var_tmp" "${makepkg_env[@]}" \
                 ${AUR_MAKEPKG:-makepkg} "${makepkg_common_args[@]}" "${makepkg_args[@]}"
         fi
 
