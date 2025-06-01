@@ -1,0 +1,100 @@
+#!/bin/bash
+# shellcheck disable=SC2086
+# build--sync - helper for upgrading local repository
+set -o errexit
+[[ -v AUR_DEBUG ]] && set -o xtrace
+argv0=build--sync
+PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
+# default options
+conf_args=() sync_args=() db_names=() pacman_conf='' confirm=1
+
+args_csv() {
+    # shellcheck disable=SC2155
+    local str=$(printf '%s,' "$@")
+    printf '%s' "${str%,}"
+}
+
+get_local_config() {
+    #global conf_args
+    local repo
+
+    printf '[options]\n'
+    pacconf "${conf_args[@]}" --options --raw
+
+    for repo in "$@"; do
+        printf '[%s]\n' "$repo"
+        pacconf "${conf_args[@]}" --repo="$repo" --raw
+    done
+}
+
+# https://lists.archlinux.org/pipermail/pacman-dev/2013-August/017743.html
+wait_lock() {
+    local lockfile=$1 
+
+    # Adapted from `run_pacman()` in `makepkg`
+    while [[ -f $lockfile ]]; do
+        local timer=0
+        printf >&2 '%s: pacman is currently in use, please wait...\n' "$argv0"
+
+        while [[ -f $lockfile ]] && (( timer < 10 )); do
+            (( ++timer ))
+            sleep 3
+        done
+    done
+    command -- "${@:2}"
+}
+
+# option parsing
+opt_short='d:n'
+opt_long=('database:' 'config:' 'noconfirm')
+orig_argv=("$@")
+
+if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}")" -n "$argv0" -- "$@"); then
+    eval set -- "$opts"
+else
+    printf >&2 'usage: %s [-n] [-d database]... -- [pkgname...]\n' "$argv0"
+    exit 1
+fi
+
+while true; do
+    case "$1" in
+        -d|--database)
+            shift; db_names+=("$1") ;;
+        --config)
+            shift; pacman_conf=$1 ;;
+        -n|--noconfirm)
+            confirm=0 ;;
+        --) shift; break ;;
+    esac
+    shift
+done
+
+if (( EUID != 0 )); then
+    exec ${AUR_PACMAN_AUTH:-sudo} "${BASH_SOURCE[0]}" "${orig_argv[@]}"
+fi
+
+if [[ -f $pacman_conf ]]; then
+    conf_args+=(--config "$pacman_conf")
+fi
+if (( ! confirm )); then
+    sync_args+=(--noconfirm)
+fi
+
+lockfile=$(paclock "${conf_args[@]}" --print)
+
+wait_lock "$lockfile" pacsync "${conf_args[@]}" "${db_names[@]}"
+wait_lock "$lockfile" pacsync "${conf_args[@]}" "${db_names[@]}" --dbext=.files
+
+if [[ ${db_names[*]} ]]; then
+    # Do not replace packages installed from other repositories
+    sync_args+=(--resolve-replacements=none)
+
+    # Restrain configuration to specified repositories
+    wait_lock "$lockfile" pactrans "${sync_args[@]}" --config <(get_local_config "${db_names[@]}") "$@"
+    wait "$!"
+else
+    wait_lock "$lockfile" pactrans "${sync_args[@]}" "${conf_args[@]}" "$@"
+fi
+
+# vim: set et sw=4 sts=4 ft=sh:
