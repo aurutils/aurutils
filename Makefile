@@ -9,7 +9,7 @@ AURUTILS_VERSION ?= $(shell git describe --tags || true)
 ifeq ($(AURUTILS_VERSION),)
 AURUTILS_VERSION := 20.5.1
 endif
-AURUTILS_LIB = $(shell find lib/ -name 'aur-*')
+AURUTILS_LIB := $(shell find lib/ -type f -name 'aur-*')
 
 .PHONY: shellcheck install build completion aur
 
