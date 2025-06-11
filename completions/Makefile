@@ -8,9 +8,11 @@ ZSH_SITE_FUNCTIONS = \
 	zsh/_aur_packages \
 	zsh/_aur_repositories
 
+AURUTILS_LIB := $(shell find ../lib -type f -name 'aur-*')
+
 bash: bash/aur
 
-bash/aur: bash/aurutils.in ../lib/*
+bash/aur: bash/aurutils.in $(AURUTILS_LIB)
 	bash $< >$@
 
 install-bash: bash/aur
