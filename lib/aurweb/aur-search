@@ -14,6 +14,15 @@ use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query query_multi);
 use AUR::Options qw(add_from_stdin);
 my $argv0 = 'search';
+my $aur_repo_name = $ENV{AUR_REPO};
+my $aur_repo_color = (!defined $ENV{AUR_REPO_COLOR} || $ENV{AUR_REPO_COLOR} ne '0');
+my %installed_aur;
+if ($aur_repo_color) {
+    no warnings 'exec';
+    if (open(my $fh, '-|', 'aur repo -ql 2>/dev/null')) {
+        %installed_aur = map { chomp; $_ => 1 } <$fh>;
+    }
+}
 my $aur_location = $ENV{AUR_LOCATION} // 'https://aur.archlinux.org';
 
 # sprintf, strftime()
@@ -60,8 +69,10 @@ sub format_short {
     my $orph = defined $pkg->{'Maintainer'} 
         ? "" : "(Orphaned) ";
     my $pop  = sprintf("%.2f", $pkg->{'Popularity'});
-    my $pre  = sprintf("%s%saur/%s%s%s", BOLD, BLUE, RESET, BOLD, $name);
-
+    my $installed = $installed_aur{$name} // 0;
+    my ($repo, $color) = ($installed && $aur_repo_name) ? ($aur_repo_name, MAGENTA) : ('aur', BLUE);
+    my $pre = sprintf("%s%s/%s%s", $color, $repo, RESET, $name);
+    
     # OSC sequences
     if (not exists $ENV{ANSI_COLORS_DISABLED}) {
         $pre = sprintf("%s;;%s%s%s%s;;%s", OSC8, "$aur_location/packages/$name", ST, $pre, OSC8, ST);

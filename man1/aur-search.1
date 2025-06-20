@@ -105,6 +105,28 @@ and
 .BR comaintainers ,
 respectively.
 .
+.SH ENVIRONMENT
+Environment variables for other
+.B aur
+programs are also supported in
+.B aur-search.
+The below are specific to
+.B aur-search.
+.TP
+.B AUR_REPO
+Overrides the
+.B aur/
+prefix for installed AUR packages in
+.B aur-search
+output.
+.TP
+.B AUR_REPO_COLOR
+If set to
+.B 0,
+disables color for the
+.B AUR_REPO
+prefix. Enabled by default.
+.
 .SH EXIT STATUS
 The exit status is 0 on valid results, 1 if no results were found, 2 on an
 .BR aur\-query (1)
