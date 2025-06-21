@@ -14,16 +14,22 @@ use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query query_multi);
 use AUR::Options qw(add_from_stdin);
 my $argv0 = 'search';
-my $aur_repo_name = $ENV{AUR_REPO};
-my $aur_repo_color = (!defined $ENV{AUR_REPO_COLOR} || $ENV{AUR_REPO_COLOR} ne '0');
-my %installed_aur;
-if ($aur_repo_color) {
-    no warnings 'exec';
-    if (open(my $fh, '-|', 'aur repo -ql 2>/dev/null')) {
-        %installed_aur = map { chomp; $_ => 1 } <$fh>;
-    }
-}
+our $colorize = 0;
 my $aur_location = $ENV{AUR_LOCATION} // 'https://aur.archlinux.org';
+
+# Lazy helper to map installed AUR packages
+sub _load_installed_aur {
+    state %installed;
+    state $aur_repo_name = $ENV{AUR_REPO};
+    return \%installed if %installed;
+    return {} unless $aur_repo_name;
+
+    no warnings 'exec';
+    if (open(my $fh, '-|', 'aur', 'repo', '-ql')) {
+        %installed = map { chomp; $_ => 1 } <$fh>;
+    }
+    return \%installed;
+}
 
 # sprintf, strftime()
 setlocale(LC_NUMERIC, 'C');
@@ -33,10 +39,10 @@ sub format_long {
     my $pkg = shift;
     # Custom fixed order for info output
     my @keys = (
-	    'Name'       , 'PackageBase' , 'Version'        , 'Description' , 'URL',
-	    'Keywords'   , 'License'     , 'Maintainer'     , 'Submitter'   , 'NumVotes',
-	    'Popularity' , 'OutOfDate'   , 'FirstSubmitted' , 'LastModified', 'Depends',
-	    'MakeDepends', 'CheckDepends', 'OptDepends'
+	   'Name'       , 'PackageBase' , 'Version'        , 'Description' , 'URL',
+	   'Keywords'   , 'License'     , 'Maintainer'     , 'Submitter'   , 'NumVotes',
+	   'Popularity' , 'OutOfDate'   , 'FirstSubmitted' , 'LastModified', 'Depends',
+	   'MakeDepends', 'CheckDepends', 'OptDepends'
 	);
     my $url = join("/", $aur_location, "packages", $pkg->{'Name'});
     say BOLD, sprintf("%-15s", "AUR URL:"), RESET, ' ', $url;
@@ -69,16 +75,20 @@ sub format_short {
     my $orph = defined $pkg->{'Maintainer'} 
         ? "" : "(Orphaned) ";
     my $pop  = sprintf("%.2f", $pkg->{'Popularity'});
-    my $installed = $installed_aur{$name} // 0;
-    my ($repo, $color) = ($installed && $aur_repo_name) ? ($aur_repo_name, MAGENTA) : ('aur', BLUE);
-    my $pre = sprintf("%s%s/%s%s", $color, $repo, RESET, $name);
+    my $repo = do {
+    my $installed = _load_installed_aur();
+    my $repo_name = $ENV{AUR_REPO};
+        $installed->{$name} && $repo_name
+            ? sprintf(" %s[%s]%s", ($colorize ? CYAN : ''), $repo_name, ($colorize ? RESET : ''))
+            : "";
+    };
+    my $pre  = sprintf("%s%saur/%s%s%s", BOLD, BLUE, RESET, BOLD, $name);
     
     # OSC sequences
-    if (not exists $ENV{ANSI_COLORS_DISABLED}) {
+    if ($colorize) {
         $pre = sprintf("%s;;%s%s%s%s;;%s", OSC8, "$aur_location/packages/$name", ST, $pre, OSC8, ST);
     }
-
-    say $pre, ' ', GREEN, $ver, RESET, ' (+', $votes, ' ', $pop, '%) ', 
+    say $pre, ' ', GREEN, $ver, RESET, $repo, ' (+', $votes, ' ', $pop, '%) ', 
         $orph, BOLD, RED, $ood, RESET;
     say '    ', $desc // '-';
 }
@@ -166,14 +176,20 @@ unless(caller) {
     # connected to a terminal, e.g. when piping to less -R. (#585) When printing
     # to a file, they should be disabled instead. Default to `--color=auto` but
     # allow specifying other modes.
-    my $colorize = 0;
-    if (not defined $ENV{AUR_DEBUG}) {
-        if (($opt_color eq 'auto' and -t STDOUT) or $opt_color eq 'always') {
-            $colorize = 1;
-        }
-    }
-    if ($colorize == 0) {
-        $ENV{ANSI_COLORS_DISABLED} = 1;
+
+    $colorize = ($opt_color eq 'always' || ($opt_color eq 'auto' && -t STDOUT));
+
+    # Disable color constants if color output is not enabled
+    unless ($colorize) {
+    no warnings 'redefine';
+    eval q{
+        sub BOLD  () { '' }
+        sub BLUE  () { '' }
+        sub CYAN  () { '' }
+        sub GREEN () { '' }
+        sub RED   () { '' }
+        sub RESET () { '' }
+        };
     }
 
     # Set format depending on query type (#319)
