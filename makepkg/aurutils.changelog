@@ -771,7 +771,7 @@ retrieved with the `--path` option, e.g for use with `makepkg --config`.
 ## 7
 
 This release adds optional support for the `ninja` build system. If the
-`AUR_SYNC_USE_NINJA` environment variable is set to a positive value,
+`AUR_SYNC_USE_NINJA` environment variable is set to a positive integer value,
 `aur-sync` will generate `build.ninja` where each target has an `aur-build`
 command-line. This allows to continue building a series of packages when
 several failed, with the maximum of failed targets controlled by the `-k` /
