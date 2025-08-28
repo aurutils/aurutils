@@ -427,11 +427,12 @@ if (( auto_key_retrieve )); then
 fi
 
 # Verify dependency tree (#20)
+# Use pacini to preprocess .SRCINFO to avoid CRLF (#1203)
 if (( graph )); then
     if ! { while read -r pkg; do
                [[ $pkg ]] && printf '%s\0' "$pkg/.SRCINFO"
            done
-         } | xargs -0 cat -- | aur graph "${graph_args[@]}" REVERSE=1
+         } | xargs -0 cat -- | pacini | aur graph "${graph_args[@]}" REVERSE=1
     then
         printf >&2 '%s: failed to verify dependency graph\n' "$argv0"
         exit 1
