@@ -13,7 +13,7 @@ from pwd import getpwnam
 from decimal import Decimal
 #from pyalpm import vercmp
 from srcinfo.parse import parse_srcinfo
-ARGV0 = 'sync-rebuild'
+ARGV0 = 'rebuild'
 
 def xdg_cache_home(user=None):
     """Retrieve XDG_CACHE_HOME from the XDG Base Directory specification
@@ -119,7 +119,8 @@ def update_pkgrel(buildscript, pkgrel=None, increment=0.1):
 
 
 # TODO: use vercmp to ensure rebuilds, abort reverse depends when depends fails (sync--ninja)
-def rebuild_packages(repo_targets, db_name, start_dir, pkgver=False, fail_fast=False, user=None, *build_args):
+def rebuild_packages(repo_targets, db_name, start_dir, pkgver=False,
+                     fail_fast=False, user=None, *build_args):
     """Rebuild a series of packages in successive order.
     """
     build_cmd  = ['aur', 'build'] + list(*build_args)
@@ -146,7 +147,7 @@ def rebuild_packages(repo_targets, db_name, start_dir, pkgver=False, fail_fast=F
 
         # Run pkgver() function for VCS packages
         if pkgver:
-            print(f'{ARGV0}: updating pkgver with aur-srcver', file=sys.stderr)
+            print(f'{ARGV0}: {pkgname}: updating pkgver with aur-srcver', file=sys.stderr)
             for n, pkg_str in enumerate(run_readline(srcver_cmd, cwd=src_dir)):
                 if n > 0:
                     raise RuntimeError('ambiguous aur-srcver output')
@@ -172,13 +173,13 @@ def rebuild_packages(repo_targets, db_name, start_dir, pkgver=False, fail_fast=F
             new_pkgrel = update_pkgrel(buildscript, pkgrel=float(pkgrel), increment=0.1)
 
             # Print bumped pkgrel to standard error
-            print(f'{ARGV0}: {pkgname}: {pkgver}-{pkgrel} -> {pkgver}-{new_pkgrel}',
+            print(f'{ARGV0}: {pkgbase}: {pkgver}-{pkgrel} -> {pkgver}-{new_pkgrel}',
                   file=sys.stderr)
         else:
-            print(f'{ARGV0}: source and local repository version differ', file=sys.stderr)
-            print(f'{ARGV0}: using existing pkgver', file=sys.stderr)
+            print(f'{ARGV0}: {pkgbase}: source and local repository version differ', file=sys.stderr)
+            print(f'{ARGV0}: {pkgbase}: using existing pkgver', file=sys.stderr)
 
-        failed_rebuilds = {}
+        failed = []
 
         # Build package with modified pkgrel
         try:
@@ -204,21 +205,21 @@ def rebuild_packages(repo_targets, db_name, start_dir, pkgver=False, fail_fast=F
         except subprocess.CalledProcessError:
             # Build process failed, revert to unmodified PKGBUILD
             if buildscript_backup is not None:
-                print(f'{ARGV0}: build failed, reverting PKGBUILD', file=sys.stderr)
+                print(f'{ARGV0}: {pkgbase}: build failed, reverting PKGBUILD', file=sys.stderr)
                 os.replace(buildscript_backup, buildscript)
 
-            # --fail-fast: if a package failed to build, also consider
-            # remaining targets as failed
+            # --fail-fast: if a package failed to build, consider remaining targets as failed
             if fail_fast:
                 print(f'{ARGV0}: {pkgbase}: build failed, exiting', file=sys.stderr)
+                # XXX: Preserve original order of inputs
                 return rebuilds, list(set(repo_targets) - set(rebuilds))
 
             # Mark rebuild as failure for later reporting to the user
-            failed_rebuilds[pkgname] = pkgbase
+            failed.append(pkgbase)
 
         rebuilds[pkgname] = pkgbase
 
-        return rebuilds, failed_rebuilds
+    return rebuilds, failed
 
 
 def print_cached_packages(pkgnames):
@@ -232,18 +233,18 @@ def print_cached_packages(pkgnames):
             p2.communicate()
 
 
-def main(targets, db_name, start_dir, pkgver, fail_fast, run_sync, chroot, user):
+def main(targets, db_name, start_dir, pkgver, fail_fast, run_fetch, chroot, user):
     # Ensure all sources are available. Only packages are cloned that are
     # already available in the local repository.
-    sync_cmd = ['aur', 'sync', '--no-build', '--no-ver-argv']
-    repo_cmd = ['aur', 'repo', '--jsonl']
+    # XXX: Does not retrieve or handle new dependencies.
+    fetch_cmd = ['aur', 'fetch', '--existing']
+    repo_cmd  = ['aur', 'repo', '--jsonl']
 
     if user is not None:
-        sync_cmd = ['runuser', '-u', user, '--'] + sync_cmd
-        repo_cmd = ['runuser', '-u', user, '--'] + repo_cmd
+        fetch_cmd = ['runuser', '-u', user, '--'] + fetch_cmd
+        repo_cmd  = ['runuser', '-u', user, '--'] + repo_cmd
 
     if db_name is not None:
-        sync_cmd.extend(('--database', db_name))
         repo_cmd.extend(('--database', db_name))
 
     if chroot:
@@ -251,7 +252,7 @@ def main(targets, db_name, start_dir, pkgver, fail_fast, run_sync, chroot, user)
     else:
         build_args = ['--syncdeps', '--rmdeps', '--noconfirm']
 
-    repo_targets = {}
+    repo_targets_tmp = {}
 
     # Read repository contents line by line to handle potentially large databases
     for pkg_str in run_readline(repo_cmd):
@@ -260,35 +261,40 @@ def main(targets, db_name, start_dir, pkgver, fail_fast, run_sync, chroot, user)
 
         # Restrict to packages specified on the command-line
         if pkgname in targets:
-            repo_targets[pkgname] = {
-                'PackageBase': pkg['PackageBase'], 'Version' : pkg['Version']
+            repo_targets_tmp[pkgname] = {
+                'PackageBase': pkg['PackageBase'], 'Version': pkg['Version']
             }
 
-    # Clone targets that are part of the local repository
-    # TODO: handle "new" AUR targets as usual
-    if len(repo_targets) > 0:
-        sync_cmd.extend(list(repo_targets.keys()))
+    # Restore order of command-line targets
+    repo_targets = {}
+    for target in targets:
+        if target in repo_targets_tmp:
+            repo_targets[target] = repo_targets_tmp[target]
 
-        if run_sync:
+    # Clone targets that are part of the local repository
+    if len(repo_targets) > 0:
+        fetch_cmd.extend(list(repo_targets.keys()))
+
+        if run_fetch:
             repo_targets_ordered = {}  # `dict` preserves order since python >=3.6
 
             # Temporary file for dependency order
-            with tempfile.NamedTemporaryFile() as sync_queue:
+            with tempfile.NamedTemporaryFile() as fetch_results:
                 # Read access to build user
                 if user is not None:
-                    shutil.chown(sync_queue.name, user=user)
+                    shutil.chown(fetch_results.name, user=user)
 
-                # Clone AUR targets and retrieve dependency order. Dependencies
-                # not in the local repository already will be added as targets.
-                # XXX: requires at least one valid AUR target
-                subprocess.run([*sync_cmd, '--save', sync_queue.name], check=True)
+                # Clone AUR targets. Dependency order is taken from the command-line.
+                subprocess.run([*fetch_cmd, '--results', fetch_results.name],
+                               cwd=start_dir, check=True)
 
-                with open(sync_queue.name, 'r') as f:
+                # Retrieve names of cloned/fetched packages.
+                with open(fetch_results.name, 'r') as f:
                     for line in f.readlines():
-                        name = os.path.basename(line.rstrip())
+                        name = os.path.basename(line.split(':')[-1].rstrip())
                         repo_targets_ordered[name] = repo_targets[name]
 
-            # Local repository targets not retrieved by `aur-sync` are missing from AUR
+            # Local repository targets not retrieved by `aur-fetch` are missing from AUR
             # XXX: append to queue if target directories are available
             not_aur = list(set(repo_targets.keys()) - set(repo_targets_ordered.keys()))
 
@@ -308,9 +314,9 @@ def main(targets, db_name, start_dir, pkgver, fail_fast, run_sync, chroot, user)
 
         if len(failed) > 0:
             print(f'{ARGV0}: the following targets failed to build:', end=' ', file=sys.stderr)
-            print(' '.join(failed.keys()), file=sys.stderr)
+            print(' '.join(failed), file=sys.stderr)
 
-        rest = list(set(targets) - set(rebuilds.keys()) - set(failed.keys()) - set(not_aur))
+        rest = list(set(targets) - set(rebuilds.keys()) - set(failed) - set(not_aur))
     else:
         rest = list(targets)
 
@@ -333,7 +339,7 @@ if __name__ == '__main__':
     parser.add_argument('-U', '--user')
     parser.add_argument('--pkgver', action='store_true')
     parser.add_argument('--fail-fast', action='store_true')
-    parser.add_argument('--no-sync', action='store_false')
+    parser.add_argument('--no-fetch', action='store_false')
     parser.add_argument('targets', nargs='+')
     args = parser.parse_args()
 
@@ -352,9 +358,9 @@ if __name__ == '__main__':
     # Get the path to user-specific cache files
     # Note: this only retrieves `AURDEST` from the current user environment.
     if 'AURDEST' in os.environ:
-        aurdest = os.getenv('AURDEST')
+        start_dir = os.getenv('AURDEST')
     else:
-        aurdest = os.path.join(xdg_cache_home(args.user), 'aurutils/sync')
+        start_dir = os.path.join(xdg_cache_home(args.user), 'aurutils/sync')
 
-    main({i:1 for i in args.targets}, args.database, aurdest, 
-         args.pkgver, args.fail_fast, args.no_sync, args.chroot, args.user)
+    main({i:1 for i in args.targets}, args.database, start_dir,
+         args.pkgver, args.fail_fast, args.no_fetch, args.chroot, args.user)

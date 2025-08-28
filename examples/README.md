@@ -111,7 +111,7 @@ clients of the local repository.
 Assuming a list of rebuild targets is known, `sync-rebuild` performs the
 following steps:
 
-1. Retrieve and inspect all source files with `aur sync`
+1. Retrieve and update all source files with `aur fetch --existing`
 2. Retrieve all versions of packages in the local repository
 3. If `pkgver` matches the local repository version, set `pkgrel` in the
    `PKGBUILD` to the local repository version, incremented by `0.1`. Otherwise,
@@ -126,6 +126,10 @@ in case the incremented version is lost, or otherwise restored (e.g. with
 `git-reset`). The fractional part is always increased; for example, a `pkgrel`
 of `35.9` is increased to `35.10`, not `36`.
 
+> **Note**
+> If one dependency fails to build, `sync-rebuild` will try rebuilding the package
+> that depends on it anyway. To avoid this, use the `--fail-fast` option.
+
 `aur-repo` can be used to retrieve a list of packages that depend on specific
 package. For example:
 
@@ -133,15 +137,22 @@ package. For example:
 aur repo --search '^python.*' --search-by depends --list
 ```
 
+`aur-sync` can be used to inspect new PKGBUILD revisions beforehand
+and retrieve any new dependencies. For example:
+
+```bash
+aur sync --no-build --no-ver-argv <targets...>
+```
+
 > **Note**
-> By default, AUR packages are rebuilt in dependency order. When using
-> `--no-sync` or non-AUR packages, targets are rebuilt in sequential order. In
-> this case, `arch-rebuild-order` can be used as follows:
+> AUR packages are rebuilt in command-line order. The rebuild order can be
+> retrieved with `arch-rebuild-order` as follows:
 >
 > `$ arch-rebuild-order --repos=custom <targets...>`
 >
-> If one dependency fails to build, `sync-rebuild` will try rebuilding the package
-> that depends on it anyway. To avoid this, use the `--fail-fast` option.
+> This ignores any build dependencies specified in `optdepends`; for
+> AUR targets, `aur depends --optdepends` may be used (although these
+> dependencies need manual installation.)
 
 ## view-delta
 
