@@ -496,8 +496,7 @@ user. The following commands set the default permissions for this directory
 and modifies any existing permissions, respectively:
 .PP
 .EX
-    $ setfacl -d -m 'g:aurbuild:rwX' /home/custompkgs
-    $ setfacl -R -m 'g:aurbuild:rwX' /home/custompkgs
+    $ setfacl \-dm 'g:aurbuild:rwX' \-Rm g:aurbuild:rwX \-\- /home/custompkgs
 .EE
 .PP
 See also
