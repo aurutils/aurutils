@@ -111,7 +111,7 @@ clients of the local repository.
 Assuming a list of rebuild targets is known, `sync-rebuild` performs the
 following steps:
 
-1. Retrieve and update all source files with `aur fetch --existing`
+1. Retrieve all source files with `aur fetch --existing`
 2. Retrieve all versions of packages in the local repository
 3. If `pkgver` matches the local repository version, set `pkgrel` in the
    `PKGBUILD` to the local repository version, incremented by `0.1`. Otherwise,
@@ -137,8 +137,8 @@ package. For example:
 aur repo --search '^python.*' --search-by depends --list
 ```
 
-`aur-sync` can be used to inspect new PKGBUILD revisions beforehand
-and retrieve any new dependencies. For example:
+`aur-sync` can be used to retrieve and inspect new AUR revisions, as well as
+retrieve new dependencies for target packages. For example:
 
 ```bash
 aur sync --no-build --no-ver-argv <targets...>
