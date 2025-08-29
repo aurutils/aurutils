@@ -6,6 +6,18 @@
 * `aur-chroot`
   + preserve `LOGDEST` and `SRCDEST` by default (#1196)
 
+* `aur-sync`
+  + pre-process .SRCINFO with `pacini` (#1203)
+
+* `examples`
+  + `sync-rebuild`
+    - use `aur-fetch` instead of `aur-sync`
+    - allow handling multiple targets
+
+* `man1`
+  + documentation updates (#1206, #1207)
+  + add setfacl example (aur-build.1)
+
 ## 20.4
 
 * `aur-build`
