@@ -5,11 +5,11 @@ export AUR_ASROOT=1
 
 parse_loop() {
   awk '/^while true; do$/,/^done$/ {
-    if ( $0 ~ /^\s*-.*)$/ && $1 != "--)" ) {  # match -<something>) except --)
-      gsub(/[ )]/,"")                         # remove spaces and final parens
-      split($0, patterns,"|")                 # split on |
-      getline                                 # ask for next line for shift check
-      for (i in patterns) {                   # print options accordingly
+    if ( $0 ~ /^[[:space:]]*-.*)$/ && $1 != "--)" ) {  # match -<something>) except --)
+      gsub(/[ )]/,"")                                  # remove spaces and final parens
+      split($0, patterns,"|")                          # split on |
+      getline                                          # ask for next line for shift check
+      for (i in patterns) {                            # print options accordingly
         if ($2 ~ /^optval/) {
           print patterns[i] "::"
         } else if ($1 ~ /^shift/) {
