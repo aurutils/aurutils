@@ -449,32 +449,6 @@ file with the following contents:
     aurbuild ALL = (root) NOPASSWD: /usr/bin/pacman, /usr/bin/pacsync
 .EE
 .PP
-.BR aur\-build (1)
-and related programs such as
-.BR aur\-sync (1)
-can now run as the new
-.I aurbuild
-user.
-For example:
-.PP
-.EX
-    # cd /var/cache/aurbuild
-    # sudo \-u aurbuild git clone https://aur.archlinux.org/mypackage.git
-    # cd mypackage
-    # sudo \-u aurbuild aur build \-d custom
-.EE
-.PP
-Any created files in the local repository (such as packages,
-signatures and database files) will be owned by the
-.I aurbuild
-user and group.
-.PP
-See also
-.B Avoiding password prompts
-in
-.BR aur\-chroot (1).
-.TP
-.B Note:
 The following
 .B aur\-build
 options require root access:
@@ -490,6 +464,46 @@ unless the
 or
 .B \-\-chroot
 options are specified.
+.PP
+.BR aur\-build (1)
+and related programs such as
+.BR aur\-sync (1)
+can now run as the new
+.I aurbuild
+user.
+For example:
+.PP
+.EX
+    $ sudo -u aurbuild -i
+    $ git clone https://aur.archlinux.org/mypackage.git
+    $ cd mypackage
+    $ aur build \-d custom
+.EE
+.PP
+Any created files in the local repository (such as packages,
+signatures and database files) will be owned by the
+.I aurbuild
+user and group.
+.PP
+To exchange files between the build user and a regular user,
+.BR setfacl (1)
+may be used. For example, assume the directory
+.I /home/custompkgs
+is owned by
+.IR $USER:USER ,
+and that read/write access should be given to the
+.I aurbuild
+user. The following commands set the default permissions for this directory
+and modifies any existing permissions, respectively:
+.PP
+.EX
+    $ setfacl \-dm 'g:aurbuild:rwX' \-Rm g:aurbuild:rwX \-\- /home/custompkgs
+.EE
+.PP
+See also
+.B Avoiding password prompts
+in
+.BR aur\-chroot (1).
 .
 .SS PKGBUILD signatures
 GPG signatures defined in the
