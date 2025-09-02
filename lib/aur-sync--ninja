@@ -1,6 +1,10 @@
 #!/bin/bash
-[[ -v AUR_DEBUG ]] && set -o xtrace
-PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+# aur-sync--ninja - generate ninja.build files for aur-sync
+
+if [[ -v AUR_DEBUG ]]; then
+    set -o xtrace
+    PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+fi
 
 # parent of PKGBUILD directories (relative or absolute)
 srcdir=.

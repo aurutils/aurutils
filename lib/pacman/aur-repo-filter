@@ -1,8 +1,12 @@
 #!/bin/bash
 # aur-repo-filter - filter packages in the Arch Linux repositories
-[[ -v AUR_DEBUG ]] && set -o xtrace
+
+if [[ -v AUR_DEBUG ]]; then
+     PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
+     set -o xtrace
+fi
+
 argv0='repo-filter'
-PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 arch_repo=(core extra testing community{,-testing} multilib{,-testing})
 
 # default options

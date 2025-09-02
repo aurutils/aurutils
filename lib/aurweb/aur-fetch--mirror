@@ -1,7 +1,12 @@
 #!/bin/bash
+# aur-fetch--mirror - retrieve build files from an AUR mirror
+
+if [[ -v AUR_DEBUG ]]; then
+     PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
+     set -o xtrace
+fi
+
 set -o errexit
-[[ -v AUR_DEBUG ]] && set -o xtrace
-#argv0=fetch--mirror
 XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 AUR_MIRROR=${AUR_MIRROR:-https://github.com/archlinux/aur}
 AUR_MIRROR_TTL=${AUR_MIRROR_TTL:-300}

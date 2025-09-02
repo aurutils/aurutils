@@ -1,12 +1,16 @@
 #!/bin/bash
 # aur-view - inspect package files
-[[ -v AUR_DEBUG ]] && set -o xtrace
+
+if [[ -v AUR_DEBUG ]]; then
+     PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
+     set -o xtrace
+fi
+
 set -o errexit
 argv0=view
 XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 AUR_VIEW_DB=${AUR_VIEW_DB:-$XDG_DATA_HOME/aurutils/$argv0}
-PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
 log_fmt='diff' log_args=() excludes=() patch=1 prefix=0

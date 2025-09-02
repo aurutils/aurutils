@@ -15,7 +15,6 @@ XyAgICAgIDsnflUnCiAgXywtJyAsJ2AtX187ICctLS4KIChfLyd+fiAgICAgICcnJycoOwoK
     exit 1
 }
 
-
 warn() {
     printf >&2 "%s: $1" fetch "${@:2}"
 }
@@ -53,10 +52,8 @@ unset -v rebase_args merge_args results_file
 
 # option handling
 opt_short='Sefr'
-
 opt_long=('auto' 'merge' 'reset' 'rebase' 'discard' 'existing' 'results:' 'ff'
           'ff-only' 'no-ff' 'no-commit' 'recurse')
-
 opt_hidden=('dump-options' 'sync:')
 
 if opts=$(getopt -o "$opt_short" -l "$(IFS=,; printf %s,%s "${opt_long[*]}" "${opt_hidden[*]}")" -n fetch -- "$@"); then

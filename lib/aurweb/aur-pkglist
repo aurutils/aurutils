@@ -1,6 +1,11 @@
 #!/bin/bash
 # aur-pkglist - print the AUR package list
-[[ -v AUR_DEBUG ]] && set -o xtrace
+
+if [[ -v AUR_DEBUG ]]; then
+     PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
+     set -o xtrace
+fi
+
 argv0=pkglist
 XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
 AUR_LOCATION=${AUR_LOCATION:-'https://aur.archlinux.org'}
@@ -9,6 +14,11 @@ PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
 ttl=300 pkglist=packages update=0 verify=0 use_system_time=0
+
+usage() {
+    printf >&2 'usage: %s [-bqsiv] [-t ttl] [-FP pattern]\n' "$argv0"
+    exit 1
+}
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -26,11 +36,6 @@ list_fetch() {
 
 list_headers() {
     curl -A aurutils -f "$1" --head -Ss
-}
-
-usage() {
-    printf >&2 'usage: %s [-bqsiv] [-t ttl] [-FP pattern]\n' "$argv0"
-    exit 1
 }
 
 opt_short='t:bqsivFPu'

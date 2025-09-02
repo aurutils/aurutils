@@ -1,6 +1,11 @@
 #!/bin/bash
 # aur-sync - download and build AUR packages automatically
-[[ -v AUR_DEBUG ]] && set -o xtrace
+
+if [[ -v AUR_DEBUG ]]; then
+    PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+    set -o xtrace
+fi
+
 set -o errexit
 argv0=sync
 XDG_CACHE_HOME=${XDG_CACHE_HOME:-$HOME/.cache}
@@ -10,7 +15,6 @@ XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/$argv0}
 AUR_SYNC_USE_NINJA=${AUR_SYNC_USE_NINJA:-0}
 AUR_SYNC_GNUPGHOME=${AUR_SYNC_GNUPGHOME:-$XDG_DATA_HOME/aurutils/$argv0/gnupg}
-PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # Avoid CDPATH screwing with cd (#1047)
 unset -v CDPATH

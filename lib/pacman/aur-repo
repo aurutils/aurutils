@@ -1,8 +1,12 @@
 #!/bin/bash
 # aur-repo - operate on local repositories
-[[ -v AUR_DEBUG ]] && set -o xtrace
+
+if [[ -v AUR_DEBUG ]]; then
+     PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
+     set -o xtrace
+fi
+
 argv0=repo
-PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
 db_query=file mode=none conf_args=() vercmp_args=() parse_args=() missing=0
