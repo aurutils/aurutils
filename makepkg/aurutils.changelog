@@ -1,3 +1,9 @@
+## 21
+
+* `aur-fetch`
+  + support mixed url and pkgbase names (#1104)
+  + add trurl(1) as dependency
+
 ## 20.5
 
 * `aur-build`

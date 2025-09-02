@@ -11,7 +11,7 @@ changelog=aurutils.changelog
 sha256sums=('SKIP')
 conflicts=('aurutils')
 provides=("aurutils=${pkgver%%.r*}")
-depends=('git' 'pacutils' 'curl' 'bash' 'perl' 'perl-json-xs')
+depends=('git' 'pacutils' 'curl' 'trurl' 'bash' 'perl' 'perl-json-xs')
 makedepends=('git')
 optdepends=('bash-completion: bash completion'
             'zsh: zsh completion'
