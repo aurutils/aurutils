@@ -5,7 +5,7 @@ argv0=repo
 PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 
 # default options
-db_query=file mode=none conf_args=() vercmp_args=() parse_args=() missing=0
+db_query=file mode=none quiet=0 conf_args=() vercmp_args=() parse_args=() missing=0
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -61,7 +61,7 @@ while true; do
         -u|--upgrades)
             mode=upgrades ;;
         -q|--quiet)
-            parse_args+=(-q); vercmp_args+=(-q) ;;
+            quiet=1 ;;
         -S|--sync)
             db_query=sync ;;
         -F|--attr|--field)
@@ -92,6 +92,13 @@ while true; do
     esac
     shift
 done
+
+# Conditionally add --quiet (#1215)
+if (( quiet )) && [[ $mode == "upgrades" ]]; then
+    vercmp_args+=(-q)
+elif (( quiet )) && [[ $mode == "list" ]]; then
+    parse_args+=(-q)
+fi
 
 # assign environment variables
 db_ext=${db_ext:-$AUR_DBEXT} db_name=${db_name:-$AUR_REPO} db_root=${db_root:-$AUR_DBROOT}
