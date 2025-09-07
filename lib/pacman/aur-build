@@ -78,7 +78,7 @@ opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'sign' 'gpg-sign'
           'makepkg-conf:' 'bind:' 'bind-rw:' 'prevent-downgrade' 'temp'
           'syncdeps' 'clean' 'namcap' 'checkpkg' 'makepkg-args:' 'user:'
           'margs:' 'buildscript:' 'null' 'dbext:' 'cleanbuild' 'cargs:'
-          'makechrootpkg-args:' 'makepkg-gnupghome:')
+          'makechrootpkg-args:' 'makepkg-gnupghome:' 'pool:')
 opt_hidden=('dump-options' 'ignorearch' 'noconfirm' 'nocheck' 'nosync' 'repo:'
             'results:' 'results-append:' 'status')
 
@@ -88,7 +88,7 @@ else
     usage
 fi
 
-unset buildscript db_ext db_name db_path db_root makepkg_conf pacman_conf queue results_file
+unset buildscript db_ext db_name db_path db_pool db_root makepkg_conf pacman_conf queue results_file
 while true; do
     case "$1" in
         # build options
@@ -122,6 +122,8 @@ while true; do
         --root)
             shift; db_root=$1
             repo_args+=(--root "$1") ;;
+        --pool)
+            shift; db_pool=$1 ;;
         -S|--sign|--gpg-sign)
             sign_pkg=1; repo_add_args+=(-s) ;;
         # chroot options
@@ -441,7 +443,15 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     done
 
     if (( create_package )); then
-        mv -f "${siglist[@]}" "${pkglist[@]}" "$db_root"
+        # pkglist/siglist contain basename
+        if [[ $db_root != "$db_pool" ]]; then
+            mv -f "${siglist[@]}" "${pkglist[@]}" "$db_pool"
+
+            # Absolute links for packages in pool (repose --pool)
+            ln -t "$db_root" -s -- "${pkglist[@]/#/$db_pool/}" "${siglist[@]/#/$db_pool/}"
+        else
+            mv -f "${siglist[@]}" "${pkglist[@]}" "$db_root"
+        fi
 
         if [[ -v results_file ]]; then
             printf "build:file://$db_root/%s\n" "${pkglist[@]}" | tee -a "$results_file" >/dev/null

@@ -2,8 +2,9 @@
 
 * `aur-build`
   + move local repository sync to `build--sync`
-  + implement file-based locking (`makepkg` implementation)
-  + implement `pactrans` upgrade
+    - implement file-based locking (`makepkg` implementation)
+    - implement `pactrans` upgrade
+  + add `--pool`
 
 * `aur-fetch`
   + support mixed url and pkgbase names (#1104)
