@@ -164,7 +164,9 @@ done < <(
                 printf '%s\n' "$@"
             fi
         )
+        wait "$!"  # tsort exit
     )
+    wait "$!"
 )
 wait "$!" || exit
 
@@ -267,6 +269,7 @@ for pkg in "${!packages[@]}"; do
             ;;
             reset)
                 dest=$upstream
+
                 git reset --hard "$dest"
             ;;
             fetch)

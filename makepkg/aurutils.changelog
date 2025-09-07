@@ -1,5 +1,10 @@
 ## 21
 
+* `aur-build`
+  + move local repository sync to `build--sync`
+  + implement file-based locking (`makepkg` implementation)
+  + implement `pactrans` upgrade
+
 * `aur-fetch`
   + support mixed url and pkgbase names (#1104)
   + add trurl(1) as dependency
@@ -175,6 +180,7 @@
 
 * `aur-build`
   + propagate `--pacman-conf` to local repository upgrade
+  + re-add `aur-build--sync` helper
 
 ## 18.4
 

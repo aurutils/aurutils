@@ -19,7 +19,7 @@ chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 truncate=1 status=0
 
 # default arguments (empty)
 chroot_args=() chroot_build_args=() sync_args=() repo_args=() repo_add_args=()
-makepkg_pkglist_args=() makepkg_args=() makepkg_common_args=() read_args=()
+pkglist_args=() makepkg_args=() makepkg_common_args=() read_args=()
 
 # default arguments
 gpg_args=(--detach-sign --no-armor --batch)
@@ -42,18 +42,6 @@ or with certain makepkg errors.
 The following files were preserved:
 EOF
     printf '%s\n' "${@@Q}" | pr -to 8 >&2
-}
-
-get_local_upgrades() {
-    local repo=$1
-
-    # pacman prints diagnostics (::) to standard output, but does not accept
-    # repositories starting in `:: `. Redirect output accordingly.
-    LANG=C pacman -Sup "${@:2}" --print-format '%r/%n' | awk -F/ -v repo="$repo" '
-        $1 ~ repo   {print $1 "/" $2}
-        $1 ~ /^:: / {print $0 >"/dev/stderr"}
-    '
-    return "${PIPESTATUS[0]}"
 }
 
 trap_exit() {
@@ -116,7 +104,7 @@ while true; do
         --dbext)
             shift; db_ext=$1 ;;
         --buildscript)
-            shift; buildscript=$1; makepkg_common_args+=(-p "$1")
+            shift; makepkg_common_args+=(-p "$1")
             makepkg_pkglist_args+=(-p "$1") ;;
         --nosync|--no-sync)
             no_sync=1 ;;
@@ -157,6 +145,7 @@ while true; do
             chroot_build_args+=(--ignorearch)
             makepkg_common_args+=(--ignorearch) ;;
         -n|--noconfirm|--no-confirm)
+            sync_args+=(--noconfirm)
             makepkg_common_args+=(--noconfirm) ;;
         -r|--rmdeps)
             makepkg_common_args+=(--rmdeps) ;;
@@ -253,7 +242,7 @@ fi
 # Propagate `makepkg` configuration (`aur chroot`, `--makepkg-conf`)
 if [[ -v makepkg_conf ]]; then
     makepkg_common_args+=(--config "$makepkg_conf")     # `makepkg`, `makepkg -od` (`--pkgver`)
-    makepkg_pkglist_args+=(--config "$makepkg_conf")    # `makepkg --packagelist`
+    pkglist_args+=(--config "$makepkg_conf")            # `aur build--pkglist`
 
     if [[ ! -r $makepkg_conf ]]; then
         printf >&2 '%s: %s: permission denied\n' "$argv0" "$makepkg_conf"
@@ -264,7 +253,7 @@ fi
 # Propagate `pacman` configuration (`aur chroot`, `--pacman-conf`)
 if [[ -v pacman_conf ]]; then
     repo_args+=(--config "$pacman_conf")                # `aur repo`
-    sync_args+=(--config "$pacman_conf")                # `pacman --sync`
+    sync_args+=(--config "$pacman_conf")                # `aur build--sync`
 
     if [[ ! -r $pacman_conf ]]; then
         printf >&2 '%s: %s: permission denied\n' "$argv0" "$pacman_conf"
@@ -470,20 +459,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         continue
     else
         #shellcheck disable=SC2086
-        ${AUR_PACMAN_AUTH:-sudo} pacsync "${sync_args[@]}" "$db_name"
-        #shellcheck disable=SC2086
-        ${AUR_PACMAN_AUTH:-sudo} pacsync "${sync_args[@]}" "$db_name" --dbext=.files
-
-        # Retrieve upgrade targets in local repository. May error in case of
-        # conflicts or dependency errors.
-        mapfile -t targets < <(get_local_upgrades "$db_name" "${sync_args[@]}")
-        wait "$!"
-
-        if (( ${#targets[@]} )); then
-            printf >&2 "%s: upgrading packages in repository '%s'\n" "$argv0" "$db_name"
-            #shellcheck disable=SC2086
-            printf '%s\n' "${targets[@]}" | ${AUR_PACMAN_AUTH:-sudo} pacman "${sync_args[@]}" -S --noconfirm -
-        fi
+        ${AUR_BUILD_SYNC:-aur build--sync} "${sync_args[@]}" -d "$db_name"
     fi
 done
 
