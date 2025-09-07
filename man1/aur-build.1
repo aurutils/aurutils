@@ -58,8 +58,8 @@ database.
 The root directory for the repository. The
 .I root
 is the location for the pacman database
-.RI ( foo.db ),
-built packages, and secondary files such as the files database
+.RI ( foo.db )
+and secondary files such as the files database
 .RI ( foo.files ).
 This defaults to the value of the
 .B Server
@@ -74,6 +74,17 @@ is used for
 .BR pacman (8)
 sync operations regardless of this setting. See also
 .BR \-\-no\-sync .
+.
+.TP
+.BI \-\-pool= DIR
+The pool directory for the repository. The
+.I pool
+is the location for built packages.
+If this value differs from the repository root (see
+.BR \-\-root )
+symbolic links are maintained, and the root contains links to
+all packages referenced by the repository. This requires a file
+system that supports symbolic links.
 .
 .TP
 .BR \-f ", " \-\-force
