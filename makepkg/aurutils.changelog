@@ -17,6 +17,9 @@
 * `aur-chroot`
   + preserve `LOGDEST` and `SRCDEST` by default (#1196)
 
+* `aur-repo`
+  + avoid empty output with `-q -u` (#1215)
+
 * `aur-sync`
   + pre-process .SRCINFO with `pacini` (#1203)
 
