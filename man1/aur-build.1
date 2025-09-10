@@ -437,7 +437,7 @@ New users may be created with
 as follows:
 .PP
 .EX
-    # useradd build \-\-system \-\-home\-dir /var/cache/aurbuild \-\-create\-home
+    # useradd aurbuild \-\-system \-\-home\-dir /var/cache/aurbuild \-\-create\-home
 .EE
 .PP
 Because dependency resolution is not replicated and left to
@@ -457,7 +457,7 @@ For example, create the
 file with the following contents:
 .PP
 .EX
-    aurbuild ALL = (root) NOPASSWD: /usr/bin/pacman, /usr/bin/pacsync
+    aurbuild ALL = (root) NOPASSWD: /usr/bin/pacman, /usr/lib/aurutils/aur-build--sync
 .EE
 .PP
 The following
@@ -466,7 +466,7 @@ options require root access:
 .BR \-\-syncdeps ,
 .BR \-\-rmdeps ,
 .BR \-\-chroot .
-Root access are also required for
+Root access is also required for
 .BR pacsync (1)
 and
 .BR "pacman \-S" ,
