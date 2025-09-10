@@ -8,6 +8,10 @@ use Carp;
 use Exporter qw(import);
 use AUR::Vercmp qw(vercmp);
 our @EXPORT_OK = qw(recurse prune graph);
+
+use constant EX_SUCCESS => 0;
+use constant EX_FAILURE => 1;
+use constant EX_OUT_OF_RANGE => 34;
 our $VERSION = 'unstable';
 
 # Maximum number of calling the callback
@@ -135,12 +139,12 @@ sub recurse {
     # Check if results are available
     if (scalar keys %results == 0) {
         say STDERR __PACKAGE__ . ": no packages found";
-        exit(1);
+        exit EX_FAILURE;
     }
     # Check if request limits have been exceeded
     if ($a == $aur_callback_max) {
         say STDERR __PACKAGE__ . ": total requests: $a (out of range)";
-        exit(34);
+        exit EX_OUT_OF_RANGE;
     }
     return \%results, \%pkgdeps, \%pkgmap;
 }
@@ -227,7 +231,7 @@ sub graph {
         }
     }
     if (not $dag_valid) {
-        exit(1);
+        exit EX_FAILURE;
     }
     return \%dag, \%dag_foreign;
 }
