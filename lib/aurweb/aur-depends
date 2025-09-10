@@ -6,7 +6,7 @@ use v5.20;
 use List::Util   qw(first);
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query_multi);
-use AUR::Depends qw(recurse prune graph);
+use AUR::Depends qw(recurse prune graph tsort);
 use AUR::Options qw(add_from_stdin);
 my $argv0 = 'depends';
 
@@ -94,6 +94,26 @@ sub pairs {
     }
 }
 
+# XXX: deduplicate with pairs (impl function)
+sub sorted {
+    my ($results, $key, $bfs) = @_;
+    my @input;
+
+    for my $pkg (values %{$results}) {
+        my $target = $pkg->{$key};
+
+        for my $reqby (keys %{$pkg->{'RequiredBy'}}) {
+            my $rdep = $key eq 'Name' ? $reqby : $results->{$reqby}->{$key};
+
+            if (defined $rdep) {
+                push(@input, $target);
+                push(@input, $rdep);
+            }
+        }
+    }
+    say join("\n", tsort($bfs, \@input));
+}
+
 unless(caller) {
     # Command-line arguments
     use Getopt::Long;
@@ -107,6 +127,7 @@ unless(caller) {
     my $opt_reverse      = 0;
     my $opt_provides     = 1;
     my $opt_verify       = 0;
+    my $opt_bfs          = 0;
     my $opt_installed    = [];
 
     GetOptions(
@@ -123,8 +144,10 @@ unless(caller) {
         't|table'         => sub { $opt_mode = "table" },
         'J|json'          => sub { $opt_mode = "json" },
         'jsonl'           => sub { $opt_mode = "jsonl" },
+        's|sorted'        => sub { $opt_mode = "sorted" },
         'r|reverse'       => \$opt_reverse,
-        'a|all|show-all'  => \$opt_show_all
+        'a|all|show-all'  => \$opt_show_all,
+        'bfs'             => \$opt_bfs,
     ) or exit(1);
 
     if (not scalar(@ARGV)) {
@@ -170,7 +193,10 @@ unless(caller) {
         }
     }
     # Format results
-    if ($opt_mode eq 'pairs') {
+    if ($opt_mode eq 'sorted') {
+        sorted($results, ($opt_pkgname or $opt_show_all) ? 'Name' : 'PackageBase', $opt_bfs);
+    }
+    elsif ($opt_mode eq 'pairs') {
         pairs($results, ($opt_pkgname or $opt_show_all) ? 'Name' : 'PackageBase', $opt_reverse);
     }
     elsif ($opt_mode eq 'table' and $opt_reverse) {

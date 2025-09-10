@@ -157,18 +157,18 @@ done < <(
             printf '%s\n' "$pkg"
         done < <(
             if (( recurse )); then
-                aur depends --reverse "$@" | tsort
+                aur depends --sorted "$@"
             elif [[ $# = 1 && $1 = - || $1 = /dev/stdin ]]; then
                 cat
             else
                 printf '%s\n' "$@"
             fi
         )
-        wait "$!"  # tsort exit
+        wait "$!"  # `depends` exit
     )
     wait "$!"
 )
-wait "$!" || exit
+wait "$!" || exit  # `trurl` exit
 
 # Update revisions in local AUR mirror
 declare -A is_local_clone
