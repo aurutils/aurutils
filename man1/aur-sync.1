@@ -103,6 +103,15 @@ Do not present build files for inspection.
 .BR \-u ", " \-\-upgrades
 Update all obsolete AUR packages in a local repository.
 .
+.TP
+.BR \-i ", " \-\-install
+Install valid AUR targets on the command\-line with
+.BR pacman (8).
+This does not include targets from
+.B \-\-rebuild\-all
+or
+.BR \-\-upgrades .
+.
 .SS Dependency options
 Build dependencies are resolved with
 .BR aur\-depends (1).

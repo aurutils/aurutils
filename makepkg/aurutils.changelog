@@ -10,6 +10,9 @@
   + support mixed url and pkgbase names (#1104)
   + add trurl(1) as dependency
 
+* `aur-sync`
+  + add `--install` (#304)
+
 ## 20.5
 
 * `aur-build`
