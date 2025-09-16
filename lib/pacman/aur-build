@@ -382,21 +382,16 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
             printf '%q\n' >&2 "${exists[@]}"
             create_package=0
 
-            if [[ -v results_file ]]; then
-                printf "exist:file://%s\n" "${exists[@]}" | tee -a "$results_file" >/dev/null
-            fi
-
         elif (( ${#exists[@]} )); then
             # Since `makepkg` does not allow building split packages
-            # individually, we require a new build when part of the
+            # individually, we restart the build when part of the
             # package group is unavailable (including -debug packages)
-            printf >&2 '%s: error: package group partially built\n' "$argv0"
+            printf >&2 '%s: warning: package group partially built\n' "$argv0"
             printf '%q\n' >&2 "${exists[@]}"
+        fi
 
-            # Rebuilding the package group at this stage may result in
-            # checksum errors, if part of the package group is
-            # available in pacman's cache, so we exit with an error.
-            exit 2
+        if (( ${#exists[@]} )) && [[ -v results_file ]]; then
+            printf "exist:file://%s\n" "${exists[@]}" | tee -a "$results_file" >/dev/null
         fi
     fi
 
