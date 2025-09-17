@@ -164,11 +164,14 @@ done < <(
                 printf '%s\n' "$@"
             fi
         )
-        wait "$!"  # tsort exit
     )
-    wait "$!"
 )
 wait "$!" || exit
+
+# Check aur-depends retrieved something (#1214)
+if (( recurse )) && ! (( ${#packages[@]} )); then
+    exit 2
+fi
 
 # Update revisions in local AUR mirror
 declare -A is_local_clone
