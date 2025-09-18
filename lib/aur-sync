@@ -20,11 +20,11 @@ AUR_SYNC_GNUPGHOME=${AUR_SYNC_GNUPGHOME:-$XDG_DATA_HOME/aurutils/$argv0/gnupg}
 unset -v CDPATH
 
 # default arguments
-build_args=(--syncdeps) build_repo_args=()
+build_args=(--syncdeps) build_repo_args=() install_args=()
 depends_args=() view_args=() filter_args=() fetch_args=() graph_args=() reparse_args=()
 
 # default options
-build=1 chkver_depth=2 download=1 view=1 provides=1 graph=1 keep_going=1
+build=1 chkver_depth=2 download=1 view=1 provides=1 graph=1 keep_going=1 install_argv=0
 
 # default options (disabled)
 rotate=0 update=0 repo_targets=0 columns=0 auto_key_retrieve=0
@@ -103,7 +103,7 @@ if (( UID == 0 )) && [[ ! -v AUR_ASROOT ]]; then
 fi
 
 # option parsing
-opt_short='d:D:k:U:ACcfKLnorRSTuv'
+opt_short='d:D:k:U:ACcfiKLnorRSTuv'
 opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:'
           'makepkg-conf:' 'pacman-conf:' 'chroot' 'continue' 'force' 'ignore-arch'
           'log' 'no-confirm' 'no-ver' 'no-graph' 'no-sync' 'no-ver-argv' 'no-view'
@@ -111,7 +111,7 @@ opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:'
           'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:' 'remove'
           'provides-from:' 'new' 'prevent-downgrade' 'verify' 'makepkg-args:'
           'format:' 'no-check' 'keep-going:' 'user:' 'rebase' 'reset' 'ff' 'exclude:'
-          'columns' 'prefix' 'save:' 'clean' 'cleanbuild' 'auto-key-retrieve')
+          'columns' 'prefix' 'save:' 'clean' 'cleanbuild' 'auto-key-retrieve' 'install')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile:' 'noconfirm'
             'nover' 'nograph' 'nosync' 'nover-argv' 'noview' 'noprovides' 'nobuild'
             'rebuildall' 'rebuildtree' 'rm-deps' 'gpg-sign' 'margs:' 'nocheck'
@@ -179,6 +179,8 @@ while true; do
             build_args+=(-f); chkver_depth=0; repo_targets=1 ;;
         -u|--upgrades)
             update=1 ;;
+        -i|--install)
+            install_argv=1 ;;
         # database options
         -d|--database|--repo)
             shift; build_repo_args+=(-d "$1") ;;
@@ -213,7 +215,8 @@ while true; do
             shift; build_args+=(--makepkg-conf "$1") ;;
         --pacman-conf)
             shift; build_args+=(--pacman-conf "$1")
-            filter_args+=(--config "$1") ;;
+            filter_args+=(--config "$1")
+            install_args+=(--config "$1") ;;
         --pkgver)
             build_args+=(--pkgver) ;;
         -S|--sign|--gpg-sign)
@@ -520,6 +523,19 @@ else
         cat "$tmp"/queue.realpath >"$stdout_file"
     fi
     aur build "${build_args[@]}" -a "$tmp"/queue.realpath -d "$db_name" --root "$db_root"
+fi
+
+if (( build )) && (( install_argv )) && (( $# )); then
+    # The build queue does not distinguish between targets and their dependencies
+    # (pacman install reason.) Therefore, allow to install them directly (#304)
+    # 1. Updated packages are already updated by aur-build(--sync)
+    # 2. Installation of rebuilt packages may lead to checksum errors
+    #    without pkgrel bump
+    #    XXX: This includes packages on the command-line with --rebuild active
+    # 3. Therefore only consider command-line arguments as install targets
+    # XXX: Abstraction leak from necessary inclusion of $AUR_PACMAN_AUTH
+    #      Move to aur-build(--sync)?
+    grep -Fxf <(printf '%s\n' "$@") "$tmp"/queue | ${AUR_PACMAN_AUTH:-sudo} pacman "${install_args[@]}" -S -
 fi
 
 # vim: set et sw=4 sts=4 ft=sh:
