@@ -196,7 +196,7 @@ unset auth_args
 AUR_PACMAN_AUTH=${AUR_PACMAN_AUTH:-sudo}
 
 case $AUR_PACMAN_AUTH in
-    sudo) auth_args+=('--preserve-env=GNUPGHOME,SSH_AUTH_SOCK,SRCDEST,PKGDEST,LOGDEST') ;;
+    sudo) auth_args+=('--preserve-env=SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER,GNUPGHOME,SSH_AUTH_SOCK') ;;
 esac
 
 # bind mount file:// paths to container (#461)
