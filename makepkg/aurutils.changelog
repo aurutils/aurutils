@@ -1,14 +1,17 @@
 ## 21
 
 * `aur-build`
-  + move local repository sync to `build--sync`
+  + move local repository sync to `build--sync` (#1183)
     - implement file-based locking (`makepkg` implementation)
     - implement `pactrans` upgrade
-  + add `--pool`
+  + add `--pool` (#1213)
 
 * `aur-fetch`
   + support mixed url and pkgbase names (#1104)
   + add trurl(1) as dependency
+
+* `perl`
+  + add `Depends::tsort` (#1224)
 
 ## 20.5
 

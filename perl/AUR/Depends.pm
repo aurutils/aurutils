@@ -7,7 +7,11 @@ use List::Util qw(first);
 use Carp;
 use Exporter qw(import);
 use AUR::Vercmp qw(vercmp);
-our @EXPORT_OK = qw(recurse prune graph);
+
+use constant EX_SUCCESS => 0;
+use constant EX_FAILURE => 1;
+use constant EX_OUT_OF_RANGE => 34;
+our @EXPORT_OK = qw(recurse prune graph tsort);
 our $VERSION = 'unstable';
 
 # Maximum number of calling the callback
@@ -135,12 +139,12 @@ sub recurse {
     # Check if results are available
     if (scalar keys %results == 0) {
         say STDERR __PACKAGE__ . ": no packages found";
-        exit(1);
+        exit EX_FAILURE;
     }
     # Check if request limits have been exceeded
     if ($a == $aur_callback_max) {
         say STDERR __PACKAGE__ . ": total requests: $a (out of range)";
-        exit(34);
+        exit EX_OUT_OF_RANGE;
     }
     return \%results, \%pkgdeps, \%pkgmap;
 }
@@ -227,7 +231,7 @@ sub graph {
         }
     }
     if (not $dag_valid) {
-        exit(1);
+        exit EX_FAILURE;
     }
     return \%dag, \%dag_foreign;
 }
@@ -292,4 +296,65 @@ sub prune {
     return @removals;
 }
 
+=head2 tsort()
+
+Topological sorting adapted from PerlPowerTools.
+
+=Performs depth-first traversal by default.
+
+=over
+
+=item C<$bfs> Perform breadth-first traversal.
+
+=back
+
+=cut
+
+sub tsort {
+    my ($bfs, $input) = @_;
+    $bfs //= 0;
+
+    my %pairs;  # all pairs ($l, $r)
+    my %npred;  # number of predecessors
+    my %succ;   # list of successors
+    my @output;
+
+    if (scalar(@{$input}) % 2 == 1) {
+        say STDERR __PACKAGE__ . ": odd number of tokens";
+        exit EX_FAILURE;
+    }
+
+    while (@{$input}) {
+        my $l = shift @${input};
+        my $r = shift @${input};
+
+        next if defined $pairs{$l}{$r};
+        $pairs{$l}{$r}++;
+        $npred{$l} += 0;
+
+        next if $l eq $r;
+        ++$npred{$r};
+        push @{$succ{$l}}, $r;
+    }
+
+    # create a list of nodes without predecessors
+    my @list = grep {!$npred{$_}} keys %npred;
+
+    while (@list) {
+        $_ = pop @list;
+        push @output, $_;
+
+        foreach my $child (@{$succ{$_}}) {
+            if ($bfs) {     # breadth-first
+                unshift @list, $child unless --$npred{$child};
+            } else {        # depth-first (default)
+                push @list, $child unless --$npred{$child};
+            }
+
+        }
+    }
+    warn "$Program: cycle detected\n" if grep {$npred{$_}} keys %npred;
+
+    return @output;
+}
 # vim: set et sw=4 sts=4 ft=perl:

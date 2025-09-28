@@ -13,31 +13,28 @@ my $argv0 = 'depends';
 sub solve {
     my ($targets, $types, $callback, $opt_verify, $opt_provides, $opt_installed) = @_;
     
-    # Retrieve AUR results (JSON -> dict -> extract depends -> repeat until none)
+    # Retrieve AUR information
     my ($results, $pkgdeps, $pkgmap) = recurse($targets, $types, $callback);
 
     # Verify dependency requirements
     my ($dag, $dag_foreign) = graph($results, $pkgdeps, $pkgmap, $opt_verify, $opt_provides);
-    my @removals = ();
+
+    # Targets to be removed from the graph
+    my @to_prune;
 
     # Remove virtual dependencies from dependency graph (#1063)
-    if ($opt_provides) {
-        my @virtual = keys %{$pkgmap};
+    push @to_prune, keys %{$pkgmap} if $opt_provides;
 
-        # XXX: assumes <pkgmap> only contains keys with provides != pkgname
-        @removals = prune($dag, \@virtual);
-    }
     # Remove transitive dependencies for installed targets (#592)
-    # XXX: prune from $dag_foreign as well?
-    if (scalar @{$opt_installed}) {
-        @removals = prune($dag, $opt_installed);
+    push @to_prune, @{$opt_installed} if $opt_installed && @{$opt_installed};
+
+    if (@to_prune) {
+        my @removed = prune($dag, \@to_prune);  # mutates $dag
+        delete @{$results}{@removed};           # drop from results
     }
-    # Remove packages no longer in graph from results
-    if (scalar @removals) {
-        map { delete $results->{$_} } @removals;
-    }
-    # Return $dag for subsequent application of C<prune>
-    return $results, $dag, $dag_foreign;
+
+    # Possible further pruning by the caller
+    return ($results, $dag, $dag_foreign);
 }
 
 # tsv output for usage with aur-sync (aurutils <=10)
