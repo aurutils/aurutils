@@ -497,21 +497,6 @@ signatures and database files) will be owned by the
 .I aurbuild
 user and group.
 .PP
-To exchange files between the build user and a regular user,
-.BR setfacl (1)
-may be used. For example, assume the directory
-.I /home/custompkgs
-is owned by
-.IR $USER:USER ,
-and that read/write access should be given to the
-.I aurbuild
-user. The following commands set the default permissions for this directory
-and modifies any existing permissions, respectively:
-.PP
-.EX
-    $ setfacl \-dm 'g:aurbuild:rwX' \-Rm g:aurbuild:rwX \-\- /home/custompkgs
-.EE
-.PP
 See also
 .B Avoiding password prompts
 in
