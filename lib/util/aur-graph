@@ -65,8 +65,9 @@ BEGIN {
 
 $1 == "pkgbase" {
     pkgbase = $3
-
     pkgver = ""
+
+    # SRCINFO(5), "Section headers"
     in_split_pkg = 0
     delete(arch)
 
@@ -107,11 +108,11 @@ index($1, "optdepends") == 1 && !in_split_pkg {
     }
 }
 
-NF == 0 {
-    in_split_pkg = 1
-}
 
 $1 == "pkgname" {
+    # SRCINFO(5), "Section headers"
+    in_split_pkg = 1
+
     pkg_map[$3] = pkgbase # node
     ver_map[$3] = pkgver  # weight
 }
