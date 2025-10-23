@@ -14,3 +14,6 @@ jobs:
       - name: Shellcheck
         if: success() || failure() # Do not fail-fast
         run: make shellcheck
+
+      - name: Regression tests
+        run: tests/issue-test
