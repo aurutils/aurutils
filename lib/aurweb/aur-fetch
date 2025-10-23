@@ -45,9 +45,6 @@ git_empty_object=$(git hash-object -t tree /dev/null)
 # Default options
 existing=0 recurse=0 discard=0 sync=fetch
 
-# Default to only allowing fast-forward merges (as git-pull)
-merge_args=(--ff-only)
-
 unset -v rebase_args merge_args results_file
 
 # option handling
@@ -102,6 +99,11 @@ while true; do
 
     shift
 done
+
+# Default to only allowing fast-forward merges (as git-pull)
+if (( ! ${#merge_args[@]} )); then
+    merge_args=(--ff-only)
+fi
 
 # Option validation
 if [[ $sync != @(auto|merge|rebase|reset|fetch) ]]; then
@@ -227,7 +229,7 @@ for pkg in "${!packages[@]}"; do
 
         # Retrieve per-package configuration (aurutils.rebase, #1007)
         if [[ $sync = auto ]]; then
-            case $(git config --get --type bool aurutils.rebase) in
+            case $(git config --default=false --get --type bool aurutils.rebase) in
                 true)  sync=rebase ;;
                 false) sync=merge
             esac

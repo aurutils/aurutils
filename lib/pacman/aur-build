@@ -442,7 +442,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
 
     if (( create_package )); then
         # pkglist/siglist contain basename
-        if [[ $db_root != "$db_pool" ]]; then
+        if [[ -v db_pool ]] && [[ $db_root != "$db_pool" ]]; then
             mv -f "${siglist[@]}" "${pkglist[@]}" "$db_pool"
 
             # Absolute links for packages in pool (repose --pool)
