@@ -144,8 +144,15 @@ while read -r remote path; do
 
     packages["$pkgbase"]=$remote
 done < <(
-    # Look ma, no pipes.
-    trurl --get '{url} {path}' --url-file - < <(
+    {
+        if (( recurse )); then
+            aur depends --reverse "$@" | tsort
+        elif [[ $# = 1 && $1 = - || $1 = /dev/stdin ]]; then
+            cat
+        else
+            printf '%s\n' "$@"
+        fi
+    } | {
         while IFS= read -r pkg; do
             if [[ $pkg != *://* ]]; then
                 printf '%s/%s\n' "$AUR_LOCATION" "$pkg"
@@ -154,17 +161,8 @@ done < <(
             else
                 printf '%s\n' "$pkg"
             fi
-            printf '%s\n' "$pkg"
-        done < <(
-            if (( recurse )); then
-                aur depends --reverse "$@" | tsort
-            elif [[ $# = 1 && $1 = - || $1 = /dev/stdin ]]; then
-                cat
-            else
-                printf '%s\n' "$@"
-            fi
-        )
-    )
+        done
+    } | trurl --get '{url} {path}' --url-file -
 )
 wait "$!" || exit
 
