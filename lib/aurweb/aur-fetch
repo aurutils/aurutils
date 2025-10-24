@@ -144,7 +144,11 @@ while read -r remote path; do
     #         packages["$pkgbase"]=$remote
     #     fi
 
-    packages["$pkgbase"]=$remote
+    if [[ -n $pkgbase ]]; then
+        packages["$pkgbase"]="$remote"
+    else
+        warn "empty pkgbase for remote '%s', skipping\n" "$remote"
+    fi
 done < <(
     {
         if (( recurse )); then
