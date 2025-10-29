@@ -353,7 +353,7 @@ sub tsort {
 
         }
     }
-    warn "$Program: cycle detected\n" if grep {$npred{$_}} keys %npred;
+    say STDERR __PACKAGE__ . ": cycle detected\n" if grep {$npred{$_}} keys %npred;
 
     return @output;
 }
