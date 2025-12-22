@@ -46,14 +46,14 @@ wait_lock() {
 }
 
 # option parsing
-opt_short='d:n'
-opt_long=('database:' 'config:' 'noconfirm')
+opt_short='d:nu'
+opt_long=('database:' 'config:' 'noconfirm' 'sysupgrade')
 orig_argv=("$@")
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
 else
-    printf >&2 'usage: %s [-n] [-d database]... -- [pkgname...]\n' "$argv0"
+    printf >&2 'usage: %s [-nu] [-d database]... -- [pkgname...]\n' "$argv0"
     exit 1
 fi
 
@@ -65,6 +65,8 @@ while true; do
             shift; pacman_conf=$1 ;;
         -n|--noconfirm)
             confirm=0 ;;
+        -u|--sysupgrade)
+            sync_args+=(--sysupgrade) ;;
         --) shift; break ;;
     esac
     shift

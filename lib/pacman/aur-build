@@ -467,7 +467,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         continue
     else
         #shellcheck disable=SC2086
-        ${AUR_BUILD_SYNC:-aur build--sync} "${sync_args[@]}" -d "$db_name"
+        ${AUR_BUILD_SYNC:-aur build--sync} "${sync_args[@]}" -d "$db_name" --sysupgrade
     fi
 done
 
