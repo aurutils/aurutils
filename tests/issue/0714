@@ -7,17 +7,16 @@ tmp_uid=custom-$RANDOM
 
 cat >"$tmp"/pacman.conf <<EOF
 [options]
-HoldPkg = pacman-git glibc
+HoldPkg = pacman glibc
 Architecture = auto
 CheckSpace
+SigLevel = Required DatabaseOptional
+LocalFileSigLevel = Optional
 [core]
 Include = /etc/pacman.d/mirrorlist
 [extra]
 Include = /etc/pacman.d/mirrorlist
-[community]
-Include = /etc/pacman.d/mirrorlist
 [$tmp_uid]
-SigLevel = Optional TrustAll
 Server = file://$tmp
 EOF
 
