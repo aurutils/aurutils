@@ -64,6 +64,7 @@ opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
           'margs:' 'cargs:' 'nocheck' 'suffix:')
 opt_hidden=('dump-options' 'status' 'path')
+orig_argv=("$@")
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -196,12 +197,16 @@ if (( status )) || ! (( update + build + create + print_path )); then
 fi
 
 # Custom elevation command (#1024)
-unset auth_args
-AUR_PACMAN_AUTH=${AUR_PACMAN_AUTH:-sudo}
-
-case $AUR_PACMAN_AUTH in
+auth_args=()
+case ${AUR_PACMAN_AUTH:=sudo} in
     sudo) auth_args+=('--preserve-env=SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER,GNUPGHOME,SSH_AUTH_SOCK') ;;
 esac
+
+# Conditional elevation to root to reduce elevation prompts
+if (( update + create + build )) && (( EUID != 0 )); then
+    # shellcheck disable=SC2086
+    exec $AUR_PACMAN_AUTH "${auth_args[@]}" "${BASH_SOURCE[0]}" "${orig_argv[@]}"
+fi
 
 # bind mount file:// paths to container (#461)
 # required for update/build steps
@@ -232,12 +237,12 @@ if (( create )); then
     # parent path is not created by mkarchroot (#371)
     if [[ ! -d $directory ]]; then
         # shellcheck disable=SC2086
-        $AUR_PACMAN_AUTH install -d "$directory" -m 755 -v
+        install -d "$directory" -m 755 -v
     fi
 
     if [[ ! -d $directory/root ]]; then
         # shellcheck disable=SC2086
-        $AUR_PACMAN_AUTH mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root "${base_packages[@]}"
+        mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root "${base_packages[@]}"
     else
         create=0
     fi
@@ -254,7 +259,7 @@ fi
 if (( update )); then
     # locking is done by systemd-nspawn
     # shellcheck disable=SC2086
-    $AUR_PACMAN_AUTH arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root \
+    arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root \
          "${bindmounts_ro[@]/#/--bind-ro=}" \
          "${bindmounts_rw[@]/#/--bind=}" pacman -Syu --noconfirm "$@"
 fi >&2
@@ -269,8 +274,7 @@ if (( build )); then
     # use makechrootpkg -c as default build command (sync /root container)
     # arguments after -- are used as makechrootpkg arguments
     # shellcheck disable=SC2086
-    $AUR_PACMAN_AUTH "${auth_args[@]}" makechrootpkg -r "$directory" \
-         "${bindmounts_ro[@]/#/-D}" "${bindmounts_rw[@]/#/-d}" \
+    makechrootpkg -r "$directory" "${bindmounts_ro[@]/#/-D}" "${bindmounts_rw[@]/#/-d}" \
          "${makechrootpkg_args[@]}" -- "${makechrootpkg_makepkg_args[@]}"
 fi >&2
 
