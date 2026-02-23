@@ -69,7 +69,7 @@ $1 == "pkgbase" {
 
     # SRCINFO(5), "Section headers"
     in_split_pkg = 0
-    delete(arch)
+    delete arch
 
     # track both the pkgbases themselves and their number of deps
     dep_counts[pkgbase] = 0
