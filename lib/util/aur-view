@@ -150,7 +150,7 @@ for pkg in "${packages[@]}"; do
         if [[ $view != "$head" ]]; then
             # Point git to current orderFile path (#1167)
             # Preserve default order for outside git calls (#1239)
-            git -O"$orderfile" --no-pager "$log_fmt" --stat "${log_args[@]}" "${path_args[@]}" \
+            git --no-pager "$log_fmt" -O"$orderfile" --stat "${log_args[@]}" "${path_args[@]}" \
                 "$view..$head" -- "${excludes[@]}" > "$tmp/$pkg.$log_fmt"
         fi
 
