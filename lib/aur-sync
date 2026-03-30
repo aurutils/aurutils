@@ -111,7 +111,7 @@ opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:'
           'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:' 'remove'
           'provides-from:' 'new' 'prevent-downgrade' 'verify' 'makepkg-args:'
           'format:' 'no-check' 'keep-going:' 'user:' 'rebase' 'reset' 'ff' 'exclude:'
-          'columns' 'prefix' 'save:' 'clean' 'cleanbuild' 'auto-key-retrieve' 'pool:')
+          'columns' 'prefix' 'save:' 'clean' 'cleanbuild' 'auto-key-retrieve' 'pool:')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile:' 'noconfirm'
             'nover' 'nograph' 'nosync' 'nover-argv' 'noview' 'noprovides' 'nobuild'
             'rebuildall' 'rebuildtree' 'rm-deps' 'gpg-sign' 'margs:' 'nocheck'
