@@ -169,6 +169,8 @@ single local repository is defined in
 .BR pacman.conf (5).
 See
 .BR aur\-repo (1)
+and
+.BR aur\-build (1)
 for details.
 .
 .TP
@@ -188,6 +190,12 @@ or aborts if multiple are available.
 The location of the repository root. Defaults to the
 .I Server
 value of the configured repository.
+.
+.TP
+.BI \-\-pool= DIR
+The location of the repository pool. The
+.I pool
+is the location for built packages.
 .
 .SS Fetch options
 If new AUR commits are available,

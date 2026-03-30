@@ -111,7 +111,7 @@ opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:'
           'rebuild' 'rebuild-tree' 'rebuild-all' 'ignore-file:' 'remove'
           'provides-from:' 'new' 'prevent-downgrade' 'verify' 'makepkg-args:'
           'format:' 'no-check' 'keep-going:' 'user:' 'rebase' 'reset' 'ff' 'exclude:'
-          'columns' 'prefix' 'save:' 'clean' 'cleanbuild' 'auto-key-retrieve')
+          'columns' 'prefix' 'save:' 'clean' 'cleanbuild' 'auto-key-retrieve' 'pool:')
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile:' 'noconfirm'
             'nover' 'nograph' 'nosync' 'nover-argv' 'noview' 'noprovides' 'nobuild'
             'rebuildall' 'rebuildtree' 'rm-deps' 'gpg-sign' 'margs:' 'nocheck'
@@ -220,6 +220,8 @@ while true; do
             build_args+=(--sign) ;;
         -U|--user)
             shift; build_args+=(--user "$1") ;;
+        --pool)
+            shift; build_args+=(--pool "$1") ;;
         # build options (devtools)
         -D|--directory)
             shift; build_args+=(--directory "$1") ;;
