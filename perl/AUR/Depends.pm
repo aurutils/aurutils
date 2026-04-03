@@ -188,10 +188,6 @@ sub graph {
 
     # Iterate over packages
     for my $name (keys %{$pkgdeps}) {
-        # Add a loop to command-line targets (#402, #1065, #1136)
-        if (defined $pkgdeps->{$name} and $pkgdeps->{$name} eq $name) {
-            $dag{$name}{$name} = 'Self';
-        }
 
         # Iterate over dependencies
         for my $dep (@{$pkgdeps->{$name}}) {
