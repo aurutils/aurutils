@@ -1,79 +1,127 @@
 #!/bin/bash
+#
+# Template for the aurutils bash completion. Generates `bash/aur`,
+# installed to /usr/share/bash-completion/completions/. Requires
+# bash-completion 2.12+ at runtime.
 
 cat <<'EOF'
+# aurutils bash completion — requires bash-completion >= 2.12
 _aur_completion()
 {
-    local cur prev words cword
-    _get_comp_words_by_ref cur prev words cword
+    # comp_args is populated by _comp_initialize and declared local
+    # here so it doesn't leak into the global scope.
+    # shellcheck disable=SC2034
+    local cur prev words cword was_split comp_args
+    _comp_initialize -s -- "$@" || return
 
     declare -A default_cmds
+    declare -A arg_types
+    declare -A choices
+    declare -A positional
+    declare -A delim_types
 
 EOF
 source ./command_opts.sh
 default_opts
 cat <<'EOF'
 
-    # complete subcommands
     if [[ $cword -eq 1 ]]; then
-        COMPREPLY=( $(compgen -W "${!default_cmds[*]}" -- "$cur") )
+        _comp_compgen -- -W "${!default_cmds[*]}"
         return
     fi
 
-    # If there's an override for subcommand, use it
-    if declare -F "_aurutils_${words[1]/-/_/}" >/dev/null ; then
-        "_aurutils_${words[1]}"
+    local cmd=${words[1]}
+
+    if [[ -n ${delim_types[$cmd,$prev]:-} ]]; then
+        local spec=${delim_types[$cmd,$prev]}
+        _aur_complete_delimited "${spec%%:*}" "${spec#*:}"
+        return
+    fi
+    if [[ -n ${arg_types[$cmd,$prev]:-} ]]; then
+        _aur_complete_type "${arg_types[$cmd,$prev]}"
+        return
+    fi
+    if [[ -n ${choices[$cmd,$prev]:-} ]]; then
+        _comp_compgen -- -W "${choices[$cmd,$prev]}"
         return
     fi
 
-    # Complete with the generated opts stored above, unless the previous option
-    # is stored with an : suffix, because the option requires an argument.
-    # Fallback to default (files) completion in such cases.
+    # Word was split on `=` by _comp_initialize -s but no spec matched.
+    # Don't fall through to offering more flags.
+    [[ $was_split ]] && return
 
-    _fallback_completion
+    if [[ $cur != -* && -n ${positional[$cmd]:-} ]]; then
+        _aur_complete_type "${positional[$cmd]}"
+        return
+    fi
+
+    _aur_fallback
 }
 
-_fallback_completion(){
-    opts=(${default_cmds[${words[1]}]})
+_aur_complete_type() {
+    case $1 in
+        file)      _comp_compgen_filedir ;;
+        dir)       _comp_compgen_filedir -d ;;
+        repo)      _comp_compgen -- -W "$(aur repo --repo-list 2>/dev/null)" ;;
+        pkgname)   _aur_packages ;;
+        pkgbase)   _aur_packages --pkgbase ;;
+        local_pkg) _aur_local_packages ;;
+        user)      _comp_compgen -- -u ;;
+        attr)      _comp_compgen -- -W "$(aur repo --list-attr 2>/dev/null)" ;;
+    esac
+}
+
+_aur_complete_delimited() {
+    local delim=$1 kind=$2
+    case $kind in
+        local_pkg) local repo pkgs=()
+                   while IFS= read -r repo; do
+                       mapfile -t -O "${#pkgs[@]}" pkgs < <(aur repo -lq -d "$repo" 2>/dev/null | cut -f1)
+                   done < <(aur repo --list-repo 2>/dev/null)
+                   _comp_delimited "$delim" -W "${pkgs[*]}" ;;
+        dir|file)  # _comp_delimited's path handling breaks on absolute
+                   # paths (it runs compgen -d without a path argument).
+                   # Strip the already-entered prefix, run filedir on
+                   # the tail, re-prepend. Works for both relative and
+                   # absolute paths.
+                   local prefix=""
+                   [[ $cur == *"$delim"* ]] && prefix=${cur%"$delim"*}$delim
+                   local saved=$cur
+                   cur=${cur##*"$delim"}
+                   if [[ $kind == dir ]]; then
+                       _comp_compgen_filedir -d
+                   else
+                       _comp_compgen_filedir
+                   fi
+                   cur=$saved
+                   local i
+                   for i in "${!COMPREPLY[@]}"; do
+                       COMPREPLY[i]=$prefix${COMPREPLY[i]}
+                   done ;;
+    esac
+}
+
+_aur_packages() {
+    [[ -z $cur || $cur == -* ]] && return
+    local pkgs
+    mapfile -t pkgs < <(aur pkglist --ttl 86400 --systime --plain "$@" 2>/dev/null)
+    _comp_compgen -- -W "${pkgs[*]}"
+}
+
+_aur_local_packages() {
+    local repo pkgs=()
+    while IFS= read -r repo; do
+        mapfile -t -O "${#pkgs[@]}" pkgs < <(aur repo -lq -d "$repo" 2>/dev/null | cut -f1)
+    done < <(aur repo --list-repo 2>/dev/null)
+    _comp_compgen -- -W "${pkgs[*]}"
+}
+
+_aur_fallback() {
+    local opts
+    read -ra opts <<<"${default_cmds[${words[1]}]}"
     if [[ ${opts[*]} != *$prev:* ]] || [[ $cword -eq 2 ]]; then
-        COMPREPLY=($(compgen -W "${opts[*]%:}" -- "$cur"));
+        _comp_compgen -- -W "${opts[*]%:}"
     fi
-}
-
-_complete_with_repos() {
-    opts=($(aur repo --repo-list))
-    COMPREPLY=($(compgen -W "${opts[*]}" -- "$cur"))
-}
-
-_aurutils_build() {
-    case $prev in
-        -d|--database|--repo)
-            _complete_with_repos ;;
-        *) _fallback_completion ;;
-    esac
-}
-
-_aurutils_repo() {
-    case $prev in
-        -d|--database|--repo)
-            _complete_with_repos ;;
-        *) _fallback_completion ;;
-    esac
-}
-
-_aurutils_repo_filter() {
-    case $prev in
-        -d|--database|--repo)
-            _complete_with_repos ;;
-        *) _fallback_completion ;;
-    esac
-}
-
-_aurutils_sync() {
-    case $prev in
-        -d|--database|--repo)
-            _complete_with_repos ;;
-        *) _fallback_completion ;;
-    esac
 }
 
 complete -o bashdefault -o default -o nosort -F _aur_completion aur
