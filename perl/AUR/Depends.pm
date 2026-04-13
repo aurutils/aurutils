@@ -300,7 +300,7 @@ sub prune {
 
 Topological sorting adapted from PerlPowerTools.
 
-=Performs depth-first traversal by default.
+Performs depth-first traversal by default.
 
 =over
 
