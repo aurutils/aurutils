@@ -1,6 +1,6 @@
 PREFIX ?= /usr
 SHRDIR ?= $(PREFIX)/share
-.PHONY = bash install-bash install-zsh
+.PHONY = bash install-bash install-zsh install-fish
 
 ZSH_SITE_FUNCTIONS = \
 	zsh/_aur \
@@ -23,3 +23,6 @@ install-zsh: zsh/run-help-aur $(ZSH_SITE_FUNCTIONS)
 
 	@install -d '$(DESTDIR)$(SHRDIR)/zsh/site-functions/'
 	@install -m644 -t '$(DESTDIR)$(SHRDIR)/zsh/site-functions/' $(ZSH_SITE_FUNCTIONS)
+
+install-fish: fish/aur.fish
+	@install -Dm644 fish/aur.fish -t '$(DESTDIR)$(SHRDIR)/fish/vendor_completions.d'
