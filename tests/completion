@@ -1,0 +1,137 @@
+#!/bin/bash
+#
+# Unit tests for the bash completion. Requires bash-completion
+# 2.12+ on the system; dynamic-completer tests additionally
+# require the `aur` binary on PATH.
+
+script_dir=${BASH_SOURCE%/*}
+cd "$script_dir/.." || exit 2
+
+# Build the completion script.
+make -s -C completions bash >/dev/null
+
+# shellcheck disable=SC1091
+source /usr/share/bash-completion/bash_completion
+
+if ! declare -F _comp_initialize >/dev/null; then
+    echo "skip: bash-completion 2.12+ not available (_comp_initialize missing)"
+    exit 0
+fi
+
+# shellcheck disable=SC1091
+source completions/bash/aur
+
+PASS=0
+FAIL=0
+
+# Populate COMP_* variables for a command line and invoke the
+# completion function.
+_run() {
+    local line=$1
+    COMP_LINE=$line
+    # shellcheck disable=SC2206
+    COMP_WORDS=($line)
+    [[ $line == *" " ]] && COMP_WORDS+=("")
+    COMP_CWORD=$((${#COMP_WORDS[@]} - 1))
+    COMP_POINT=${#COMP_LINE}
+    COMPREPLY=()
+    _aur_completion "${COMP_WORDS[0]}" \
+                    "${COMP_WORDS[COMP_CWORD]}" \
+                    "${COMP_WORDS[COMP_CWORD-1]:-}" 2>/dev/null || true
+}
+
+# case_match DESC "line..." "grep -E pattern"
+case_match() {
+    local desc=$1 line=$2 pattern=$3
+    _run "$line"
+    if printf '%s\n' "${COMPREPLY[@]}" | grep -qE "$pattern"; then
+        PASS=$((PASS + 1))
+        printf 'ok   %s\n' "$desc"
+    else
+        FAIL=$((FAIL + 1))
+        printf 'FAIL %s\n     line: %q\n     got:  %s\n     want match: %s\n' \
+            "$desc" "$line" "${COMPREPLY[*]}" "$pattern"
+    fi
+}
+
+# case_no_match DESC "line..." "grep -E pattern"
+case_no_match() {
+    local desc=$1 line=$2 pattern=$3
+    _run "$line"
+    if printf '%s\n' "${COMPREPLY[@]}" | grep -qE "$pattern"; then
+        FAIL=$((FAIL + 1))
+        printf 'FAIL %s\n     line: %q\n     got unexpected: %s\n' \
+            "$desc" "$line" "${COMPREPLY[*]}"
+    else
+        PASS=$((PASS + 1))
+        printf 'ok   %s\n' "$desc"
+    fi
+}
+
+# -------- subcommand completion --------
+case_match "subcommand 'build' offered"   "aur "  '^build$'
+case_match "subcommand 'sync' offered"    "aur "  '^sync$'
+case_match "subcommand 'depends' offered" "aur "  '^depends$'
+case_match "subcommand 'repo-filter' offered" "aur " '^repo-filter$'
+
+# -------- static choice sets --------
+case_match "aur query --by name"          "aur query --by "    '^name$'
+case_match "aur query --by maintainer"    "aur query --by "    '^maintainer$'
+case_match "aur query -b name-desc"       "aur query -b "      '^name-desc$'
+case_match "aur query --type info"        "aur query --type "  '^info$'
+case_match "aur query --type search"      "aur query --type "  '^search$'
+case_match "aur fetch --sync rebase"      "aur fetch --sync "  '^rebase$'
+case_match "aur fetch --sync fetch"       "aur fetch --sync "  '^fetch$'
+case_match "aur search --key Name"        "aur search --key "  '^Name$'
+case_match "aur search --key NumVotes"    "aur search --key "  '^NumVotes$'
+case_match "aur vercmp --upair 1"         "aur vercmp --upair " '^1$'
+case_match "aur vercmp -u 2"              "aur vercmp -u "     '^2$'
+case_match "aur repo --format %a"         "aur repo --format " '^%a$'
+case_match "aur view --format diff"       "aur view --format " '^diff$'
+
+# -------- --opt=val form (auto-split by _comp_initialize -s) --------
+case_match "aur query --by=n narrows to name*"     "aur query --by=n"      '^name$'
+case_match "aur query --by=name-d -> name-desc"    "aur query --by=name-d" '^name-desc$'
+case_match "aur query --type=i -> info"            "aur query --type=i"    '^info$'
+case_match "aur fetch --sync=re -> rebase/reset"   "aur fetch --sync=re"   '^re(base|set)$'
+
+# -------- flag list / fallback --------
+case_match "aur build -- offers --chroot"          "aur build --"          '^--chroot$'
+case_match "aur build -- offers --sign"            "aur build --"          '^--sign$'
+case_match "aur sync -- offers --no-build"         "aur sync --"           '^--no-build$'
+
+# -------- user completion (system users) --------
+case_match "aur build --user offers 'root'"        "aur build --user "     '^root$'
+
+# -------- dynamic completers (require aur binary) --------
+if command -v aur >/dev/null 2>&1; then
+    case_match "aur repo -d lists at least one repo"  "aur repo -d "          '.'
+    case_match "aur repo -F lists ARCH"               "aur repo -F "          '^ARCH$'
+    case_match "aur repo --attr lists BASE"           "aur repo --attr "      '^BASE$'
+else
+    echo "skip: dynamic completers (no aur binary)"
+fi
+
+# -------- positional pkgname (prefix required to avoid 95k expansion) --------
+if command -v aur >/dev/null 2>&1; then
+    if aur pkglist --ttl 86400 --systime --plain 2>/dev/null | head -1 >/dev/null; then
+        # Use a short, common prefix that should always match something.
+        case_match "aur depends 'glib' prefix matches" "aur depends glib" '.'
+    fi
+fi
+
+# -------- delimited (comma-separated) values --------
+case_match "aur sync --provides-from= single path"    "aur sync --provides-from=/tm" '^/tmp/?$'
+case_match "aur sync --provides-from= mid-list path"  "aur sync --provides-from=/etc,/tm" '^/etc,/tmp/?$'
+if command -v aur >/dev/null 2>&1; then
+    case_match "aur sync --ignore= lists local pkgs"  "aur sync --ignore=" '.'
+    case_match "aur sync --ignore= mid-list local"    "aur sync --ignore=0ad,fir" '^0ad,fir'
+fi
+
+# -------- negative cases --------
+case_no_match "aur query --by does not offer flags" "aur query --by " '^--'
+case_no_match "aur fetch --sync is not a filename"  "aur fetch --sync " '^/'
+
+echo "---"
+printf 'PASS: %d  FAIL: %d\n' "$PASS" "$FAIL"
+exit $((FAIL > 0 ? 1 : 0))
