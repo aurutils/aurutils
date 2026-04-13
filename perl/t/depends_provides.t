@@ -15,7 +15,9 @@ use FindBin qw($Bin);
 use File::Spec;
 
 my $script = File::Spec->catfile($Bin, '..', '..', 'lib', 'aurweb', 'aur-depends');
-do $script or BAIL_OUT("unable to load $script: " . ($@ || $!));
+do $script;
+BAIL_OUT("unable to compile $script: $@") if $@;
+BAIL_OUT("$script loaded but solve() not defined") if not exists &solve;
 
 sub solve_with_db {
     my ($targets, $types, $db, $opt_verify, $opt_provides) = @_;
@@ -46,15 +48,21 @@ subtest 'explicit target stays anchored when sibling target provides it' => sub 
 
     is_deeply($dag_foreign, {}, 'no foreign dependencies in repro');
     ok(defined $results->{foo}, 'foo remains in %results');
-    ok(defined $dag->{foo}, 'foo keeps a DAG node');
-    is($dag->{foo}{foo}, 'Self', 'foo keeps its self-edge');
-    ok(defined $dag->{libx}, 'foo dependency stays in DAG');
-    is($dag->{libx}{foo}, 'Depends', 'libx remains required by foo');
-
     ok(defined $results->{bar}, 'bar remains in %results');
-    ok(defined $dag->{bar}, 'bar keeps a DAG node');
-    is($dag->{bar}{bar}, 'Self', 'bar keeps its self-edge');
-    is($dag->{liby}{bar}, 'Depends', 'liby remains required by bar');
+
+    # Full DAG shape in one is_deeply so autoviv side-effects
+    # from chained \$dag->{X}{Y} probes cannot mask a missing
+    # node.
+    is_deeply(
+        $dag,
+        {
+            foo  => { foo => 'Self' },
+            libx => { foo => 'Depends' },
+            bar  => { bar => 'Self' },
+            liby => { bar => 'Depends' },
+        },
+        'DAG shape: foo + bar self-edges with their dependencies',
+    );
 };
 
 subtest 'explicit targets remain intact when provides are disabled' => sub {
@@ -69,9 +77,13 @@ subtest 'explicit targets remain intact when provides are disabled' => sub {
 
     is_deeply($dag_foreign, {}, 'no foreign dependencies');
     ok(defined $results->{foo}, 'foo preserved when provides are disabled');
-    is($dag->{foo}{foo}, 'Self', 'foo self-edge intact');
     ok(defined $results->{bar}, 'bar also preserved');
-    is($dag->{bar}{bar}, 'Self', 'bar self-edge intact');
+
+    is_deeply(
+        $dag,
+        { foo => { foo => 'Self' }, bar => { bar => 'Self' } },
+        'DAG shape: both targets anchored, no cross-edges',
+    );
 };
 
 subtest 'explicit target survives when a dependency also provides it' => sub {
@@ -90,11 +102,17 @@ subtest 'explicit target survives when a dependency also provides it' => sub {
     is_deeply($dag_foreign, {}, 'no foreign dependencies in repro');
     ok(defined $results->{foo}, 'foo stays in %results');
     ok(defined $results->{bar}, 'bar stays in %results');
-    ok(defined $dag->{foo}, 'foo keeps a DAG node');
-    is($dag->{foo}{foo}, 'Self', 'foo keeps its self-edge');
-    ok(defined $dag->{bar}, 'bar remains buildable');
-    is($dag->{bar}{foo}, 'Depends', 'bar remains required by foo');
-    is(scalar keys %{$dag}, 2, 'build order remains available');
+
+    # Assert the whole shape in a single is_deeply rather than a
+    # sequence of \$dag->{X}{Y} probes. Individual probes would
+    # autovivify \$dag->{X}={}, masking an empty-DAG regression
+    # and making a later "scalar keys %{\$dag} == 2" check pass
+    # by accident.
+    is_deeply(
+        $dag,
+        { foo => { foo => 'Self' }, bar => { foo => 'Depends' } },
+        'DAG shape: foo self-edge plus foo -> bar dependency',
+    );
 };
 
 done_testing();
