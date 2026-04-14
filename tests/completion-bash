@@ -1,0 +1,113 @@
+#!/bin/bash
+#
+# Completion test for bash. Asserts that every aur-* script under
+# lib/ is offered as a subcommand, and that every flag a script
+# emits via --dump-options is offered when completing that
+# subcommand. Dynamic repo completion is verified against a PATH
+# stub so no real repos are needed.
+
+script_dir=${BASH_SOURCE%/*}
+cd "$script_dir/.." || exit 2
+
+make -s -C completions bash >/dev/null
+
+bc=/usr/share/bash-completion/bash_completion
+if [[ ! -r $bc ]]; then
+    echo "skip: bash-completion not installed"
+    exit 0
+fi
+# shellcheck disable=SC1090
+source "$bc"
+# shellcheck disable=SC1091
+source completions/bash/aur
+
+PASS=0
+FAIL=0
+
+# Populate the completion globals and invoke _aur_completion.
+# The function reads COMP_WORDS/COMP_LINE via _get_comp_words_by_ref;
+# the three positional args mirror what bash passes to a -F function
+# at completion time.
+complete_for() {
+    local line=$1
+    COMP_LINE=$line
+    # shellcheck disable=SC2206
+    COMP_WORDS=($line)
+    [[ $line == *" " ]] && COMP_WORDS+=("")
+    COMP_CWORD=$((${#COMP_WORDS[@]} - 1))
+    COMP_POINT=${#COMP_LINE}
+    COMPREPLY=()
+    _aur_completion "${COMP_WORDS[0]}" \
+                    "${COMP_WORDS[COMP_CWORD]}" \
+                    "${COMP_WORDS[COMP_CWORD-1]:-}"
+}
+
+assert_contains() {
+    local desc=$1 needle=$2
+    if printf '%s\n' "${COMPREPLY[@]}" | grep -qxF -- "$needle"; then
+        PASS=$((PASS + 1))
+        printf 'ok   %s\n' "$desc"
+    else
+        FAIL=$((FAIL + 1))
+        printf 'FAIL %s (missing: %s)\n' "$desc" "$needle"
+    fi
+}
+
+# aur-* scripts that are user-facing subcommands (skip internal
+# helpers whose name contains `--`).
+discover_subcommands() {
+    find lib -maxdepth 2 -type f -name 'aur-*' |
+        awk -F/ '{print $NF}' |
+        sed 's/^aur-//' |
+        grep -v -- '--' |
+        sort -u
+}
+
+# ---- subcommand coverage ----
+complete_for "aur "
+while IFS= read -r cmd; do
+    assert_contains "subcommand: $cmd" "$cmd"
+done < <(discover_subcommands)
+
+# ---- option coverage ----
+# For each subcommand that implements --dump-options, every emitted
+# long option must appear when completing `aur <cmd> <TAB>`.
+# (The completion's _fallback_completion clobbers a global `opts`;
+# use a distinct name here so the outer loop survives it.)
+while IFS= read -r script; do
+    cmd=${script##*/aur-}
+    dumped=$(PERL5LIB=perl "$script" --dump-options 2>/dev/null) || continue
+    [[ $dumped ]] || continue
+
+    complete_for "aur $cmd "
+    while IFS= read -r flag; do
+        flag=${flag%:}
+        [[ $flag ]] || continue
+        assert_contains "option: aur $cmd $flag" "$flag"
+    done <<<"$dumped"
+done < <(find lib -maxdepth 2 -type f -name 'aur-*' ! -name '*--*')
+
+# ---- dynamic repo completion (stubbed) ----
+# Stub `aur` so `aur repo --repo-list` always returns a known value,
+# regardless of what repos are configured on the host.
+stub_dir=$(mktemp -d)
+trap 'rm -rf -- "$stub_dir"' EXIT
+cat >"$stub_dir"/aur <<'STUB'
+#!/bin/bash
+if [[ $1 == repo && $2 == --repo-list ]]; then
+    echo testrepo
+    exit
+fi
+exec /usr/bin/aur "$@"
+STUB
+chmod +x "$stub_dir"/aur
+PATH=$stub_dir:$PATH
+
+for cmd in build sync repo; do
+    complete_for "aur $cmd -d "
+    assert_contains "repo completion: aur $cmd -d" "testrepo"
+done
+
+echo "---"
+printf 'PASS: %d  FAIL: %d\n' "$PASS" "$FAIL"
+exit $((FAIL > 0 ? 1 : 0))
