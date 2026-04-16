@@ -1,0 +1,777 @@
+[
+   {
+      "Depends" : [
+         "aurora-compositor-git",
+         "aurora-client-git",
+         "aurora-scanner-git",
+         "libliri-git",
+         "liri-appcenter-git",
+         "liri-browser-git",
+         "liri-calculator-git",
+         "liri-files-git",
+         "liri-networkmanager-git",
+         "liri-qtintegration-git",
+         "liri-power-manager-git",
+         "liri-pulseaudio-git",
+         "liri-screencast-git",
+         "liri-screenshot-git",
+         "liri-session-git",
+         "liri-settings-git",
+         "liri-shell-git",
+         "liri-terminal-git",
+         "liri-text-git",
+         "liri-themes-git",
+         "liri-wallpapers-git",
+         "xdg-desktop-portal-liri-git"
+      ],
+      "Name" : "liri-git-meta",
+      "PackageBase" : "liri-git-meta",
+      "Version" : "0.9.0-6"
+   },
+   {
+      "Conflicts" : [
+         "aurora-compositor"
+      ],
+      "Depends" : [
+         "systemd",
+         "libdrm",
+         "libinput",
+         "qt5-declarative",
+         "qt5-wayland",
+         "xkeyboard-config",
+         "libxkbcommon",
+         "glib2",
+         "fontconfig",
+         "freetype2"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git",
+         "aurora-scanner-git",
+         "wayland-protocols",
+         "xcb-util-cursor",
+         "libxcursor"
+      ],
+      "Name" : "aurora-compositor-git",
+      "PackageBase" : "aurora-compositor-git",
+      "Provides" : [
+         "aurora-compositor"
+      ],
+      "Replaces" : [
+         "aurora-compositor"
+      ],
+      "Version" : "r4125.6c650ed5-1"
+   },
+   {
+      "Conflicts" : [
+         "aurora-client"
+      ],
+      "Depends" : [
+         "qt5-base",
+         "qt5-wayland",
+         "qt5-declarative"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git",
+         "aurora-scanner-git"
+      ],
+      "Name" : "aurora-client-git",
+      "PackageBase" : "aurora-client-git",
+      "Provides" : [
+         "aurora-client"
+      ],
+      "Replaces" : [
+         "aurora-client"
+      ],
+      "Version" : "r105.a462da0-1"
+   },
+   {
+      "Conflicts" : [
+         "aurora-scanner"
+      ],
+      "Depends" : [
+         "qt5-base"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "aurora-scanner-git",
+      "PackageBase" : "aurora-scanner-git",
+      "Provides" : [
+         "aurora-scanner"
+      ],
+      "Replaces" : [
+         "aurora-scanner"
+      ],
+      "Version" : "r10.c2e3441-1"
+   },
+   {
+      "Conflicts" : [
+         "libliri"
+      ],
+      "Depends" : [
+         "qt5-declarative"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "libliri-git",
+      "PackageBase" : "libliri-git",
+      "Provides" : [
+         "libliri"
+      ],
+      "Replaces" : [
+         "libliri"
+      ],
+      "Version" : "r183.5ebe982-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-appcenter"
+      ],
+      "Depends" : [
+         "qt5-accountsservice-git",
+         "fluid-git",
+         "libliri-git",
+         "appstream-qt",
+         "flatpak"
+      ],
+      "MakeDepends" : [
+         "git",
+         "qt5-tools",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-appcenter-git",
+      "PackageBase" : "liri-appcenter-git",
+      "Provides" : [
+         "liri-appcenter"
+      ],
+      "Replaces" : [
+         "liri-appcenter"
+      ],
+      "Version" : "v0.1.0.r250.gd8c36da-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-browser"
+      ],
+      "Depends" : [
+         "qt5-webengine",
+         "fluid-git"
+      ],
+      "MakeDepends" : [
+         "git",
+         "qt5-tools",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-browser-git",
+      "PackageBase" : "liri-browser-git",
+      "Provides" : [
+         "liri-browser"
+      ],
+      "Replaces" : [
+         "liri-browser"
+      ],
+      "Version" : "r266.fe29ad5-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-calculator"
+      ],
+      "Depends" : [
+         "fluid-git"
+      ],
+      "MakeDepends" : [
+         "git",
+         "qt5-tools",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-calculator-git",
+      "PackageBase" : "liri-calculator-git",
+      "Provides" : [
+         "liri-calculator"
+      ],
+      "Replaces" : [
+         "liri-calculator"
+      ],
+      "Version" : "v1.3.0.r102.geecda40-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-files"
+      ],
+      "Depends" : [
+         "fluid-git",
+         "taglib"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git",
+         "qt5-tools"
+      ],
+      "Name" : "liri-files-git",
+      "PackageBase" : "liri-files-git",
+      "Provides" : [
+         "liri-files"
+      ],
+      "Replaces" : [
+         "liri-files"
+      ],
+      "Version" : "v0.1.0.r142.ge309654-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-networkmanager"
+      ],
+      "Depends" : [
+         "fluid-git",
+         "libliri-git",
+         "networkmanager-qt",
+         "modemmanager-qt"
+      ],
+      "MakeDepends" : [
+         "git",
+         "qt5-tools",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-networkmanager-git",
+      "PackageBase" : "liri-networkmanager-git",
+      "Provides" : [
+         "liri-networkmanager"
+      ],
+      "Replaces" : [
+         "liri-networkmanager"
+      ],
+      "Version" : "r169.e451da2-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-qtintegration",
+         "liri-platformtheme-git",
+         "liri-materialdecoration-git"
+      ],
+      "Depends" : [
+         "qt5-base",
+         "qt5-quickcontrols2",
+         "qt5-gsettings-git",
+         "aurora-client-git"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-qtintegration-git",
+      "PackageBase" : "liri-qtintegration-git",
+      "Provides" : [
+         "liri-qtintegration"
+      ],
+      "Replaces" : [
+         "liri-qtintegration",
+         "liri-platformtheme-git",
+         "liri-materialdecoration-git"
+      ],
+      "Version" : "r196.d655548-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-power-manager"
+      ],
+      "Depends" : [
+         "qt5-tools",
+         "qt5-gsettings-git",
+         "fluid-git",
+         "libliri-git",
+         "liri-session-git",
+         "solid"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-power-manager-git",
+      "PackageBase" : "liri-power-manager-git",
+      "Provides" : [
+         "liri-power-manager"
+      ],
+      "Replaces" : [
+         "liri-power-manager"
+      ],
+      "Version" : "r176.82662ac-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-pulseaudio"
+      ],
+      "Depends" : [
+         "fluid-git",
+         "pulseaudio"
+      ],
+      "MakeDepends" : [
+         "git",
+         "qt5-tools",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-pulseaudio-git",
+      "PackageBase" : "liri-pulseaudio-git",
+      "Provides" : [
+         "liri-pulseaudio"
+      ],
+      "Replaces" : [
+         "liri-pulseaudio"
+      ],
+      "Version" : "r165.574d361-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-screencast"
+      ],
+      "Depends" : [
+         "gstreamer"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-screencast-git",
+      "PackageBase" : "liri-screencast-git",
+      "Provides" : [
+         "liri-screencast"
+      ],
+      "Replaces" : [
+         "liri-screencast"
+      ],
+      "Version" : "r83.8518f72-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-screenshot"
+      ],
+      "Depends" : [
+         "fluid-git"
+      ],
+      "MakeDepends" : [
+         "git",
+         "qt5-tools",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-screenshot-git",
+      "PackageBase" : "liri-screenshot-git",
+      "Provides" : [
+         "liri-screenshot"
+      ],
+      "Replaces" : [
+         "liri-screenshot"
+      ],
+      "Version" : "r176.fbec8fc-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-session"
+      ],
+      "Depends" : [
+         "qt5-tools",
+         "qt5-gsettings-git",
+         "libliri-git",
+         "liri-shell-git"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-session-git",
+      "PackageBase" : "liri-session-git",
+      "Provides" : [
+         "liri-session"
+      ],
+      "Replaces" : [
+         "liri-session"
+      ],
+      "Version" : "r110.f26b173-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-settings"
+      ],
+      "Depends" : [
+         "fluid-git",
+         "libliri-git",
+         "qt5-accountsservice-git",
+         "polkit-qt5",
+         "xkeyboard-config"
+      ],
+      "MakeDepends" : [
+         "git",
+         "qt5-tools",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-settings-git",
+      "PackageBase" : "liri-settings-git",
+      "Provides" : [
+         "liri-settings"
+      ],
+      "Replaces" : [
+         "liri-settings"
+      ],
+      "Version" : "v0.9.0.r235.gebf3b01-1"
+   },
+   {
+      "Conflicts" : [
+         "hawaii-shell-git",
+         "papyros-shell-git",
+         "liri-workspace-git",
+         "liri-shell"
+      ],
+      "Depends" : [
+         "qt5-tools",
+         "qt5-wayland",
+         "qt5-accountsservice-git",
+         "qt5-gsettings-git",
+         "polkit-qt5",
+         "solid",
+         "pam",
+         "pipewire",
+         "dconf",
+         "libliri-git",
+         "fluid-git",
+         "liri-qtintegration-git",
+         "aurora-compositor-git"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git",
+         "aurora-scanner-git"
+      ],
+      "Name" : "liri-shell-git",
+      "PackageBase" : "liri-shell-git",
+      "Provides" : [
+         "liri-shell"
+      ],
+      "Replaces" : [
+         "hawaii-shell-git",
+         "papyros-shell-git",
+         "liri-workspace-git",
+         "liri-shell"
+      ],
+      "Version" : "v0.9.0.r617.gb1cfe9c9-1"
+   },
+   {
+      "Conflicts" : [
+         "hawaii-terminal-git",
+         "papyros-terminal-git",
+         "papyros-qmltermwidget-git",
+         "liri-terminal"
+      ],
+      "Depends" : [
+         "qt5-gsettings-git",
+         "fluid-git",
+         "glib2",
+         "dconf"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-terminal-git",
+      "PackageBase" : "liri-terminal-git",
+      "Provides" : [
+         "liri-terminal"
+      ],
+      "Replaces" : [
+         "hawaii-terminal-git",
+         "papyros-terminal-git",
+         "papyros-qmltermwidget-git",
+         "liri-terminal"
+      ],
+      "Version" : "v0.2.0.r120.g025cd4a-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-text"
+      ],
+      "Depends" : [
+         "fluid-git"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git",
+         "qt5-tools"
+      ],
+      "Name" : "liri-text-git",
+      "PackageBase" : "liri-text-git",
+      "Provides" : [
+         "liri-text"
+      ],
+      "Version" : "r324.404d021-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-themes"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-themes-git",
+      "PackageBase" : "liri-themes-git",
+      "Provides" : [
+         "liri-themes"
+      ],
+      "Replaces" : [
+         "liri-themes"
+      ],
+      "Version" : "v0.9.0.r62.gea29cc9-1"
+   },
+   {
+      "Conflicts" : [
+         "hawaii-wallpapers-git",
+         "liri-wallpapers"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "liri-wallpapers-git",
+      "PackageBase" : "liri-wallpapers-git",
+      "Provides" : [
+         "liri-wallpapers"
+      ],
+      "Replaces" : [
+         "hawaii-wallpapers-git",
+         "liri-wallpapers"
+      ],
+      "Version" : "v0.10.0.r43.ge06adbb-1"
+   },
+   {
+      "Conflicts" : [
+         "xdg-desktop-portal-liri"
+      ],
+      "Depends" : [
+         "qt5-accountsservice-git",
+         "qt5-gsettings-git",
+         "libliri-git",
+         "fluid-git",
+         "aurora-client-git",
+         "xdg-desktop-portal"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "xdg-desktop-portal-liri-git",
+      "PackageBase" : "xdg-desktop-portal-liri-git",
+      "Provides" : [
+         "xdg-desktop-portal-liri",
+         "xdg-desktop-portal-impl"
+      ],
+      "Replaces" : [
+         "xdg-desktop-portal-liri"
+      ],
+      "Version" : "r84.dba7279-1"
+   },
+   {
+      "Conflicts" : [
+         "liri-cmake-shared"
+      ],
+      "Depends" : [
+         "extra-cmake-modules"
+      ],
+      "MakeDepends" : [
+         "git"
+      ],
+      "Name" : "liri-cmake-shared-git",
+      "PackageBase" : "liri-cmake-shared-git",
+      "Provides" : [
+         "liri-cmake-shared"
+      ],
+      "Replaces" : [
+         "liri-cmake-shared"
+      ],
+      "Version" : "v1.1.0.r91.ge633ba7-1"
+   },
+   {
+      "Conflicts" : [
+         "qtaccountsservice-git",
+         "qt5-accountsservice"
+      ],
+      "Depends" : [
+         "qt5-declarative"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "qt5-accountsservice-git",
+      "PackageBase" : "qt5-accountsservice-git",
+      "Provides" : [
+         "qt5-accountsservice"
+      ],
+      "Replaces" : [
+         "qtaccountsservice-git",
+         "qt5-accountsservice"
+      ],
+      "Version" : "v1.3.0.r28.ge1cf4e4-1"
+   },
+   {
+      "Conflicts" : [
+         "fluid"
+      ],
+      "Depends" : [
+         "qt5-quickcontrols2",
+         "qt5-graphicaleffects",
+         "qt5-svg",
+         "qt5-wayland",
+         "ttf-roboto"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git",
+         "qt5-doc",
+         "qt5-tools",
+         "clang"
+      ],
+      "Name" : "fluid-git",
+      "PackageBase" : "fluid-git",
+      "Provides" : [
+         "fluid"
+      ],
+      "Replaces" : [
+         "fluid"
+      ],
+      "Version" : "v1.2.0.r50.g27417d4-1"
+   },
+   {
+      "Depends" : [
+         "qt5-webchannel",
+         "qt5-location",
+         "libxcomposite",
+         "libxrandr",
+         "pciutils",
+         "libxdamage",
+         "libevent",
+         "snappy",
+         "nss",
+         "libxslt",
+         "minizip",
+         "libvpx",
+         "libxtst",
+         "qt5-base",
+         "qt5-tools",
+         "qt5-declarative",
+         "gcc-libs",
+         "glib2",
+         "glibc",
+         "alsa-lib",
+         "dbus",
+         "expat",
+         "fontconfig",
+         "freetype2",
+         "harfbuzz",
+         "icu",
+         "lcms2",
+         "libglvnd",
+         "libjpeg-turbo",
+         "libpng",
+         "libwebp",
+         "libx11",
+         "libxcb",
+         "libxext",
+         "libxfixes",
+         "libxkbcommon",
+         "libxml2",
+         "libxrender",
+         "nspr",
+         "opus",
+         "zlib"
+      ],
+      "MakeDepends" : [
+         "git",
+         "python",
+         "gperf",
+         "jsoncpp",
+         "ninja",
+         "poppler",
+         "pipewire",
+         "nodejs",
+         "python-html5lib",
+         "perl",
+         "libxcursor",
+         "libxkbfile",
+         "libpulse",
+         "libxss"
+      ],
+      "Name" : "qt5-webengine",
+      "PackageBase" : "qt5-webengine",
+      "Version" : "5.15.19-4"
+   },
+   {
+      "Conflicts" : [
+         "qt5-gsettings"
+      ],
+      "Depends" : [
+         "qt5-declarative",
+         "glib2"
+      ],
+      "MakeDepends" : [
+         "git",
+         "liri-cmake-shared-git"
+      ],
+      "Name" : "qt5-gsettings-git",
+      "PackageBase" : "qt5-gsettings-git",
+      "Provides" : [
+         "qt5-gsettings"
+      ],
+      "Replaces" : [
+         "qt5-gsettings"
+      ],
+      "Version" : "v1.3.0.r34.g28262e5-1"
+   },
+   {
+      "Depends" : [
+         "qt5-base"
+      ],
+      "MakeDepends" : [
+         "qt5-tools",
+         "python",
+         "pciutils",
+         "libxtst",
+         "libxcursor",
+         "libxrandr",
+         "libxss",
+         "libxcomposite",
+         "libxkbfile",
+         "gperf",
+         "nss",
+         "clang",
+         "nodejs",
+         "ninja"
+      ],
+      "Name" : "qt5-doc",
+      "PackageBase" : "qt5-doc",
+      "Version" : "5.15.18-1"
+   },
+   {
+      "Depends" : [
+         "qt5-declarative"
+      ],
+      "MakeDepends" : [
+         "git"
+      ],
+      "Name" : "qt5-webchannel",
+      "PackageBase" : "qt5-webchannel",
+      "Version" : "5.15.18+kde+r3-1"
+   },
+   {
+      "Depends" : [
+         "qt5-declarative"
+      ],
+      "MakeDepends" : [
+         "git"
+      ],
+      "Name" : "qt5-location",
+      "PackageBase" : "qt5-location",
+      "Version" : "5.15.18+kde+r7-2"
+   }
+]

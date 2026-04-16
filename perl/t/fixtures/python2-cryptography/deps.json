@@ -1,0 +1,1098 @@
+[
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "cython2",
+    "PackageBase": "cython2",
+    "Version": "0.29.37-1"
+  },
+  {
+    "Depends": [
+      "glibc"
+    ],
+    "MakeDepends": [
+      "perl"
+    ],
+    "Name": "openssl-1.1",
+    "PackageBase": "openssl-1.1",
+    "Provides": [
+      "libcrypto.so",
+      "libssl.so"
+    ],
+    "Version": "1.1.1.w-9"
+  },
+  {
+    "CheckDepends": [
+      "gdb",
+      "file",
+      "xorg-server-xvfb",
+      "xterm"
+    ],
+    "Depends": [
+      "bzip2",
+      "expat",
+      "gdbm",
+      "libffi",
+      "libnsl",
+      "libxcrypt",
+      "openssl-1.1",
+      "sqlite",
+      "zlib"
+    ],
+    "MakeDepends": [
+      "tk",
+      "bluez-libs"
+    ],
+    "Name": "python2",
+    "OptDepends": [
+      "tk",
+      "python2-setuptools",
+      "python2-pip"
+    ],
+    "PackageBase": "python2",
+    "Version": "2.7.18-12"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-appdirs",
+    "PackageBase": "python2-appdirs",
+    "Version": "1.4.4-6"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-atomicwrites",
+    "PackageBase": "python2-atomicwrites",
+    "Version": "1.4.1-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-attrs",
+    "PackageBase": "python2-attrs",
+    "Version": "21.4.0-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "Name": "python2-backports",
+    "PackageBase": "python2-backports",
+    "Version": "1.1-2"
+  },
+  {
+    "Depends": [
+      "python2-backports"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-backports.functools_lru_cache",
+    "PackageBase": "python2-backports.functools_lru_cache",
+    "Version": "1.6.4-4"
+  },
+  {
+    "Depends": [
+      "python2",
+      "python2-msgpack",
+      "python2-requests"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-cachecontrol",
+    "OptDepends": [
+      "python2-lockfile",
+      "python2-cherrypy",
+      "python2-mock",
+      "python2-pytest"
+    ],
+    "PackageBase": "python2-cachecontrol",
+    "Version": "0.12.6-7"
+  },
+  {
+    "Depends": [
+      "python2-pycparser"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-cffi",
+    "PackageBase": "python2-cffi",
+    "Version": "1.15.1-3"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-chardet",
+    "PackageBase": "python2-chardet",
+    "Version": "4.0.0-3"
+  },
+  {
+    "CheckDepends": [
+      "python2-mock"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-wheel",
+      "xxd"
+    ],
+    "Name": "python2-colorama",
+    "PackageBase": "python2-colorama",
+    "Version": "0.4.6-1"
+  },
+  {
+    "Depends": [
+      "python2-backports"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-configparser",
+    "PackageBase": "python2-configparser",
+    "Version": "4.0.2-4"
+  },
+  {
+    "CheckDepends": [
+      "python2-unittest2"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-contextlib2",
+    "PackageBase": "python2-contextlib2",
+    "Version": "0.6.0.post1-2"
+  },
+  {
+    "CheckDepends": [
+      "python2-setuptools",
+      "python2-pytest-runner",
+      "python2-pretend",
+      "python2-iso8601",
+      "python2-pytz",
+      "python2-hypothesis",
+      "python2-cryptography-vectors=3.3.2"
+    ],
+    "Depends": [
+      "python2-six",
+      "python2-cffi",
+      "python2-enum34",
+      "python2-ipaddress",
+      "glibc",
+      "openssl-1.1",
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-cryptography",
+    "OptDepends": [
+      "python2-bcrypt"
+    ],
+    "PackageBase": "python2-cryptography",
+    "Version": "3.3.2-3"
+  },
+  {
+    "MakeDepends": [
+      "python2",
+      "python2-setuptools"
+    ],
+    "Name": "python2-cryptography-vectors",
+    "PackageBase": "python2-cryptography-vectors",
+    "Version": "3.3.2-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-distribute"
+    ],
+    "Name": "python2-csv23",
+    "PackageBase": "python2-csv23",
+    "Version": "0.3.4-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2"
+    ],
+    "Name": "python2-distlib",
+    "PackageBase": "python2-distlib",
+    "Version": "0.3.3-1"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest"
+    ],
+    "Depends": [
+      "python2",
+      "python2-setuptools"
+    ],
+    "MakeDepends": [
+      "python-sphinx",
+      "python2-setuptools"
+    ],
+    "Name": "python2-distro",
+    "PackageBase": "python2-distro",
+    "Version": "1.6.0-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-enum34",
+    "PackageBase": "python2-enum34",
+    "Version": "1.1.10-2"
+  },
+  {
+    "CheckDepends": [
+      "python2-genty",
+      "python2-mock",
+      "python2-nose",
+      "python2-pytest"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-flaky",
+    "PackageBase": "python2-flaky",
+    "Version": "3.7.0-4"
+  },
+  {
+    "CheckDepends": [
+      "python2-unittest2"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-funcsigs",
+    "PackageBase": "python2-funcsigs",
+    "Version": "1.0.2-4"
+  },
+  {
+    "CheckDepends": [
+      "python2-mock"
+    ],
+    "Depends": [
+      "python2-six"
+    ],
+    "MakeDepends": [
+      "git",
+      "python2-setuptools"
+    ],
+    "Name": "python2-genty",
+    "PackageBase": "python2-genty",
+    "Version": "1.3.2-8"
+  },
+  {
+    "CheckDepends": [
+      "python2-chardet",
+      "python2-mock",
+      "python2-pytest",
+      "python2-pytest-expect"
+    ],
+    "Depends": [
+      "python2-six",
+      "python2-webencodings"
+    ],
+    "MakeDepends": [
+      "python2",
+      "python2-setuptools"
+    ],
+    "Name": "python2-html5lib",
+    "OptDepends": [
+      "python2-lxml",
+      "python2-chardet",
+      "python2-genshi"
+    ],
+    "PackageBase": "python2-html5lib",
+    "Version": "1.1-13"
+  },
+  {
+    "Depends": [
+      "python2-attrs",
+      "python2-sortedcontainers"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-hypothesis",
+    "PackageBase": "python2-hypothesis",
+    "Version": "4.57.1-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-idna",
+    "PackageBase": "python2-idna",
+    "Version": "2.10-4"
+  },
+  {
+    "Depends": [
+      "python2-zipp",
+      "python2-pathlib2",
+      "python2-contextlib2",
+      "python2-configparser"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-importlib-metadata",
+    "PackageBase": "python2-importlib-metadata",
+    "Version": "2.1.3-3"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-ipaddress",
+    "PackageBase": "python2-ipaddress",
+    "Version": "1.0.23-2"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-iso8601",
+    "PackageBase": "python2-iso8601",
+    "Version": "0.1.16-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools",
+      "python2-pbr"
+    ],
+    "Name": "python2-linecache2",
+    "PackageBase": "python2-linecache2",
+    "Version": "1.0.0-5"
+  },
+  {
+    "Depends": [
+      "python2",
+      "python2-funcsigs",
+      "python2-pbr",
+      "python2-six",
+      "python2-typing"
+    ],
+    "Name": "python2-mock",
+    "PackageBase": "python2-mock",
+    "Version": "3.0.5-9"
+  },
+  {
+    "Depends": [
+      "python2-six"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-more-itertools",
+    "PackageBase": "python2-more-itertools",
+    "Version": "5.0.0-3"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "cython2",
+      "python2-setuptools"
+    ],
+    "Name": "python2-msgpack",
+    "PackageBase": "python2-msgpack",
+    "Version": "1.0.4-2"
+  },
+  {
+    "MakeDepends": [
+      "python2",
+      "python2-setuptools"
+    ],
+    "Name": "python2-nose",
+    "PackageBase": "python2-nose",
+    "Version": "1.3.7-14"
+  },
+  {
+    "Depends": [
+      "cblas",
+      "lapack",
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools",
+      "gcc-fortran",
+      "cython2"
+    ],
+    "Name": "python2-numpy",
+    "OptDepends": [
+      "blas-openblas"
+    ],
+    "PackageBase": "python2-numpy",
+    "Version": "1.16.6-3"
+  },
+  {
+    "Depends": [
+      "python2-pyparsing",
+      "python2-six"
+    ],
+    "MakeDepends": [
+      "python2-setuptools",
+      "python2-pyparsing"
+    ],
+    "Name": "python2-packaging",
+    "PackageBase": "python2-packaging",
+    "Version": "20.9-7"
+  },
+  {
+    "Depends": [
+      "python2-six",
+      "python2-scandir"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pathlib2",
+    "PackageBase": "python2-pathlib2",
+    "Version": "2.3.7.post1-2"
+  },
+  {
+    "Depends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pbr",
+    "OptDepends": [
+      "python2-importlib-metadata"
+    ],
+    "PackageBase": "python2-pbr",
+    "Version": "6.1.1-1"
+  },
+  {
+    "Depends": [
+      "python2-toml",
+      "python2-importlib-metadata",
+      "python2-zipp"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pep517",
+    "PackageBase": "python2-pep517",
+    "Version": "0.11.0-2"
+  },
+  {
+    "Depends": [
+      "python2",
+      "python2-ptyprocess"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pexpect",
+    "PackageBase": "python2-pexpect",
+    "Provides": [
+      "python2-pexpect"
+    ],
+    "Version": "4.8.0-1"
+  },
+  {
+    "CheckDepends": [
+      "git",
+      "python2-contextlib2",
+      "python2-cryptography",
+      "python2-pytest-runner",
+      "python2-freezegun",
+      "python2-pytest",
+      "python2-pytest-rerunfailures",
+      "python2-pytest-xdist",
+      "python2-scripttest",
+      "python2-pretend",
+      "python2-setuptools",
+      "python2-yaml",
+      "python2-mock",
+      "python2-pip",
+      "python2-tomli-w",
+      "python2-virtualenv",
+      "python2-werkzeug",
+      "python2-csv23",
+      "subversion"
+    ],
+    "Depends": [
+      "python2-appdirs",
+      "python2-cachecontrol",
+      "python2-colorama",
+      "python2-contextlib2",
+      "python2-distlib",
+      "python2-distro",
+      "python2-html5lib",
+      "python2-packaging",
+      "python2-pep517",
+      "python2-progress",
+      "python2-requests",
+      "python2-retrying",
+      "python2-resolvelib",
+      "python2-setuptools",
+      "python2-six",
+      "python2-toml",
+      "python2-pyopenssl",
+      "python2-wheel"
+    ],
+    "MakeDepends": [
+      "python2-appdirs",
+      "python2-cachecontrol",
+      "python2-colorama",
+      "python2-contextlib2",
+      "python2-distlib",
+      "python2-distro",
+      "python2-html5lib",
+      "python2-packaging",
+      "python2-pep517",
+      "python2-progress",
+      "python2-requests",
+      "python2-retrying",
+      "python2-resolvelib",
+      "python2-setuptools",
+      "python2-six",
+      "python2-toml",
+      "python2-pyopenssl",
+      "python2-wheel",
+      "python-sphinx",
+      "python-sphinx-inline-tabs"
+    ],
+    "Name": "python2-pip",
+    "PackageBase": "python2-pip",
+    "Version": "20.3.4-1"
+  },
+  {
+    "Depends": [
+      "python2-importlib-metadata"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pluggy",
+    "PackageBase": "python2-pluggy",
+    "Version": "0.13.1-10"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-ply",
+    "PackageBase": "python2-ply",
+    "Version": "3.11-8"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest-runner"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pretend",
+    "PackageBase": "python2-pretend",
+    "Version": "1.0.9-9"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-distribute"
+    ],
+    "Name": "python2-progress",
+    "PackageBase": "python2-progress",
+    "Provides": [
+      "progress=1.3"
+    ],
+    "Version": "1.3-2"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-ptyprocess",
+    "PackageBase": "python2-ptyprocess",
+    "Provides": [
+      "python2-ptyprocess"
+    ],
+    "Version": "0.7.0-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-py",
+    "PackageBase": "python2-py",
+    "Version": "1.11.0-3"
+  },
+  {
+    "Depends": [
+      "python2-ply"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pycparser",
+    "PackageBase": "python2-pycparser",
+    "Version": "2.21-2"
+  },
+  {
+    "CheckDepends": [
+      "python2-cryptography>=3.3",
+      "python2-flaky",
+      "python2-pretend",
+      "python2-pytest-runner"
+    ],
+    "Depends": [
+      "python2-cryptography>=3.3"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pyopenssl",
+    "PackageBase": "python2-pyopenssl",
+    "Version": "21.0.0-6"
+  },
+  {
+    "Depends": [
+      "python2>=2.6"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pyparsing",
+    "PackageBase": "python2-pyparsing",
+    "Version": "2.4.7-7"
+  },
+  {
+    "Depends": [
+      "python2-py",
+      "python2-setuptools",
+      "python2-pluggy",
+      "python2-attrs",
+      "python2-more-itertools",
+      "python2-atomicwrites",
+      "python2-wcwidth",
+      "python2-funcsigs",
+      "python2-pathlib2",
+      "python2-importlib-metadata",
+      "python2-packaging"
+    ],
+    "Name": "python2-pytest",
+    "PackageBase": "python2-pytest",
+    "Version": "4.6.11-3"
+  },
+  {
+    "Depends": [
+      "python2>=2.6",
+      "python2-pytest",
+      "python2-u-msgpack"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pytest-expect",
+    "PackageBase": "python2-pytest-expect",
+    "Version": "1.1.0-8"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest",
+      "python2-mock"
+    ],
+    "Depends": [
+      "python2-pytest"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pytest-rerunfailures",
+    "PackageBase": "python2-pytest-rerunfailures",
+    "Version": "8.0-1"
+  },
+  {
+    "Depends": [
+      "python2-pytest"
+    ],
+    "MakeDepends": [
+      "python2-pytest",
+      "python2-setuptools-scm"
+    ],
+    "Name": "python2-pytest-runner",
+    "PackageBase": "python2-pytest-runner",
+    "Version": "5.2-5"
+  },
+  {
+    "CheckDepends": [
+      "python2-pexpect",
+      "python2-pytest"
+    ],
+    "Depends": [
+      "python2",
+      "python2-pytest"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-pytest-timeout",
+    "PackageBase": "python2-pytest-timeout",
+    "Version": "1.4.2-5"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "Name": "python2-pytz",
+    "PackageBase": "python2-pytz",
+    "Version": "2024.1-1"
+  },
+  {
+    "Depends": [
+      "python2",
+      "ca-certificates-utils",
+      "python2-chardet",
+      "python2-idna",
+      "python2-urllib3"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-requests",
+    "OptDepends": [
+      "python2-pysocks",
+      "python2-flask",
+      "python2-pytest-mock",
+      "python2-pytest-httpbin",
+      "python2-trustme"
+    ],
+    "PackageBase": "python2-requests",
+    "Version": "2.27.1.r5.gfa1b0a36-1"
+  },
+  {
+    "Depends": [
+      "python2",
+      "python2-requests",
+      "python2-urllib3"
+    ],
+    "MakeDepends": [
+      "python2-pbr",
+      "python2-setuptools"
+    ],
+    "Name": "python2-requests-unixsocket",
+    "PackageBase": "python2-requests-unixsocket",
+    "Version": "0.3.0-2"
+  },
+  {
+    "Depends": [
+      "python2",
+      "python-six"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-retrying",
+    "PackageBase": "python2-retrying",
+    "Version": "1.3.3-13"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-scandir",
+    "PackageBase": "python2-scandir",
+    "Version": "1.10.0-8"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "git"
+    ],
+    "Name": "python2-setuptools",
+    "PackageBase": "python2-setuptools",
+    "Provides": [
+      "python2-distribute"
+    ],
+    "Version": "2:44.1.1-2"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest",
+      "python2-packaging",
+      "python2-pip"
+    ],
+    "Depends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-setuptools-scm",
+    "PackageBase": "python2-setuptools-scm",
+    "Version": "5.0.2-2"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest",
+      "tk"
+    ],
+    "MakeDepends": [
+      "python2",
+      "python2-setuptools"
+    ],
+    "Name": "python2-six",
+    "PackageBase": "python2-six",
+    "Version": "1.17.0-1"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-sortedcontainers",
+    "PackageBase": "python2-sortedcontainers",
+    "Version": "2.4.0-1"
+  },
+  {
+    "CheckDepends": [
+      "python2-numpy",
+      "python2-pytest"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-toml",
+    "PackageBase": "python2-toml",
+    "Version": "0.10.2-7"
+  },
+  {
+    "Depends": [
+      "python2-linecache2",
+      "python2-six"
+    ],
+    "MakeDepends": [
+      "python2-setuptools",
+      "python2-pbr"
+    ],
+    "Name": "python2-traceback2",
+    "PackageBase": "python2-traceback2",
+    "Version": "1.4.0-7"
+  },
+  {
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-typing",
+    "PackageBase": "python2-typing",
+    "Version": "3.10.0.2-1"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-u-msgpack",
+    "PackageBase": "python2-u-msgpack",
+    "Version": "2.8.0-3"
+  },
+  {
+    "Depends": [
+      "python2-six",
+      "python2-traceback2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-unittest2",
+    "PackageBase": "python2-unittest2",
+    "Version": "1.1.0-8"
+  },
+  {
+    "CheckDepends": [
+      "python2-flaky",
+      "python2-mock",
+      "python2-pyopenssl",
+      "python2-pytest-freezegun>=0.4.0",
+      "python2-pytest-runner",
+      "python2-pytest-timeout",
+      "python2-tornado",
+      "python2-trustme"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-urllib3",
+    "OptDepends": [
+      "python2-brotli",
+      "python2-pyopenssl",
+      "python2-pysocks",
+      "python-urllib3-doc"
+    ],
+    "PackageBase": "python2-urllib3",
+    "Version": "1.26.15-1"
+  },
+  {
+    "Depends": [
+      "python2-backports.functools_lru_cache"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-wcwidth",
+    "PackageBase": "python2-wcwidth",
+    "Version": "0.2.5-6"
+  },
+  {
+    "CheckDepends": [
+      "python2-nose"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-webencodings",
+    "PackageBase": "python2-webencodings",
+    "Version": "0.5.1-7"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest-timeout",
+      "python2-requests",
+      "python2-requests-unixsocket"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-werkzeug",
+    "OptDepends": [
+      "python2-cryptography",
+      "python2-greenlet"
+    ],
+    "PackageBase": "python2-werkzeug",
+    "Version": "1.0.2u.r5.g54acdd16-3"
+  },
+  {
+    "CheckDepends": [
+      "python2-pytest"
+    ],
+    "Depends": [
+      "python2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-wheel",
+    "PackageBase": "python2-wheel",
+    "Version": "0.37.1-5"
+  },
+  {
+    "Depends": [
+      "python2",
+      "libyaml"
+    ],
+    "MakeDepends": [
+      "python2-setuptools",
+      "cython2"
+    ],
+    "Name": "python2-yaml",
+    "PackageBase": "python2-yaml",
+    "Version": "5.4.1.1-1"
+  },
+  {
+    "Depends": [
+      "python2-contextlib2"
+    ],
+    "MakeDepends": [
+      "python2-setuptools"
+    ],
+    "Name": "python2-zipp",
+    "PackageBase": "python2-zipp",
+    "Version": "1.2.0-2"
+  }
+]

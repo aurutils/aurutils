@@ -1,0 +1,236 @@
+[
+  {
+    "Depends": [
+      "ruby",
+      "ruby-actionpack",
+      "ruby-activesupport",
+      "ruby-nio4r",
+      "ruby-websocket-driver"
+    ],
+    "Name": "ruby-actioncable",
+    "PackageBase": "ruby-actioncable",
+    "Version": "8.0.2-1"
+  },
+  {
+    "Depends": [
+      "ruby",
+      "ruby-actionpack",
+      "ruby-actionview",
+      "ruby-mail",
+      "ruby-rails-dom-testing"
+    ],
+    "Name": "ruby-actionmailer",
+    "PackageBase": "ruby-actionmailer",
+    "Version": "8.0.2-1"
+  },
+  {
+    "CheckDepends": [
+      "ruby-capybara",
+      "ruby-rack-cache",
+      "ruby-railties",
+      "ruby-rexml",
+      "ruby-selenium-webdriver",
+      "ruby-launchy",
+      "ruby-msgpack"
+    ],
+    "Depends": [
+      "ruby",
+      "ruby-actionview",
+      "ruby-activesupport",
+      "ruby-rack",
+      "ruby-rack-test",
+      "ruby-rails-dom-testing",
+      "ruby-rails-html-sanitizer"
+    ],
+    "MakeDepends": [
+      "ruby-activemodel",
+      "ruby-rake"
+    ],
+    "Name": "ruby-actionpack",
+    "PackageBase": "ruby-actionpack",
+    "Version": "8.0.2-5"
+  },
+  {
+    "CheckDepends": [
+      "ruby-activemodel",
+      "ruby-actionpack",
+      "ruby-railties",
+      "ruby-sqlite3",
+      "ruby-rack-session",
+      "ruby-useragent",
+      "ruby-rackup",
+      "ruby-irb",
+      "ruby-matrix"
+    ],
+    "Depends": [
+      "ruby",
+      "ruby-activesupport",
+      "ruby-builder",
+      "ruby-erubi",
+      "ruby-rails-dom-testing",
+      "ruby-rails-html-sanitizer"
+    ],
+    "MakeDepends": [
+      "ruby-rake"
+    ],
+    "Name": "ruby-actionview",
+    "PackageBase": "ruby-actionview",
+    "Version": "8.0.2-2"
+  },
+  {
+    "CheckDepends": [
+      "ruby-bcrypt",
+      "ruby-builder",
+      "ruby-rails"
+    ],
+    "Depends": [
+      "ruby",
+      "ruby-activesupport"
+    ],
+    "MakeDepends": [
+      "ruby-rake"
+    ],
+    "Name": "ruby-activemodel",
+    "PackageBase": "ruby-activemodel",
+    "Version": "8.0.2-1"
+  },
+  {
+    "Depends": [
+      "ruby",
+      "ruby-activemodel",
+      "ruby-activesupport"
+    ],
+    "MakeDepends": [
+      "ruby-rake"
+    ],
+    "Name": "ruby-activerecord",
+    "PackageBase": "ruby-activerecord",
+    "Version": "8.0.2-1"
+  },
+  {
+    "Depends": [
+      "glibc",
+      "ruby"
+    ],
+    "MakeDepends": [
+      "ruby-rake-compiler",
+      "ruby-rdoc",
+      "ruby-rspec"
+    ],
+    "Name": "ruby-bcrypt",
+    "PackageBase": "ruby-bcrypt",
+    "Version": "3.1.20-4"
+  },
+  {
+    "Depends": [
+      "ruby-addressable",
+      "ruby-mini_mime",
+      "ruby-nokogiri",
+      "ruby-rack",
+      "ruby-rack-test",
+      "ruby-regexp_parser",
+      "ruby-xpath"
+    ],
+    "MakeDepends": [
+      "ruby-rake",
+      "ruby-rspec"
+    ],
+    "Name": "ruby-capybara",
+    "PackageBase": "ruby-capybara",
+    "Version": "3.40.0-1"
+  },
+  {
+    "Depends": [
+      "ruby",
+      "ruby-rack"
+    ],
+    "Name": "ruby-rack-cache",
+    "PackageBase": "ruby-rack-cache",
+    "Version": "1.17.0-1"
+  },
+  {
+    "Depends": [
+      "ruby",
+      "ruby-activesupport",
+      "ruby-actionpack",
+      "ruby-actionview",
+      "ruby-activemodel",
+      "ruby-activerecord",
+      "ruby-actionmailer",
+      "ruby-railties",
+      "ruby-bundler",
+      "ruby-sprockets-rails",
+      "ruby-actioncable"
+    ],
+    "Name": "ruby-rails",
+    "PackageBase": "ruby-rails",
+    "Version": "8.0.2-1"
+  },
+  {
+    "Depends": [
+      "ruby",
+      "ruby-actionpack",
+      "ruby-activesupport",
+      "ruby-method_source",
+      "ruby-rake",
+      "ruby-thor"
+    ],
+    "Name": "ruby-railties",
+    "PackageBase": "ruby-railties",
+    "Version": "8.0.2-3"
+  },
+  {
+    "Depends": [
+      "ruby-base64",
+      "ruby-logger",
+      "ruby-rexml",
+      "ruby-rubyzip",
+      "ruby-websocket"
+    ],
+    "Name": "ruby-selenium-webdriver",
+    "PackageBase": "ruby-selenium-webdriver",
+    "Version": "4.41.0-1"
+  },
+  {
+    "Depends": [
+      "ruby-concurrent",
+      "ruby-rack"
+    ],
+    "MakeDepends": [
+      "ruby-rdoc"
+    ],
+    "Name": "ruby-sprockets",
+    "PackageBase": "ruby-sprockets",
+    "Version": "4.2.1-3"
+  },
+  {
+    "Depends": [
+      "ruby",
+      "ruby-actionpack",
+      "ruby-activesupport",
+      "ruby-sprockets"
+    ],
+    "Name": "ruby-sprockets-rails",
+    "PackageBase": "ruby-sprockets-rails",
+    "Version": "3.5.2-1"
+  },
+  {
+    "Depends": [
+      "ruby"
+    ],
+    "Name": "ruby-useragent",
+    "PackageBase": "ruby-useragent",
+    "Version": "0.16.11-1"
+  },
+  {
+    "Depends": [
+      "ruby"
+    ],
+    "MakeDepends": [
+      "ruby-rdoc"
+    ],
+    "Name": "ruby-websocket",
+    "PackageBase": "ruby-websocket",
+    "Version": "1.2.11-1"
+  }
+]
