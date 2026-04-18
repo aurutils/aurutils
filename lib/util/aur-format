@@ -7,6 +7,7 @@ use POSIX qw(strftime);
 use v5.20;
 
 use AUR::Json qw(parse_json parse_json_aur);
+use AUR::Options qw(dump_options);
 my $argv0 = 'format';
 
 # Dictionary for formatter string - subset of package-query(1) format options
@@ -175,14 +176,23 @@ unless (caller) {
     my $opt_format;
     my $opt_time_fmt;
 
-    GetOptions(
+    my $opt_dump;
+
+    my @opt_spec = (
+        'dump-options'  => \$opt_dump,
         'f|format=s'    => sub { $opt_mode = 'format',
                                  $opt_format = $_[1] },
         'gron'          => sub { $opt_mode = 'gron' },
         'd|delim=s'     => \$opt_delim,
         'v|verbose'     => \$opt_verbose,
-        'time-format=s' => \$opt_time_fmt
-    ) or exit(1);
+        'time-format=s' => \$opt_time_fmt,
+    );
+    GetOptions(@opt_spec) or exit(1);
+
+    if ($opt_dump) {
+        dump_options([grep { !ref } @opt_spec]);
+        exit;
+    }
 
     if (not length($opt_time_fmt)) {
         $opt_time_fmt = "%a %b %e %H:%M:%S %Y";

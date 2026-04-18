@@ -12,7 +12,7 @@ use constant ST   => "\033\\";
 
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query query_multi);
-use AUR::Options qw(add_from_stdin);
+use AUR::Options qw(add_from_stdin dump_options);
 my $argv0 = 'search';
 my $aur_location = $ENV{AUR_LOCATION} // 'https://aur.archlinux.org';
 
@@ -117,7 +117,10 @@ unless(caller) {
     my $opt_format    = '';
 
     # XXX: add option to disable set operations, --time-format
-    GetOptions (
+    my $opt_dump;
+
+    my @opt_spec = (
+        'dump-options'  => \$opt_dump,
         'a|any'         => sub { $opt_multiple  = 'union' },
         'i|info'        => sub { $opt_type      = 'info' },
         's|search'      => sub { $opt_type      = 'search' },
@@ -140,8 +143,14 @@ unless(caller) {
         'J|json|raw'    => sub { $opt_format    = 'json' },
         'color=s'       => \$opt_color,
         'r|reverse'     => \$opt_reverse,
-        'k|key=s'       => \$opt_sort_key
-    ) or exit(1);
+        'k|key=s'       => \$opt_sort_key,
+    );
+    GetOptions(@opt_spec) or exit(1);
+
+    if ($opt_dump) {
+        dump_options([grep { !ref } @opt_spec]);
+        exit;
+    }
 
     # Handle '-' to take packages from stdin
     add_from_stdin(\@ARGV, ['-', '/dev/stdin']);
