@@ -5,7 +5,7 @@ use v5.20;
 use Carp;
 
 use Exporter qw(import);
-our @EXPORT_OK = qw(add_from_stdin);
+our @EXPORT_OK = qw(add_from_stdin dump_options);
 our $VERSION = 'unstable';
 
 =head1 NAME
@@ -56,6 +56,37 @@ sub add_from_stdin {
         push(@{$array_ref}, <STDIN>);  # add arguments from stdin
         chomp(@{$array_ref});          # remove newlines
     }
+}
+
+=head2 dump_options()
+
+Print long and short options from a GetOptions spec list, one per
+line, matching the format of the bash --dump-options output.
+Argument-taking options carry a trailing C<:>.
+
+=cut
+
+sub dump_options {
+    my ($spec) = @_;
+    my (@long, @short);
+
+    for my $entry (@{$spec}) {
+        # Split "name|alias|alias2=s" into names and type
+        my ($names, $type) = split /[=:]/, $entry, 2;
+        my $suffix = defined $type ? ':' : '';
+
+        for my $name (split /\|/, $names) {
+            next if $name eq 'dump-options';
+
+            if (length($name) == 1) {
+                push @short, "-${name}${suffix}";
+            } else {
+                push @long, "--${name}${suffix}";
+            }
+        }
+    }
+    say for @long;
+    say for @short;
 }
 
 # vim: set et sw=4 sts=4 ft=perl:

@@ -7,7 +7,7 @@ use List::Util   qw(first);
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query_multi);
 use AUR::Depends qw(recurse prune graph);
-use AUR::Options qw(add_from_stdin);
+use AUR::Options qw(add_from_stdin dump_options);
 my $argv0 = 'depends';
 
 sub solve {
@@ -109,7 +109,10 @@ unless(caller) {
     my $opt_verify       = 0;
     my $opt_installed    = [];
 
-    GetOptions(
+    my $opt_dump;
+
+    my @opt_spec = (
+        'dump-options'             => \$opt_dump,
         'ignore|assume-installed=s' => $opt_installed,
         'no-depends'      => sub { $opt_depends = 0 },
         'no-makedepends'  => sub { $opt_makedepends = 0 },
@@ -124,8 +127,14 @@ unless(caller) {
         'J|json'          => sub { $opt_mode = "json" },
         'jsonl'           => sub { $opt_mode = "jsonl" },
         'r|reverse'       => \$opt_reverse,
-        'a|all|show-all'  => \$opt_show_all
-    ) or exit(1);
+        'a|all|show-all'  => \$opt_show_all,
+    );
+    GetOptions(@opt_spec) or exit(1);
+
+    if ($opt_dump) {
+        dump_options([grep { !ref } @opt_spec]);
+        exit;
+    }
 
     if (not scalar(@ARGV)) {
         say STDERR "$argv0: at least one argument required";

@@ -7,6 +7,7 @@ use Cwd 'abs_path';
 use File::Basename;
 
 use AUR::Json qw(write_json);
+use AUR::Options qw(dump_options);
 my $argv0 = 'repo-parse';
 
 my %repo_add_attributes = (
@@ -254,21 +255,30 @@ unless (caller) {
     my @opt_ignore;
     my $opt_ignore_by;
 
-    GetOptions('J|json'         => \$opt_json,
-               'jsonl'          => \$opt_jsonl,
-               'F|field|attr=s' => \$opt_attr,
-               'l|list'         => \$opt_list,
-               'q|quiet'        => \$opt_quiet,
-               't|table'        => \$opt_table,
-               'd|delim'        => \$opt_delim,
-               'list-attr'      => \$opt_list_attr,
-               'p|path=s'       => \@opt_db_path,
-               's|search=s'     => \$opt_search,
-               'search-by=s'    => \$opt_search_by,
-               'i|ignore=s'     => \@opt_ignore,
-               'ignore-by=s'    => \$opt_ignore_by
-        )
-        or exit(1);
+    my $opt_dump;
+
+    my @opt_spec = (
+        'dump-options'   => \$opt_dump,
+        'J|json'         => \$opt_json,
+        'jsonl'          => \$opt_jsonl,
+        'F|field|attr=s' => \$opt_attr,
+        'l|list'         => \$opt_list,
+        'q|quiet'        => \$opt_quiet,
+        't|table'        => \$opt_table,
+        'd|delim'        => \$opt_delim,
+        'list-attr'      => \$opt_list_attr,
+        'p|path=s'       => \@opt_db_path,
+        's|search=s'     => \$opt_search,
+        'search-by=s'    => \$opt_search_by,
+        'i|ignore=s'     => \@opt_ignore,
+        'ignore-by=s'    => \$opt_ignore_by,
+    );
+    GetOptions(@opt_spec) or exit(1);
+
+    if ($opt_dump) {
+        dump_options([grep { !ref } @opt_spec]);
+        exit;
+    }
 
     if (scalar(@ARGV) > 0 and ($ARGV[0] eq "-" or $ARGV[0] eq "/dev/stdin")) {
         $opt_stdin = 1;

@@ -4,7 +4,7 @@ use warnings;
 use v5.20;
 
 use AUR::Query qw(query query_multi);
-use AUR::Options qw(add_from_stdin);
+use AUR::Options qw(add_from_stdin dump_options);
 my $argv0 = 'query';
 
 unless (caller) {
@@ -12,12 +12,20 @@ unless (caller) {
     use Getopt::Long;
     my $opt_by;
     my $opt_type = "";
+    my $opt_dump;
 
-    GetOptions(
-        't|type=s' => \$opt_type,
-        'b|by=s'   => \$opt_by,
-        'r|raw'    => sub { } # noop
-    ) or exit(1);
+    my @opt_spec = (
+        'dump-options' => \$opt_dump,
+        't|type=s'     => \$opt_type,
+        'b|by=s'       => \$opt_by,
+        'r|raw'        => sub { },
+    );
+    GetOptions(@opt_spec) or exit(1);
+
+    if ($opt_dump) {
+        dump_options([grep { !ref } @opt_spec]);
+        exit;
+    }
 
     if (not length($opt_type)) {
         say STDERR "$argv0: type must be specified";
