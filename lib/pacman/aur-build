@@ -18,8 +18,8 @@ unset -v CDPATH
 chroot=0 no_sync=0 overwrite=0 sign_pkg=0 run_pkgver=0 truncate=1 status=0
 
 # default arguments (empty)
-chroot_args=() chroot_build_args=() sync_args=() repo_args=() repo_add_args=()
-pkglist_args=() makepkg_args=() makepkg_common_args=() read_args=()
+chroot_args=() chroot_base_packages=() chroot_build_args=() sync_args=() repo_args=()
+repo_add_args=() pkglist_args=() makepkg_args=() makepkg_common_args=() read_args=()
 
 # default arguments
 gpg_args=(--detach-sign --no-armor --batch)
@@ -78,7 +78,7 @@ opt_long=('arg-file:' 'chroot' 'database:' 'force' 'root:' 'sign' 'gpg-sign'
           'makepkg-conf:' 'bind:' 'bind-rw:' 'prevent-downgrade' 'temp'
           'syncdeps' 'clean' 'namcap' 'checkpkg' 'makepkg-args:' 'user:'
           'margs:' 'buildscript:' 'null' 'dbext:' 'cleanbuild' 'cargs:'
-          'makechrootpkg-args:' 'makepkg-gnupghome:' 'pool:')
+          'makechrootpkg-args:' 'makepkg-gnupghome:' 'pool:' 'base-packages:')
 opt_hidden=('dump-options' 'ignorearch' 'noconfirm' 'nocheck' 'nosync' 'repo:'
             'results:' 'results-append:' 'status')
 
@@ -129,6 +129,10 @@ while true; do
         # chroot options
         -D|--directory)
             shift; chroot_args+=(--directory "$1") ;;
+        --base-packages)
+            shift; IFS=, read -a base_packages -r <<< "$1"
+            chroot_base_packages+=("${base_packages[@]}")
+            ;;
         --bind)
             shift; chroot_args+=(--bind "$1") ;;
         --bind-rw)
@@ -337,7 +341,7 @@ if (( chroot )); then
     # Update pacman and makepkg configuration for the chroot build
     # queue. A full system upgrade is run on the /root container to
     # avoid lenghty upgrades for makechrootpkg -u.
-    aur chroot "${chroot_args[@]}" --create --update
+    aur chroot "${chroot_args[@]}" --create --update -- "${chroot_base_packages[@]}"
 fi
 
 # Early check for `makepkg` buildscript
