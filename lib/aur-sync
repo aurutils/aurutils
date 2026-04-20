@@ -115,7 +115,8 @@ opt_long=('bind:' 'bind-rw:' 'database:' 'directory:' 'ignore:' 'root:'
 opt_hidden=('dump-options' 'allan' 'ignorearch' 'ignorefile:' 'noconfirm'
             'nover' 'nograph' 'nosync' 'nover-argv' 'noview' 'noprovides' 'nobuild'
             'rebuildall' 'rebuildtree' 'rm-deps' 'gpg-sign' 'margs:' 'nocheck'
-            'no-checkdepends' 'nocheckdepends' 'optdepends' 'repo:' 'autokeyretrieve')
+            'no-checkdepends' 'nocheckdepends' 'optdepends' 'repo:' 'autokeyretrieve'
+            'base-packages:' 'cargs:' 'makechrootpkg-args:')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
@@ -205,10 +206,14 @@ while true; do
             build_args+=(--force) ;;
         -C|--clean)
             build_args+=(--clean) ;;
+        --base-packages)
+            shift; build_args+=(--base-packages "$1") ;;
         --cleanbuild)
             build_args+=(--cleanbuild) ;;
         --makepkg-args|--margs)
             shift; build_args+=(--margs "$1") ;;
+        --makechrootpkg-args|--cargs)
+            shift; build_args+=(--cargs "$1") ;;
         --makepkg-conf)
             shift; build_args+=(--makepkg-conf "$1") ;;
         --pacman-conf)
