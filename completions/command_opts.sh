@@ -6,10 +6,12 @@ have_optdump=('build' 'chroot' 'depends' 'fetch' 'format' 'pkglist'
 no_optdump=('graph')
 
 default_opts() {
-    local cmd corecommands=() opts=()
+    local cmd corecommands=() opts=() script
 
     for cmd in "${have_optdump[@]}"; do
-        mapfile -t opts < <(find ../lib -type f -name "aur-$cmd" -exec bash -- {} --dump-options ';' | LC_ALL=C sort)
+        script=$(find ../lib -type f -name "aur-$cmd" | head -1)
+        [[ -f $script ]] || continue
+        mapfile -t opts < <(PERL5LIB=../perl "$script" --dump-options 2>/dev/null | LC_ALL=C sort)
         corecommands+=("default_cmds[${cmd}]='${opts[*]}'")
     done
 
