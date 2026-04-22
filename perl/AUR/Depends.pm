@@ -7,6 +7,7 @@ use List::Util qw(first);
 use Carp;
 use Exporter qw(import);
 use AUR::Vercmp qw(vercmp);
+use AUR::Exception;
 
 use constant EX_SUCCESS => 0;
 use constant EX_FAILURE => 1;
@@ -138,13 +139,11 @@ sub recurse {
     }
     # Check if results are available
     if (scalar keys %results == 0) {
-        say STDERR __PACKAGE__ . ": no packages found";
-        exit EX_FAILURE;
+        croak(AUR::Exception->new(__PACKAGE__ . ": no packages found", EX_FAILURE));
     }
     # Check if request limits have been exceeded
     if ($a == $aur_callback_max) {
-        say STDERR __PACKAGE__ . ": total requests: $a (out of range)";
-        exit EX_OUT_OF_RANGE;
+        croak(AUR::Exception->new(__PACKAGE__ . ": total requests: $a (out of range)", EX_OUT_OF_RANGE));
     }
     return \%results, \%pkgdeps, \%pkgmap;
 }
@@ -182,8 +181,7 @@ Parameters:
 sub graph {
     my ($results, $pkgdeps, $pkgmap, $verify, $provides) = @_;
     my (%dag, %dag_foreign);
-
-    my $dag_valid = 1;
+    my @invalid;
     $verify //= 1;  # run vercmp by default
 
     # Iterate over packages
@@ -220,8 +218,8 @@ sub graph {
                     $dag{$prov_name}{$name} = $dep_type;
                 }
                 else {
-                    say STDERR "invalid node: $prov_name=$prov_ver (required: $dep_op$dep_req by: $name)";
-                    $dag_valid = 0;
+                    push @invalid,
+                        "invalid node: $prov_name=$prov_ver (required: $dep_op$dep_req by: $name)";
                 }
             }
             # Dependency is foreign
@@ -230,8 +228,8 @@ sub graph {
             }
         }
     }
-    if (not $dag_valid) {
-        exit EX_FAILURE;
+    if (@invalid) {
+        croak(AUR::Exception->new(__PACKAGE__ . ": " . join("\n", @invalid), EX_FAILURE));
     }
     return \%dag, \%dag_foreign;
 }
@@ -320,8 +318,7 @@ sub tsort {
     my @output;
 
     if (scalar(@{$input}) % 2 == 1) {
-        say STDERR __PACKAGE__ . ": odd number of tokens";
-        exit EX_FAILURE;
+        croak(AUR::Exception->new(__PACKAGE__ . ": odd number of tokens", EX_FAILURE));
     }
 
     while (@{$input}) {
@@ -353,7 +350,9 @@ sub tsort {
 
         }
     }
-    say STDERR __PACKAGE__ . ": cycle detected\n" if grep {$npred{$_}} keys %npred;
+    if (grep {$npred{$_}} keys %npred) {
+        croak(AUR::Exception->new(__PACKAGE__ . ": cycle detected", EX_FAILURE));
+    }
 
     return @output;
 }

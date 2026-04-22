@@ -4,10 +4,12 @@ use warnings;
 use v5.20;
 
 use List::Util   qw(first);
+use Scalar::Util qw(blessed);
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query_multi);
 use AUR::Depends qw(recurse prune graph);
 use AUR::Options qw(add_from_stdin dump_options);
+use AUR::Exception;
 my $argv0 = 'depends';
 
 sub solve {
@@ -164,8 +166,17 @@ unless(caller) {
 
     # Retrieve AUR results
     #    JSON -> hash -> extract depends[] -> repeat until none -> prune
-    my ($results, $dag, $dag_foreign) = solve(\@ARGV, \@types, \&callback_query,
-        $opt_verify, $opt_provides, $opt_installed);
+    my ($results, $dag, $dag_foreign) = eval {
+        solve(\@ARGV, \@types, \&callback_query,
+              $opt_verify, $opt_provides, $opt_installed);
+    };
+    if (my $error = $@) {
+        if (blessed($error) && $error->isa('AUR::Exception')) {
+            say STDERR $error->message;
+            exit($error->exit_code);
+        }
+        die $error;  # re-throw unexpected errors
+    }
 
     # Add `RequiredBy` to results
     for my $name (keys %{$dag}) {
