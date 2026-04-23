@@ -217,7 +217,7 @@ while true; do
         --makepkg-conf)
             shift; build_args+=(--makepkg-conf "$1") ;;
         --pacman-conf)
-            shift; build_args+=(--pacman-conf "$1")
+            shift; pacman_conf=$1; build_args+=(--pacman-conf "$1")
             filter_args+=(--config "$1") ;;
         --pkgver)
             build_args+=(--pkgver) ;;
@@ -356,6 +356,17 @@ aur format -f '%n\t%b\t%v\n' "$tmp"/depends.jsonl | sort -u >"$tmp"/pkginfo
 { if (( ${#pkg_i[@]} )); then
       printf '%s\n' "${pkg_i[@]}"  # Ignored packages
   fi
+
+# Check if any AUR packages have been promoted to official sync repositories.
+if (( update )); then
+    pacman ${pacman_conf:+--config "$pacman_conf"} -Sl | db_name="$db_name" awk '$1 != ENVIRON["db_name"] { print $2, $3, $1 }' > "$tmp"/db_info_ext
+    aur vercmp -p <(cut -d ' ' -f 1,2 "$tmp"/db_info_ext) < "$tmp"/db_info > "$tmp"/res
+
+    if [[ -s "$tmp"/res ]]; then
+        msg2 'Aur packages promoted to sync repos:'
+        grep -Fwf "$tmp"/res "$tmp"/db_info_ext | awk '{ printf "%s (%s)\n", $1, $3 }' | pr -to 4 >&2
+    fi
+fi
 
   # Packages with equal or newer versions are taken as complement
   # for the queue. If chkver_argv is enabled, packages on the
