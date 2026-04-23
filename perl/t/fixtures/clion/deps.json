@@ -1,0 +1,28 @@
+[
+  {
+    "Depends": [
+      "libdbusmenu-glib"
+    ],
+    "MakeDepends": [
+      "rsync"
+    ],
+    "Name": "clion",
+    "OptDepends": [
+      "clion-jre",
+      "clion-cmake",
+      "clion-gdb",
+      "clion-lldb",
+      "java-runtime",
+      "cmake",
+      "gdb",
+      "lldb",
+      "gcc",
+      "clang",
+      "gtest",
+      "python",
+      "doxygen"
+    ],
+    "PackageBase": "clion",
+    "Version": "1:2026.1-1"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "Depends": [
+      "libjpeg-turbo",
+      "libpng",
+      "gcc-libs"
+    ],
+    "MakeDepends": [
+      "libjpeg-turbo",
+      "libpng",
+      "gcc-libs",
+      "libxml2",
+      "xkeyboard-config",
+      "xorg-xkbcomp",
+      "libxfont2",
+      "libxinerama",
+      "xorg-font-util",
+      "pixman",
+      "libxrandr",
+      "libxtst",
+      "libxcomposite",
+      "libxpm",
+      "libxdamage",
+      "xorgproto",
+      "imake"
+    ],
+    "Name": "libxcomp",
+    "PackageBase": "nx",
+    "Version": "3.5.99.27-3"
+  },
+  {
+    "Depends": [
+      "libxcomp"
+    ],
+    "MakeDepends": [
+      "libjpeg-turbo",
+      "libpng",
+      "gcc-libs",
+      "libxml2",
+      "xkeyboard-config",
+      "xorg-xkbcomp",
+      "libxfont2",
+      "libxinerama",
+      "xorg-font-util",
+      "pixman",
+      "libxrandr",
+      "libxtst",
+      "libxcomposite",
+      "libxpm",
+      "libxdamage",
+      "xorgproto",
+      "imake"
+    ],
+    "Name": "nxproxy",
+    "PackageBase": "nx",
+    "Version": "3.5.99.27-3"
+  }
+]

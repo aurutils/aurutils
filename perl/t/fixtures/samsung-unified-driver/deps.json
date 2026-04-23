@@ -1,0 +1,37 @@
+[
+  {
+    "Depends": [
+      "samsung-unified-driver-printer",
+      "samsung-unified-driver-scanner"
+    ],
+    "Name": "samsung-unified-driver",
+    "PackageBase": "samsung-unified-driver",
+    "Version": "1.00.39-11"
+  },
+  {
+    "Name": "samsung-unified-driver-common",
+    "PackageBase": "samsung-unified-driver",
+    "Version": "1.00.39-11"
+  },
+  {
+    "Depends": [
+      "samsung-unified-driver-common",
+      "cups",
+      "ghostscript"
+    ],
+    "Name": "samsung-unified-driver-printer",
+    "PackageBase": "samsung-unified-driver",
+    "Version": "1.00.39-11"
+  },
+  {
+    "Depends": [
+      "samsung-unified-driver-common",
+      "libxml2-legacy",
+      "libusb-compat",
+      "sane"
+    ],
+    "Name": "samsung-unified-driver-scanner",
+    "PackageBase": "samsung-unified-driver",
+    "Version": "1.00.39-11"
+  }
+]
