@@ -1,0 +1,146 @@
+#!/usr/bin/env zsh
+# Generate fish completions by sourcing completions/zsh/_aur, overriding
+# _arguments to capture each _aur-* function's spec array, and emitting
+# fish 'complete' directives. Sourcing lets zsh do its own parsing -
+# brace expansion, parameter expansion, and quoting all resolve natively.
+
+emulate -L zsh
+setopt extended_glob
+
+typeset -ga CAPTURED
+_arguments() { CAPTURED=("$@") }
+
+source zsh/_aur
+
+# Subcommand descriptions live in cmds[X]="Y" assignments inside _aur().
+# That hash is local, so read the function's text.
+typeset -A SUBCMD_DESC
+local line k v
+for line in ${(f)functions[_aur]}; do
+    [[ $line == *cmds\[*\]=\"* ]] || continue
+    k=${line#*cmds\[}; k=${k%%\]=*}
+    v=${line#*\"};     v=${v%\"*}
+    SUBCMD_DESC[$k]=$v
+done
+
+# parse_spec: parse one captured _arguments spec.
+# Sets `reply` = (group_key, flag_directive, takes_arg, action, description).
+# Returns 1 to skip (positionals, _arguments flags, group markers).
+parse_spec() {
+    local spec=$1
+
+    spec=${spec#\*}
+    local excl=""
+    [[ $spec == \(*\)* ]] && { excl=${spec%%\)*}\); spec=${spec#\(*\)} }
+
+    [[ $spec == :* ]] && return 1
+
+    local flag rest
+    if [[ $spec == --* ]]; then
+        flag=${spec%%[\[:=]*}
+        rest=${spec#$flag}
+    elif [[ $spec == -? || $spec == -?[\[:=]* ]]; then
+        flag=${spec[1,2]}
+        rest=${spec[3,-1]}
+    else
+        return 1
+    fi
+
+    local takes_arg=0
+    [[ $rest == '='* ]] && { takes_arg=1; rest=${rest#=} }
+
+    local desc=""
+    if [[ $rest == \[* ]]; then
+        desc=${${rest#\[}%%\]*}
+        rest=${rest#\[*\]}
+    fi
+
+    local action=""
+    [[ $rest == :* ]] && { takes_arg=1; action=$rest }
+
+    local flag_directive
+    [[ $flag == --* ]] && flag_directive="-l ${flag#--}" || flag_directive="-s ${flag#-}"
+
+    reply=("$excl|$desc|$action" "$flag_directive" "$takes_arg" "$action" "$desc")
+    return 0
+}
+
+action_to_fish() {
+    case $1 in
+        *_files\ -/*)         print -n -- "-xa '(__fish_complete_directories)'" ;;
+        *_aur_repositories*)  print -n -- "-xa '(__aur_list_repos)'" ;;
+        *_users*)             print -n -- "-xa '(__fish_complete_users)'" ;;
+        *_files*)             print -n -- "-rF" ;;
+        *)                    print -n -- "-r" ;;
+    esac
+}
+
+fish_escape() { print -r -n -- "${1//\'/\\\'}" }
+
+# Emit a bucket of brace-expanded aliases as one 'complete' directive.
+emit_bucket() {
+    local cmd=$1 desc=$2 action=$3 takes_arg=$4
+    shift 4
+    (( $# )) || return
+    local out="complete -c aur -n '__fish_seen_subcommand_from $cmd' $*"
+    (( takes_arg )) && out+=" $(action_to_fish "$action")"
+    [[ -n $desc ]] && out+=" -d '$(fish_escape "$desc")'"
+    print -r -- "$out"
+}
+
+# --- header ---
+cat <<'HEADER'
+# Fish completion for aurutils - generated at build time.
+# Do not edit; regenerate with: make -C completions fish
+
+complete -c aur -f
+
+function __aur_list_repos
+    aur repo --list-repo 2>/dev/null
+end
+
+HEADER
+
+# --- subcommand completions ---
+print -- '# ---- subcommands ----'
+for cmd in ${(ok)SUBCMD_DESC}; do
+    printf "complete -c aur -n __fish_use_subcommand -a %s -d '%s'\n" \
+        "$cmd" "$(fish_escape "${SUBCMD_DESC[$cmd]}")"
+done
+print -- "complete -c aur -n __fish_use_subcommand -l version -d 'display version'"
+print
+
+# --- per-subcommand options ---
+local -a subcmds=(${(o)${(M)${(k)functions}:#_aur-*}#_aur-})
+
+for cmd in $subcmds; do
+    CAPTURED=()
+    _aur-$cmd 2>/dev/null
+
+    local prev_key="__none__"
+    local cur_desc="" cur_action=""
+    integer cur_takes_arg=0
+    local -a cur_flags=()
+    integer header=0
+
+    for spec in $CAPTURED; do
+        parse_spec "$spec" || continue
+        if (( ! header )); then
+            print -- "# ---- options: $cmd ----"
+            header=1
+        fi
+        if [[ $reply[1] == $prev_key ]]; then
+            cur_flags+=("$reply[2]")
+        else
+            emit_bucket "$cmd" "$cur_desc" "$cur_action" $cur_takes_arg "${cur_flags[@]}"
+            prev_key=$reply[1]
+            cur_flags=("$reply[2]")
+            cur_takes_arg=$reply[3]
+            cur_action=$reply[4]
+            cur_desc=$reply[5]
+        fi
+    done
+    emit_bucket "$cmd" "$cur_desc" "$cur_action" $cur_takes_arg "${cur_flags[@]}"
+
+    (( header )) && print
+done
