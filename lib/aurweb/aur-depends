@@ -24,8 +24,12 @@ sub solve {
     # Targets to be removed from the graph
     my @to_prune;
 
-    # Remove virtual dependencies from dependency graph (#1063)
-    push @to_prune, keys %{$pkgmap} if $opt_provides;
+    # Remove virtual dependencies from dependency graph (#1063), but
+    # keep explicit targets even if a sibling target Provides them (#1255).
+    if ($opt_provides) {
+        my %is_target = map { $_ => 1 } @{$targets};
+        push @to_prune, grep { not $is_target{$_} } keys %{$pkgmap};
+    }
 
     # Remove transitive dependencies for installed targets (#592)
     push @to_prune, @{$opt_installed} if $opt_installed && @{$opt_installed};
