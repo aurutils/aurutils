@@ -464,9 +464,10 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         mv -f "${siglist[@]}" "$db_root"
     fi
 
-    # Update database
+    # Update database. Wait for the lock file if another aur-build process
+    # updates the same database.
     #shellcheck disable=SC2086
-    env -C "$db_root" LANG=C ${AUR_REPO_ADD:-repo-add} "${repo_add_args[@]}" "$db_path" "${pkglist[@]}"
+    env -C "$db_root" LANG=C ${AUR_REPO_ADD:-repo-add} --wait-for-lock "${repo_add_args[@]}" "$db_path" "${pkglist[@]}"
 
     if (( chroot )) || (( no_sync )); then
         continue
