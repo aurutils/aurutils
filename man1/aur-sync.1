@@ -51,6 +51,13 @@ separating them with a comma, or by repeating the \fB\-\-ignore\fR option.
 If PACKAGE is listed on the
 .BR aur\-sync
 command line, this option has no effect.
+.PP
+A package is ignored by its package name. A split package is ignored by
+naming each of its names:
+.B \-\-ignore=frida
+leaves
+.I python\-frida
+(same pkgbase) in the queue and the package is built (#864).
 .
 .TP
 .BI \-\-ignore\-file= FILE
