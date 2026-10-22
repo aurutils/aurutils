@@ -206,7 +206,7 @@ sub graph {
                 # $provides is false.
                 my  ($prov_name, $prov_ver) = ($dep_name, $dep_ver[0]);
 
-                if ($provides and defined $pkgmap->{$dep_name}) {
+                if ($provides and $dep_type ne 'Self' and defined $pkgmap->{$dep_name}) {
                     ($prov_name, $prov_ver) = @{$pkgmap->{$dep_name}};
                 }
 
