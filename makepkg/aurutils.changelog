@@ -1,25 +1,43 @@
 ## 21
 
+* `aur-sync`
+  + pass additional arguments through to aur-chroot (#1265)
+
 * `aur-build`
   + move local repository sync to `build--sync` (#1183)
     - implement file-based locking (`makepkg` implementation)
     - implement `pactrans` upgrade
   + add `--pool` (#1213)
+  + pass additional arguments through to aur-chroot (#1265)
 
 * `aur-fetch`
   + support mixed url and pkgbase names (#1104)
   + add trurl(1) as dependency
 
+* `aur-view`
+  + limit orderfile to local git-diff calls (#1241)
+
 * `perl`
   + add `Depends::tsort` (#1224)
+  + add `AUR::Exception` (#1266)
+  + enable `--dump-options` in Perl scripts (#1263)
+
+* `tests`
+  + add `depends.t` with fixture auto-discovery (#1253)
 
 ## 20.5
 
 * `aur-build`
   + do not define `LOGDEST` explicitly
+  + revert error on partially built package group
 
 * `aur-chroot`
   + preserve `LOGDEST` and `SRCDEST` by default (#1196)
+  + preserve `SRCPKGDEST`, `MAKEFLAGS` and `PACKAGER` (#1200)
+
+* `aur-graph`
+  + detect sections on keywords (#1228)
+  + don't use `delete` as a function (#1250)
 
 * `aur-repo`
   + avoid empty output with `-q -u` (#1215)
