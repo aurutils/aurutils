@@ -456,7 +456,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         fi
 
         if [[ -v results_file ]]; then
-            printf "build:file://$db_root/%s\n" "${pkglist[@]}" | tee -a "$results_file" >/dev/null
+            printf 'build:file://%s\n' "${pkglist[@]/#/$db_root/}" | tee -a "$results_file" >/dev/null
         fi
 
     elif (( ${#siglist[@]} )); then
