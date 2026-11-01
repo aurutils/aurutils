@@ -1,7 +1,7 @@
 #!/bin/bash
 shopt -s extglob
 
-for i in issue/!(0085); do
+for i in "$(dirname "${BASH_SOURCE[0]}")"/issue/!(0085); do
     printf '%s\t' "$i"
 
     if "$i" >/dev/null 2>&1; then
