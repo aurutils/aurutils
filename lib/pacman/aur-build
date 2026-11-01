@@ -104,7 +104,7 @@ while true; do
         --dbext)
             shift; db_ext=$1 ;;
         --buildscript)
-            shift; makepkg_common_args+=(-p "$1")
+            shift; buildscript=$1; makepkg_common_args+=(-p "$1")
             pkglist_args+=(-p "$1") ;;
         --nosync|--no-sync)
             no_sync=1 ;;
