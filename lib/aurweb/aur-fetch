@@ -135,7 +135,7 @@ fi
 declare -A packages
 while read -r remote path; do
     pkgbase=${path%/}
-    pkgbase=${path##*/}
+    pkgbase=${pkgbase##*/}
 
     # XXX duplicate pkgbases will inherit the latest remote value. Check for
     #     duplicates here if you want to preserve the first associated remote.
