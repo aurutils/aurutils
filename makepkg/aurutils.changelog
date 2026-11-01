@@ -1,3 +1,45 @@
+## 21.1
+
+* `aur-build`
+  + replace links in the local repository with `--pool`
+  + use `AUR_MAKEPKG_GNUPGHOME` for `--pkgver`
+  + check the file given with `--buildscript` (#1252)
+  + pass `--makepkg-conf` to `build--pkglist`
+  + `build--sync`: do not forward arguments to `pactrans`
+
+* `aur-chroot`
+  + add `--setenv` arguments for `run0` (#1268)
+
+* `aur-fetch`
+  + read standard input for `-` as the first argument
+  + read `aurutils.rebase` for each package
+  + pass `--ff` to git-merge
+  + strip trailing slashes from URLs
+  + `fetch--mirror`: match the mirror branch exactly
+
+* `aur-graph`
+  + include epoch in package versions
+  + compare dependencies with the full version
+  + try comparison operators in order
+
+* `aur-repo`
+  + use `--root` if no repository is specified
+  + `repo-filter`: update the default repositories
+  + `repo-parse`: take a value for `--delim`
+
+* `aur-srcver`
+  + read targets from `--arg-file`
+
+* `aur-sync`, `aur-build`, `aur-chroot`
+  + print errors to standard error
+
+* `perl`
+  + compare dependencies with the full version in `Depends`
+  + document the remaining `AUR` modules
+
+* `tests`
+  + move shell tests to `tests/lib`
+
 ## 21
 
 * `aur-sync`
