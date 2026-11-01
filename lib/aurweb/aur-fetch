@@ -235,12 +235,12 @@ for pkg in "${!packages[@]}"; do
         pkg_sync=$sync
 
         if [[ $sync = auto ]]; then
-            case $(git config --default=false --get --type bool aurutils.rebase) in
-                true)  pkg_sync=rebase ;;
-                false) pkg_sync=merge
-            esac
+            pkg_sync=merge
 
-            warn 'aurutils.rebase is set for %s\n' "$pkg_sync"
+            if rebase=$(git config --get --type bool aurutils.rebase); then
+                [[ $rebase = true ]] && pkg_sync=rebase
+                warn '%s: aurutils.rebase is set to %s\n' "$pkg" "$rebase"
+            fi
         fi
 
         # Retrieve new upstream commits
