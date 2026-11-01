@@ -1,0 +1,33 @@
+#!/bin/bash
+# usage: run <test or directory>...
+# Run each test, or each executable in a directory, and print OK or FAIL.
+# The output of a failed test is printed after its name. Exits 1 if any
+# test failed.
+shopt -s nullglob
+
+tests=()
+for arg in "$@"; do
+    if [[ -d $arg ]]; then
+        for t in "$arg"/*; do
+            [[ -f $t && -x $t ]] && tests+=("$t")
+        done
+    elif [[ $arg == */* ]]; then
+        tests+=("$arg")
+    else
+        tests+=("./$arg")  # not looked up in PATH
+    fi
+done
+
+ret=0
+for t in "${tests[@]}"; do
+    printf '%s\t' "$t"
+
+    if out=$("$t" 2>&1); then
+        printf '%s\n' OK
+    else
+        printf '%s\n' FAIL
+        printf '%s\n' "$out" | sed 's/^/    /'
+        ret=1
+    fi
+done
+exit "$ret"

@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-cd "$(dirname "${BASH_SOURCE[0]}")"
+cd "$(dirname "${BASH_SOURCE[0]}")"/..
 
 tests_t=(json/{ascii,depends,meta,none,empty_a,search,utf-8}.json*)
 tests_f=(json/{empty,error}.json)

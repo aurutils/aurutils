@@ -1,5 +1,11 @@
 #!/bin/bash
 set -e
+cd "$(dirname "${BASH_SOURCE[0]}")"/..
+
+# answer AUR requests from a fixture instead of aurweb (see bin/curl)
+export PATH=$PWD/bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/json/bitlbee.json
+
 # multiple attempts for random ordering of hashes
 n_trials=10
 
@@ -8,7 +14,15 @@ err() {
     exit 1
 }
 
-for t in {1..$n_trials}; do
+# names listed in --json, --table and pairs output
+names_json()  { aur depends --json "$@" | jq -r 'keys[]' | sort -u; }
+names_table() { aur depends --table "$@" | cut -f1 | sort -u; }
+names_pairs() { aur depends --pkgname "$@" | tr '\t' '\n' | sort -u; }
+
+# reverse dependencies in --json output which are not listed themselves
+dangling() { jq -r '. as $o | [$o[] | .RequiredBy // {} | keys[]] - ($o | keys) | .[]'; }
+
+for (( t = 0; t < n_trials; t++ )); do
     # bitlbee-libpurple-git provides bitlbee
     out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json)
 
@@ -25,28 +39,79 @@ for t in {1..$n_trials}; do
         err '1 reverse dependencies expected (bitlbee-discord-git)'
     fi
 
+    # bitlbee is replaced by its provider in every output format
+    json=$(names_json bitlbee-libpurple-git bitlbee-discord-git)
+    diff -u <(printf '%s\n' "$json") <(names_table bitlbee-libpurple-git bitlbee-discord-git)
+    diff -u <(printf '%s\n' "$json") <(names_pairs bitlbee-libpurple-git bitlbee-discord-git)
+
     # bitlbee-discord-git requires bitlbee
     out=$(aur depends bitlbee-discord-git --json)
-    
+
     if ! [[ $(jq '. | length' <<< "$out") == 2 ]]; then
         echo >&2 "$out"
         err '2 dependencies expected (bitlbee-discord-git)'
     fi
-    if ! [[ $(jq '."bitlbee".RequiredBy | length' <<< "$out") == 2 ]]; then
+    if ! [[ $(jq '."bitlbee".RequiredBy | length' <<< "$out") == 1 ]]; then
         echo >&2 "$out"
-        err '2 reverse dependencies expected (bitlbee)'
+        err '1 reverse dependencies expected (bitlbee)'
     fi
     if ! [[ $(jq '."bitlbee-discord-git".RequiredBy | length' <<< "$out") == 1 ]]; then
         echo >&2 "$out"
         err '1 reverse dependencies expected (bitlbee-discord-git)'
     fi
 
-    # TODO: same with --all
-    #out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json --all)
+    # bitlbee is a target: it is kept even though bitlbee-libpurple-git
+    # provides it (#1255)
+    out=$(aur depends bitlbee bitlbee-libpurple-git --json)
 
-    #out=$(aur depends bitlbee-discord-git --json-all)
+    if ! [[ $(jq -c '.bitlbee.RequiredBy' <<< "$out") == '{"bitlbee":"Self"}' ]]; then
+        echo >&2 "$out"
+        err 'self dependency expected (bitlbee)'
+    fi
+    json=$(names_json bitlbee bitlbee-libpurple-git)
+    diff -u <(printf '%s\n' "$json") <(names_table bitlbee bitlbee-libpurple-git)
+    diff -u <(printf '%s\n' "$json") <(names_pairs bitlbee bitlbee-libpurple-git)
 
-    # TODO: purely virtual dependencies specified on the command-line
+    # --all: foreign dependencies of bitlbee are dropped with bitlbee
+    out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json --all)
 
-    # TODO: --assume-installed
+    if ! [[ $(jq '. | length' <<< "$out") == 8 ]]; then
+        echo >&2 "$out"
+        err '8 dependencies expected (bitlbee-discord-git, --all)'
+    fi
+    if [[ $(dangling <<< "$out") ]]; then
+        echo >&2 "$out"
+        err 'reverse dependencies not in results (--all)'
+    fi
+
+    # --all: foreign dependencies of bitlbee are kept if it is required
+    out=$(aur depends bitlbee-discord-git --json --all)
+
+    if ! [[ $(jq '. | length' <<< "$out") == 7 ]]; then
+        echo >&2 "$out"
+        err '7 dependencies expected (bitlbee-discord-git, --all)'
+    fi
+    if ! [[ $(jq '.glib2.RequiredBy | keys == ["bitlbee"]' <<< "$out") == true ]]; then
+        echo >&2 "$out"
+        err 'glib2 required by bitlbee expected (--all)'
+    fi
+
+    # --assume-installed: the provider and what only it requires are removed
+    for all in '' --all; do
+        out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json ${all:+"$all"} \
+                  --assume-installed bitlbee-libpurple-git)
+
+        if ! [[ $(jq -c 'keys - ["git"]' <<< "$out") == '["bitlbee-discord-git"]' ]]; then
+            echo >&2 "$out"
+            err "bitlbee-discord-git expected (--assume-installed $all)"
+        fi
+        if [[ $(dangling <<< "$out") ]]; then
+            echo >&2 "$out"
+            err "reverse dependencies not in results (--assume-installed $all)"
+        fi
+    done
+
+    # TODO: purely virtual targets and dependencies, e.g. brave-browser
+    # provided by brave-bin: graph() only uses provides for names in the AUR
+    # results, so these are foreign even if their provider is in the results
 done
