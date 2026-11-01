@@ -144,6 +144,25 @@ upgrade candidates from
 Version checks for package dependencies remain enabled.
 .
 .TP
+.B \-\-rebuild
+Build the packages specified on the command line even if the local
+repository holds the same or a newer version. Short for
+.BR "\-\-force \-\-no\-ver\-argv" .
+Dependencies that are up to date are not rebuilt.
+.
+.TP
+.BR \-\-rebuildtree ", " \-\-rebuild\-tree
+Build the packages specified on the command line and all their AUR
+dependencies, regardless of versions in the local repository or
+packages in other repositories. Implies
+.BR \-\-force ", " \-\-no\-ver " and " \-\-no\-provides .
+.
+.TP
+.BR \-\-rebuildall ", " \-\-rebuild\-all
+Build all packages in the local repository. Implies
+.BR \-\-force " and " \-\-no\-ver .
+.
+.TP
 .BR \-\-noprovides ", " \-\-no\-provides
 Do not take virtual dependencies
 .RB ( provides )
@@ -268,6 +287,10 @@ Build packages in a systemd\-nspawn container.
 .TP
 .BR \-f ", " \-\-force
 Continue the build process if a package with the same name exists.
+This does not disable version checks: a target that is up to date in
+the local repository is removed from the queue before the build. Use
+.B \-\-rebuild
+to build it again.
 .RB ( "aur build \-f" )
 .
 .TP 
