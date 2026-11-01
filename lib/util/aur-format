@@ -51,39 +51,31 @@ sub tokenize {
         say STDERR "$argv0: empty format specified";
         exit(1);
     }
-    # omit trailing empty fields
-    my @tokens = split('%', $format);
-
-    # ignore first field: split("%a%b") -> ("", 'a', 'b')
+    # Fields and the text following them. The first label is empty, for
+    # text before the first field.
     my @labels = ("");
-    my @suffix = ($tokens[0]);
+    my @suffix = ("");
 
-    for my $i (1..$#tokens) {
-        my $token = $tokens[$i];
-
-        if (length($token)) {
-            # Expand first character, preserve the rest
-            my $token_1 = substr($token, 0, 1);
-            my $label = $aur_formats{$token_1}->[1] // "";
-            my $rest;
-
-            if (not length($label) and (length($tokens[$i-1]) > 0 or $i == 1)) {
-                die $argv0 . ': invalid format key specified';
-            } elsif (not length($label)) {
-                $rest = $token; # Special case for %%
-            } else {
-                $rest = substr($token, 1);
-            }
-            # Unescape shell-quoted strings, e.g. --format '%n\t%v\n'
-            $rest =~ s/(?<!\\)\\t/\t/g; # do not unescape '\\t'
-            $rest =~ s/(?<!\\)\\n/\n/g;
-            $rest =~ s/(?<!\\)\\0/\0/g;
+    # Split from left to right, so that %% is a literal % also before a
+    # format key, e.g. "%%n" -> "%n"
+    for my $token ($format =~ /(%.?|[^%]+)/gs) {
+        if ($token eq '%%' or $token eq '%') {
+            $suffix[-1] .= '%';  # including a trailing %
+        }
+        elsif ($token =~ /^%(.)$/s) {
+            my $label = $aur_formats{$1}->[1];
+            die $argv0 . ': invalid format key specified' if not defined $label;
 
             push(@labels, $label);
-            push(@suffix, $rest);
-        } else {
-            push(@labels, "");
-            push(@suffix, "%");
+            push(@suffix, "");
+        }
+        else {
+            # Unescape shell-quoted strings, e.g. --format '%n\t%v\n'
+            $token =~ s/(?<!\\)\\t/\t/g; # do not unescape '\\t'
+            $token =~ s/(?<!\\)\\n/\n/g;
+            $token =~ s/(?<!\\)\\0/\0/g;
+
+            $suffix[-1] .= $token;
         }
     }
     return \@labels, \@suffix;
