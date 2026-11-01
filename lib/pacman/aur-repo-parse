@@ -265,7 +265,7 @@ unless (caller) {
         'l|list'         => \$opt_list,
         'q|quiet'        => \$opt_quiet,
         't|table'        => \$opt_table,
-        'd|delim'        => \$opt_delim,
+        'd|delim=s'      => \$opt_delim,
         'list-attr'      => \$opt_list_attr,
         'p|path=s'       => \@opt_db_path,
         's|search=s'     => \$opt_search,
