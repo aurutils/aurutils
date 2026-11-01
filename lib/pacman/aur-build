@@ -236,7 +236,7 @@ if (( chroot )); then
 
     # Print an error if `chroot --status` fails (#1152)
     if ! wait "$!"; then
-        printf '%s: error: failed to read chroot configuration\n' "$argv0"
+        printf >&2 '%s: error: failed to read chroot configuration\n' "$argv0"
         exit 1
     fi
 
@@ -277,7 +277,7 @@ fi
 
 # Print an error if `repo --status` fails
 if ! wait "$!"; then
-    printf '%s: error: failed to read repository configuration\n' "$argv0"
+    printf >&2 '%s: error: failed to read repository configuration\n' "$argv0"
     exit 1
 fi
 

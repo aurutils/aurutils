@@ -298,7 +298,7 @@ fi
 
 # Print an error if `build --status` fails (#1151)
 if ! wait "$!"; then
-    printf '%s: error: failed to read build configuration\n' "$argv0"
+    printf >&2 '%s: error: failed to read build configuration\n' "$argv0"
     exit 1
 fi
 

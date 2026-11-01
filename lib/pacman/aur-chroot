@@ -54,7 +54,7 @@ EOF
 }
 
 usage() {
-    printf 'usage: %s [-BU] [--create] [-CDM path] [package...]\n' "$argv0"
+    printf >&2 'usage: %s [-BU] [--create] [-CDM path] [package...]\n' "$argv0"
     exit 1
 }
 
