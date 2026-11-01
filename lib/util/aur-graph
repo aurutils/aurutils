@@ -11,25 +11,36 @@ function get_vercmp(ver1, ver2, op) {
 
     if (op == "-" || ver2 == "-") {
         return "true" # dependency is unversioned
-    } else if (op == "=") {
-        return (ver1 == ver2) # common case
-    } else if (op == "<") {
+    }
+    else if (op == "=") {
+        if (ver1 == ver2) {
+            return 1 # common case
+        }
+        command | getline
+        close(command)
+        return ($1 == 0)
+    }
+    else if (op == "<") {
         command | getline
         close(command)
         return ($1 < 0)
-    } else if (op == ">") {
+    }
+    else if (op == ">") {
         command | getline
         close(command)
         return ($1 > 0)
-    } else if (op == "<=") {
+    }
+    else if (op == "<=") {
         command | getline
         close(command)
         return ($1 <= 0)
-    } else if (op == ">=") {
+    }
+    else if (op == ">=") {
         command | getline
         close(command)
         return ($1 >= 0)
-    } else {
+    }
+    else {
         printf("invalid operation\n") > "/dev/stderr"
         exit 1
     }
@@ -47,9 +58,9 @@ function has_valid_arch(attr) {
     return !i || (substr(attr, i+1) in arch)
 }
 
-# Version of the current pkgbase, as in pacman
+# version of the current pkgbase, cf. util/pkgbuild.sh (libmakepkg)
 function full_version() {
-    return (epoch > 0 ? epoch ":" : "") pkgver
+    return (epoch > 0 ? epoch ":" : "") pkgver "-" pkgrel
 }
 
 function print2(str1, str2) {
@@ -71,6 +82,7 @@ BEGIN {
 $1 == "pkgbase" {
     pkgbase = $3
     pkgver = ""
+    pkgrel = ""
     epoch = ""
 
     # SRCINFO(5), "Section headers"
@@ -83,6 +95,10 @@ $1 == "pkgbase" {
 
 $1 == "pkgver" && !in_split_pkg {
     pkgver = $3
+}
+
+$1 == "pkgrel" && !in_split_pkg {
+    pkgrel = $3
 }
 
 $1 == "epoch" && !in_split_pkg {
@@ -184,7 +200,8 @@ END {
             # run vercmp with provider and versioned dependency
             if (get_vercmp(ver_map[dep_pkgname], dep_pkgver, dep_op)) {
                 print2(pkgbase, pkg_map[dep_pkgname])
-            } else {
+            }
+            else {
                 printf("invalid node: %s %s (required: %s%s)\n",
                        dep_pkgname, ver_map[dep_pkgname], dep_op, dep_pkgver) > "/dev/stderr"
                 close("/dev/stderr")

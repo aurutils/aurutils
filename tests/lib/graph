@@ -1,7 +1,6 @@
 #!/bin/bash
 # Check versioned dependencies in aur-graph as pacman does
 set -e
-graph=$(realpath -- "${BASH_SOURCE[0]%/*}/../lib/util/aur-graph")
 trap 'printf >&2 "%s: failed at line %s\n" "$0" "$LINENO"' ERR
 
 # satisfies VERSION DEPENDENCY: libfoo of VERSION ([epoch:]pkgver-pkgrel)
@@ -14,7 +13,7 @@ satisfies() {
         epoch=${pkgver%%:*} pkgver=${pkgver#*:}
     fi
     # Return on failure, so that `set -e` reports the caller
-    pairs=$("$graph" 2>/dev/null <<EOF
+    pairs=$(aur graph 2>/dev/null <<EOF
 pkgbase = libfoo
 	pkgver = $pkgver
 	pkgrel = $pkgrel
@@ -48,6 +47,14 @@ satisfies 1:2.0-1 'libfoo=1:2.0'
 rejects 1:2.0-1 'libfoo<3.0'
 rejects 1:2.0-1 'libfoo=2.0'
 rejects 2.0-1 'libfoo>=1:1.5'
+
+# pkgrel is only compared if both versions have one
+satisfies 2.0-3 'libfoo=2.0-3'
+satisfies 2.0-3 'libfoo=2.0'
+satisfies 2.0-3 'libfoo<2.0-4'
+satisfies 2.0-3 'libfoo<=2.0-3'
+rejects 2.0-3 'libfoo=2.0-4'
+rejects 2.0-3 'libfoo>=2.0-4'
 
 # Unversioned dependency
 satisfies 1:2.0-1 'libfoo'
