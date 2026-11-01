@@ -429,7 +429,9 @@ if (( auto_key_retrieve )); then
     done < "$tmp"/queue
 
     if (( ${#keys_uniq[@]} )); then
-        printf >&2 '%s: importing key %s\n' "${!keys_uniq[@]}"
+        for key in "${!keys_uniq[@]}"; do
+            printf >&2 '%s: importing key %s\n' "$argv0" "$key"
+        done
         GNUPGHOME="$AUR_SYNC_GNUPGHOME" gpg --recv-keys "${!keys_uniq[@]}" >&2
     fi
 
