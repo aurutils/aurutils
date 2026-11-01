@@ -449,8 +449,9 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         if [[ -v db_pool ]] && [[ $db_root != "$db_pool" ]]; then
             mv -f "${siglist[@]}" "${pkglist[@]}" "$db_pool"
 
-            # Absolute links for packages in pool (repose --pool)
-            ln -t "$db_root" -s -- "${pkglist[@]/#/$db_pool/}" "${siglist[@]/#/$db_pool/}"
+            # Absolute links for packages in pool (repose --pool). Replace
+            # existing links when rebuilding a package (--force).
+            ln -t "$db_root" -sf -- "${pkglist[@]/#/$db_pool/}" "${siglist[@]/#/$db_pool/}"
         else
             mv -f "${siglist[@]}" "${pkglist[@]}" "$db_root"
         fi
