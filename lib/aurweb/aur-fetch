@@ -78,7 +78,7 @@ while true; do
             shift; results_file=$(realpath -- "$1") ;;
         # Git options
         --ff)
-            merge_args+=(-ff) ;;
+            merge_args+=(--ff) ;;
         --ff-only)
             merge_args+=(--ff-only) ;;
         --no-commit)
