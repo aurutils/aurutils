@@ -10,16 +10,30 @@ fi
 srcdir=.
 if [[ -d $1 ]]; then
     srcdir=$1
-    # https://github.com/ninja-build/ninja/blob/master/misc/ninja_syntax.py
-    srcdir=${srcdir//\$ /\$\$} srcdir=${srcdir// /\$ } srcdir=${srcdir//:/\$:}
 fi
 shift
 
+# Escape paths in build statements (https://ninja-build.org/manual.html#ref_lexer)
+ninja_path() {
+    local path=${1//\$/\$\$}
+    path=${path// /\$ }
+    printf '%s' "${path//:/\$:}"
+}
+
+# Quote variables used in `command` for the shell, then escape `$` for ninja
+ninja_shell_value() {
+    local value
+    printf -v value '%q' "$1"
+    printf '%s' "${value//\$/\$\$}"
+}
+
 # use quoted expansion (@Q) - heredocs are expanded like double-quoted strings
+build_command=${*@Q}
+
 # shellcheck disable=SC2154
 cat <<EOF
 rule aurbuild
-    command = env -C \${directory} ${@@Q} && date --rfc-3339=ns > \${out}
+    command = env -C \${directory} ${build_command//\$/\$\$} && date --rfc-3339=ns > \${out}
     pool = console
 EOF
 
@@ -27,11 +41,11 @@ EOF
 current_package=
 while read -r pkgbase depends_pkgbase _; do
     if [[ $pkgbase != "$current_package" ]] && [[ $current_package ]]; then
-        printf '\n%-4sdirectory = %s\n' ' ' "$srcdir/$current_package"
+        printf '\n%-4sdirectory = %s\n' ' ' "$(ninja_shell_value "$srcdir/$current_package")"
     fi
     if [[ $pkgbase != "$current_package" ]] || [[ ! $current_package ]]; then
         # TODO: take input file (monitored for changes by ninja) as argument
-        printf 'build %s.stamp: aurbuild %s/PKGBUILD | ' "$pkgbase" "$srcdir/$pkgbase"
+        printf 'build %s.stamp: aurbuild %s/PKGBUILD | ' "$pkgbase" "$(ninja_path "$srcdir/$pkgbase")"
     fi
     current_package=$pkgbase
 
@@ -40,6 +54,6 @@ while read -r pkgbase depends_pkgbase _; do
         printf '%s.stamp ' "$depends_pkgbase"
     fi
 done
-printf '\n%-4sdirectory = %s\n' ' ' "$srcdir/$current_package"
+printf '\n%-4sdirectory = %s\n' ' ' "$(ninja_shell_value "$srcdir/$current_package")"
 
 # vim: set et sw=4 sts=4 ft=sh:
