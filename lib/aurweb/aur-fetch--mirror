@@ -94,6 +94,9 @@ git_srcdest_origin() {
     git config remote.origin.fetch "+$refspec:$refspec"
     git fetch --quiet
     git checkout --quiet -B master "$refspec"
+
+    # Updates with aur-fetch are merged from origin/HEAD
+    git symbolic-ref refs/remotes/origin/HEAD "$refspec"
 }
 
 for b in "${target_remotes[@]}"; do
