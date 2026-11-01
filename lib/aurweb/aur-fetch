@@ -212,7 +212,7 @@ for pkg in "${!packages[@]}"; do
 
     # Clone package if not existing
     elif [[ ! -d $pkg/.git ]]; then
-        git clone "$remote" || exit 1
+        git clone "$remote" "$pkg" || exit 1
 
         head=$(git -C "$pkg" rev-parse --verify HEAD)
 
