@@ -11,9 +11,11 @@ AURUTILS_VERSION := 21
 endif
 AURUTILS_LIB := $(shell find lib/ -type f -name 'aur-*')
 TEST_EXEC_PATH := $(CURDIR)/lib:$(CURDIR)/lib/pacman:$(CURDIR)/lib/aurweb:$(CURDIR)/lib/util
-TEST_ENV = env AUR_ENV=/dev/null AUR_EXEC_PATH='$(TEST_EXEC_PATH)' PERL5LIB='$(CURDIR)/perl'
+# unset AUR_* variables of the caller, e.g. AUR_LOCATION
+TEST_ENV = env $(addprefix -u ,$(filter AUR_%,$(.VARIABLES))) \
+	AUR_ENV=/dev/null AUR_EXEC_PATH='$(TEST_EXEC_PATH)' PERL5LIB='$(CURDIR)/perl'
 # use the built aur instead of the one in PATH:
-#TEST_ENV += PATH="$(CURDIR):$$PATH"
+TEST_ENV += PATH="$(CURDIR):$$PATH"
 
 .PHONY: shellcheck install build completion aur
 
@@ -31,8 +33,8 @@ shellcheck: aur
 	@shellcheck -x -f gcc -e 1071 $(AURUTILS_LIB)
 
 test: aur shellcheck
-# tests which run the source tree's lib/ through `aur`, with AUR_EXEC_PATH
-# and PERL5LIB set here and ~/.config/aurutils/env ignored
+# tests which run the source tree's aur and lib/ (TEST_ENV), ignoring
+# ~/.config/aurutils/env and AUR_* variables of the caller
 	@$(TEST_ENV) tests/run tests/lib
 
 # tests which use script paths directly

@@ -11,8 +11,10 @@ for arg in "$@"; do
         for t in "$arg"/*; do
             [[ -f $t && -x $t ]] && tests+=("$t")
         done
-    else
+    elif [[ $arg == */* ]]; then
         tests+=("$arg")
+    else
+        tests+=("./$arg")  # not looked up in PATH
     fi
 done
 

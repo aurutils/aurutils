@@ -1,15 +1,19 @@
 #!/usr/bin/env perl
-# curl stand-in for AUR::Query: answer info requests with the packages
-# in $AUR_TEST_FIXTURE (an info response) that match the requested names
+# curl stand-in for AUR::Query: answer info requests (POST, query_multi)
+# with the packages in $AUR_TEST_FIXTURE (an info response) that match the
+# requested names. GET requests (query, e.g. search) are not supported.
 use strict;
 use warnings;
 use JSON::PP;
 
+my $fixture = $ENV{AUR_TEST_FIXTURE} // die "$0: AUR_TEST_FIXTURE is not set\n";
+
 # data: &arg[]=name1&arg[]=name2 with names percent-encoded
 my ($data) = map { $ARGV[$_ + 1] } grep { $ARGV[$_] eq '--data-raw' } 0..$#ARGV-1;
-my %names = map { s/%(..)/chr(hex($1))/ger => 1 } ($data // '') =~ /arg\[\]=([^&]*)/g;
+defined $data or die "$0: only POST requests are supported: @ARGV\n";
+my %names = map { s/%(..)/chr(hex($1))/ger => 1 } $data =~ /arg\[\]=([^&]*)/g;
 
-open(my $fh, '<', $ENV{AUR_TEST_FIXTURE}) or die $!;
+open(my $fh, '<', $fixture) or die "$0: $fixture: $!\n";
 my $obj = decode_json(do { local $/ = undef; <$fh> });
 
 # AUR::Query reads a single line
