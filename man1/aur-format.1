@@ -109,6 +109,18 @@ FirstSubmitted
 .IP
 .B w
 NumVotes
+.IP
+.B %%
+is printed as a single
+.BR % .
+Any other character after
+.B %
+is an error. Other text is printed as is, with the escapes
+.BR \et ,
+.B \en
+and
+.B \e0
+replaced by a tab, newline and null character.
 .
 .TP
 .BI \-d " SEP" "\fR,\fP \-\-delim=" SEP

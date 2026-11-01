@@ -22,6 +22,18 @@ for t in "${tests_t[@]}"; do
     [[ $cnt1 == "$cnt2" ]]
 done
 
+# fields, text, escapes and %% in the format (ascii.json: aurutils-git)
+format() {
+    aur format -f "$1" data/ascii.json
+}
+[[ $(format '%n\t%n') == $'aurutils-git\taurutils-git' ]]
+[[ $(format '%n\\t') == 'aurutils-git\\t' ]]  # escaped backslash
+[[ $(format '\t%n') == $'\taurutils-git' ]]   # escape before the first field
+[[ $(format '100%%done') == '100%done' ]]     # %% before a key (d)
+[[ $(format '%n%%') == 'aurutils-git%' ]]
+[[ $(format '%n%') == 'aurutils-git%' ]]
+[[ $(format '%z' 2>&1) == *'invalid format key'* ]]
+
 # error codes:
 # 1: option error
 # 2: file error
