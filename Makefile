@@ -28,6 +28,7 @@ shellcheck: aur
 test: aur shellcheck
 	@tests/parseopt-consistency
 	@tests/completion-bash
+	@tests/fetch-mirror
 	@$(MAKE) -C perl test
 
 install-aur: aur

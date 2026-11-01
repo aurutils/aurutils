@@ -1,0 +1,41 @@
+#!/bin/bash
+# Update local clones of aur-fetch--mirror with aur-fetch
+set -e
+lib_dir=$(realpath -- "${BASH_SOURCE[0]%/*}/../lib/aurweb")
+tmp=$(mktemp -d)
+trap 'rm -rf -- "$tmp"' EXIT
+trap 'printf >&2 "%s: failed at line %s\n" "$0" "$LINENO"' ERR
+
+# Ignore git configuration of the user
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+
+commit() {
+    git -C "$tmp"/src -c user.name=test -c user.email=test@localhost \
+        commit --quiet --allow-empty -m "$1"
+}
+
+# Mirror with one branch for each pkgbase (github.com/archlinux/aur)
+git init --quiet --initial-branch=main "$tmp"/src
+commit main
+git -C "$tmp"/src checkout --quiet --orphan foo
+commit 'foo 1'
+git clone --quiet --bare "$tmp"/src "$tmp"/mirror.git
+
+# Packages are not available from AUR_LOCATION
+export AUR_MIRROR=file://$tmp/mirror.git AUR_ROOT=$tmp/aur AUR_LOCATION=file://$tmp/none
+mkdir "$tmp"/clones
+cd "$tmp"/clones
+
+"$lib_dir"/aur-fetch--mirror --lclone foo >/dev/null 2>&1
+[[ $(git -C foo symbolic-ref refs/remotes/origin/HEAD) == refs/remotes/origin/foo ]]
+
+for mode in merge rebase reset; do
+    commit "foo $mode"
+    git -C "$tmp"/src push --quiet "$tmp"/mirror.git foo
+
+    # Retrieve new commits to AUR_ROOT, then update the local clone
+    "$lib_dir"/aur-fetch--mirror foo >/dev/null 2>&1
+    "$lib_dir"/aur-fetch --"$mode" foo >/dev/null 2>&1
+
+    [[ $(git -C foo log -1 --format=%s) == "foo $mode" ]]
+done
