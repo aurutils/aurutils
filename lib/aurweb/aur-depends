@@ -45,6 +45,14 @@ sub solve {
         delete @{$results}{grep { not defined $dag->{$_} } keys %{$pkgmap}};
     }
 
+    # Drop foreign dependencies of packages removed above, keeping non-AUR
+    # targets (Self)
+    for my $dep (keys %{$dag_foreign}) {
+        my $reqby = $dag_foreign->{$dep};
+        delete @{$reqby}{grep { $_ ne $dep and not defined $results->{$_} } keys %{$reqby}};
+        delete $dag_foreign->{$dep} if not %{$reqby};
+    }
+
     # Possible further pruning by the caller
     return ($results, $dag, $dag_foreign);
 }
