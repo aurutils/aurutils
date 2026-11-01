@@ -27,9 +27,38 @@ AUR::Query - Retrieve data from AurJSON
 This module offers perl aur(1) scripts a direct way to retrieve data from AurJson
 using GET or POST requests. Arguments are url-encoded beforehand.
 
-=head1 AUTHORS
+Requests are made with curl(1). If curl fails or is not found, the
+program exits with status 2. This generic code avoids overlap with exit
+codes of other programs in pipelines, such as aur-repo(1).
 
-Alad Wenter <https://github.com/AladW>
+=head1 ENVIRONMENT
+
+=over
+
+=item C<AUR_LOCATION>
+
+The AUR to use. Defaults to L<https://aur.archlinux.org>.
+
+=item C<AUR_QUERY_RPC>
+
+The AurJSON endpoint. Defaults to F<$AUR_LOCATION/rpc>.
+
+=item C<AUR_QUERY_RPC_VERSION>
+
+The AurJSON version. Defaults to 5.
+
+=item C<AUR_QUERY_RPC_SPLITNO>
+
+The maximum number of arguments per request of C<query_multi>. Defaults
+to 5000.
+
+=item C<AUR_DEBUG>
+
+If set, curl commands are printed to standard error.
+
+=back
+
+=head1 FUNCTIONS
 
 =cut
 
@@ -39,7 +68,10 @@ our $aur_rpc      = $ENV{AUR_QUERY_RPC} // $aur_location . "/rpc";
 our $aur_rpc_ver  = $ENV{AUR_QUERY_RPC_VERSION} // 5;
 our $aur_splitno  = $ENV{AUR_QUERY_RPC_SPLITNO} // 5000;
 
-=head2 urlencode()
+=head2 urlencode($str)
+
+Return C<$str> with every character except C<A-Z>, C<a-z> and C<0-9>
+percent-encoded.
 
 =cut
 
@@ -72,7 +104,12 @@ sub query_curl {
     return $str;
 }
 
-=head2 query()
+=head2 query(type => $type, term => $term, by => $by, callback => $callback)
+
+Send a GET request for one term, such as C<< type => 'search' >>, and
+return the response string. C<by> selects the search field (for example
+C<name-desc>). If C<callback> is given, the response is passed to it and
+its result is returned instead. Dies if no term is given.
 
 =cut
 
@@ -94,7 +131,12 @@ sub query {
                             : return $response;
 }
 
-=head2 query_multi()
+=head2 query_multi(type => $type, terms => \@terms, splitno => $n, callback => $callback)
+
+Send POST requests for many terms, such as C<< type => 'info' >>, with at
+most C<splitno> terms per request, and return the list of responses (or
+of C<callback> results, if given). The C<@terms> array is emptied. Dies
+if no terms are given; C<by> is not supported (use C<query>).
 
 =cut
 
@@ -121,5 +163,11 @@ sub query_multi {
     }
     return @results;
 }
+
+=head1 AUTHORS
+
+Alad Wenter <https://github.com/AladW>
+
+=cut
 
 # vim: set et sw=4 sts=4 ft=perl:

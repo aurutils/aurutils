@@ -22,9 +22,7 @@ AUR::Options - Option parsing for AUR scripts
 This module contains methods to assist with option parsing, specifically
 when taking arguments from standard input.
 
-=head1 AUTHORS
-
-Alad Wenter <https://github.com/AladW>
+=head1 FUNCTIONS
 
 =cut
 
@@ -37,7 +35,12 @@ sub delete_elements {
     }
 }
 
-=head2 add_from_stdin()
+=head2 add_from_stdin(\@args, \@tokens)
+
+If any element of C<@args> equals one of C<@tokens> (for example C<->
+or F</dev/stdin>), remove those elements and append the lines of
+standard input to C<@args>, without newlines. C<@args> is modified in
+place; standard input is only read if a token is found.
 
 =cut
 
@@ -58,11 +61,12 @@ sub add_from_stdin {
     }
 }
 
-=head2 dump_options()
+=head2 dump_options(\@spec)
 
 Print long and short options from a GetOptions spec list, one per
 line, matching the format of the bash --dump-options output.
-Argument-taking options carry a trailing C<:>.
+Argument-taking options carry a trailing C<:>. The C<dump-options>
+option itself is not printed.
 
 =cut
 
@@ -88,5 +92,11 @@ sub dump_options {
     say for @long;
     say for @short;
 }
+
+=head1 AUTHORS
+
+Alad Wenter <https://github.com/AladW>
+
+=cut
 
 # vim: set et sw=4 sts=4 ft=perl:

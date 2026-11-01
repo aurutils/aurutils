@@ -8,6 +8,25 @@ use Exporter qw(import);
 our @EXPORT_OK = qw(vercmp);
 our $VERSION = 'unstable';
 
+=head1 NAME
+
+AUR::Vercmp - Compare package versions with vercmp(8)
+
+=head1 SYNOPSIS
+
+  use AUR::Vercmp qw(vercmp);
+
+  vercmp('1.0-2', '1.0-1', '>');   # true
+  vercmp('1.0', undef, '>=');      # true: unversioned dependency
+
+=head1 DESCRIPTION
+
+If C<AUR_DEBUG> is set, calls of vercmp(8) are printed to standard error.
+
+=head1 FUNCTIONS
+
+=cut
+
 sub vercmp_run {
     if (defined $ENV{'AUR_DEBUG'}) {
         say STDERR __PACKAGE__ . ': vercmp ' . join(" ", @_);
@@ -34,7 +53,7 @@ sub vercmp_ops {
     return %ops;
 }
 
-=head2 vercmp()
+=head2 vercmp($ver1, $ver2, $op)
 
 This function provides a simple way to call C<vercmp(8)> from perl code.
 Instead of ordering versions on the command-line, this function takes
@@ -42,7 +61,12 @@ an explicit comparison operator (<, >, =, <= or >=) as argument.
 
 Under the hood, this function calls the C<vercmp> binary explicitly.
 This avoids any rebuilds for C<libalpm.so> soname bumps. To keep the approach
-performant, C<vercmp> is only called when input versions differ.
+performant, C<vercmp> is not called for the C<=> operator, which compares
+the strings.
+
+Returns true if C<$ver1 $op $ver2> holds. If C<$ver2> or C<$op> is
+undefined (an unversioned dependency), the result is always true. Dies
+on an unknown operator, or if C<vercmp> fails.
 
 =cut
 
@@ -64,3 +88,9 @@ sub vercmp {
         croak "invalid vercmp operation";
     }
 }
+
+=head1 AUTHORS
+
+Alad Wenter <https://github.com/AladW>
+
+=cut

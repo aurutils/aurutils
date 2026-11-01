@@ -24,6 +24,34 @@ A lightweight exception class that carries a human-readable message
 and a numeric exit code. When stringified (e.g. inside C<die> or
 C<warn>), only the message is returned.
 
+Programs catch these exceptions at the top level, print the message and
+exit with the exit code:
+
+  use Scalar::Util qw(blessed);
+
+  eval { main(); 1 } or do {
+      my $error = $@;
+      if (blessed($error) and $error->isa('AUR::Exception')) {
+          say STDERR $error->message;
+          exit($error->exit_code);
+      }
+      die $error;
+  };
+
+=head1 METHODS
+
+=head2 new($message, $exit_code)
+
+Create an exception. C<$exit_code> defaults to 1.
+
+=head2 message()
+
+Return the message.
+
+=head2 exit_code()
+
+Return the exit code.
+
 =head1 AUTHORS
 
 Alad Wenter <https://github.com/AladW>

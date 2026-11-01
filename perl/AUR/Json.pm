@@ -34,9 +34,7 @@ TODO: The interface is in its early stages and is prone to change in
 later versions. Possible additions include AUR types for common use
 with aur-format(1) and aur-search(1).
 
-=head1 AUTHORS
-
-Alad Wenter <https://github.com/AladW/aurutils>
+=head1 FUNCTIONS
 
 =cut
 
@@ -51,7 +49,11 @@ else {
     $aur_json = JSON::PP->new;
 }
 
-=head2 parse_json()
+=head2 parse_json($str)
+
+Decode the first JSON text in C<$str> and return the resulting hash or
+array reference. Dies if C<$str> does not start with a JSON object or
+array.
 
 =cut
 
@@ -64,7 +66,26 @@ sub parse_json {
     return $obj;
 }
 
-=head2 parse_json_aur()
+=head2 parse_json_aur($str)
+
+Decode an AUR response and return its package results as a list of hash
+references:
+
+=over
+
+=item * the C<results> array of an AurJSON response (C<info>, C<search>)
+
+=item * the elements of a JSON array (C<suggest>, metadata archives such
+as F<packages-meta-v1.json>)
+
+=item * a single JSON object (one line of JSONL, as printed by
+aur-repo-parse(1))
+
+=back
+
+If the response contains an C<error>, or is neither an array nor an
+object, a message is printed to standard error and the program exits
+with status 4.
 
 =cut
 
@@ -97,7 +118,10 @@ sub parse_json_aur {
     }
 }
 
-=head2 write_json()
+=head2 write_json($obj)
+
+Encode a hash or array reference as JSON, with sorted keys, and return
+the string (without a trailing newline).
 
 =cut
 
@@ -106,5 +130,11 @@ sub write_json {
     my $str = $aur_json->canonical()->encode($obj);
     return $str;
 }
+
+=head1 AUTHORS
+
+Alad Wenter <https://github.com/AladW/aurutils>
+
+=cut
 
 # vim: set et sw=4 sts=4 ft=perl:

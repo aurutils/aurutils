@@ -24,22 +24,48 @@ AUR::Depends - Resolve dependencies from AUR package information
 
 =head1 SYNOPSIS
 
-  use AUR::Depends qw(recurse prune graph);
+  use AUR::Depends qw(recurse graph prune tsort);
+
+  my ($results, $pkgdeps, $pkgmap) = recurse(\@targets, ['Depends', 'MakeDepends'], $callback);
+  my ($dag, $dag_foreign) = graph($results, $pkgdeps, $pkgmap, 1, 1);
+  my @removed = prune($dag, \@installed);
 
 =head1 DESCRIPTION
 
-=head1 AUTHORS
+Dependencies are resolved in steps. C<recurse> retrieves package
+information level by level until all dependencies are known, C<graph>
+builds a dependency graph and checks versioned dependencies, C<prune>
+removes installed packages and what is only needed by them, and C<tsort>
+sorts pairs of names topologically, as tsort(1).
 
-Alad Wenter <https://github.com/AladW/aurutils>
+Errors are thrown as L<AUR::Exception>.
+
+=head1 ENVIRONMENT
+
+=over
+
+=item C<AUR_DEPENDS_CALLBACK_MAX>
+
+The maximum number of callback calls in C<recurse> (default 30). This
+limits the depth of the dependency tree.
+
+=item C<AUR_DEBUG>
+
+If set, each callback call is printed to standard error.
+
+=back
+
+=head1 FUNCTIONS
 
 =cut
 
-=head2 recurse()
+=head2 recurse($targets, $types, $callback)
 
 Extracts dependency (C<$pkgdeps>) and provider (C<$pkgmap>)
 information from an array of package information hashes, retrieved
-through a callback function. An example is <callback_query> from
-C<Query.pm> combined with <parse_json_aur> from C<Json.pm>.
+through a callback function. An example is C<callback_query> in
+aur-depends(1), which combines C<query_multi> from L<AUR::Query> with
+C<parse_json_aur> from L<AUR::Json>.
 
 Dependencies are tallied and only queried when newly encountered.
 
@@ -52,11 +78,45 @@ Parameters:
 
 =item C<$targets>
 
+Reference to an array of package names to resolve.
+
 =item C<$types>
+
+Reference to an array of dependency fields to follow, out of
+C<Depends>, C<MakeDepends>, C<CheckDepends> and C<OptDepends>.
 
 =item C<$callback>
 
+Called with a reference to an array of package names. Returns a list of
+package hashes in AurJSON form (C<Name>, C<Version>, C<Provides> and the
+dependency fields).
+
 =back
+
+Returns three hash references:
+
+=over
+
+=item C<$results>
+
+Package name to package hash, for all packages found.
+
+=item C<$pkgdeps>
+
+Package name to a list of C<[$spec, $type]> pairs, such as
+C<< ['foo>=1.0', 'Depends'] >>. Targets also depend on themselves with
+type C<Self>.
+
+=item C<$pkgmap>
+
+Provided name to C<[$name, $version]> of the first package that
+provides it.
+
+=back
+
+Targets that are not found are reported on standard error. Throws an
+C<AUR::Exception> with exit code 1 if no packages are found, or 34 if
+C<AUR_DEPENDS_CALLBACK_MAX> is reached.
 
 =cut
 
@@ -148,7 +208,7 @@ sub recurse {
     return \%results, \%pkgdeps, \%pkgmap;
 }
 
-=head2 graph()
+=head2 graph($results, $pkgdeps, $pkgmap, $verify, $provides)
 
 For a set of package-dependency relations (C<$pkgdeps>) and providers
 (C<$pkgmap>), verify if all dependencies and their versions can be
@@ -163,17 +223,28 @@ Parameters:
 
 =over
 
-=item C<$results>
+=item C<$results>, C<$pkgdeps>, C<$pkgmap>
 
-=item C<$pkgdeps>
-
-=item C<$pkgmap>
+As returned by C<recurse>.
 
 =item C<$verify>
 
+Check versioned dependencies with C<vercmp> (default true).
+
 =item C<$provides>
 
+Let providers in C<$pkgmap> take precedence over packages of the same
+name.
+
 =back
+
+Returns two hash references, C<$dag> and C<$dag_foreign>, which map a
+dependency to the packages that require it, and those to the dependency
+type: C<< $dag->{$dependency}{$package} = $type >>. Dependencies that are
+not in C<$results>, such as repository packages, are in C<$dag_foreign>.
+
+Throws an C<AUR::Exception> listing every unfulfilled version
+requirement.
 
 =cut
 
@@ -230,7 +301,7 @@ sub graph {
     return \%dag, \%dag_foreign;
 }
 
-=head2 prune()
+=head2 prune($dag, $installed)
 
 Remove specified nodes from a dependency graph. Every dependency is
 checked against every pkgname provided (quadratic complexity).
@@ -243,7 +314,13 @@ Parameters:
 
 =item C<$dag>
 
+As returned by C<graph>. It is modified in place.
+
 =item C<$installed>
+
+Reference to an array of package names to remove, such as installed
+packages. Packages that are only required by removed packages are
+removed as well.
 
 =back
 
@@ -290,7 +367,7 @@ sub prune {
     return @removals;
 }
 
-=head2 tsort()
+=head2 tsort($bfs, $input)
 
 Topological sorting adapted from PerlPowerTools.
 
@@ -298,9 +375,20 @@ Performs depth-first traversal by default.
 
 =over
 
-=item C<$bfs> Perform breadth-first traversal.
+=item C<$bfs>
+
+Perform breadth-first traversal.
+
+=item C<$input>
+
+Reference to a flat array of pairs C<($before, $after)>, as read by
+tsort(1). The array is emptied. A pair of equal names adds a node
+without an edge.
 
 =back
+
+Returns the sorted list of names. Throws an C<AUR::Exception> if the
+number of tokens is odd, or if the graph has a cycle.
 
 =cut
 
@@ -352,4 +440,10 @@ sub tsort {
 
     return @output;
 }
+=head1 AUTHORS
+
+Alad Wenter <https://github.com/AladW/aurutils>
+
+=cut
+
 # vim: set et sw=4 sts=4 ft=perl:
