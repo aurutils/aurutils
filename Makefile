@@ -10,6 +10,10 @@ ifeq ($(AURUTILS_VERSION),)
 AURUTILS_VERSION := 21
 endif
 AURUTILS_LIB := $(shell find lib/ -type f -name 'aur-*')
+TEST_EXEC_PATH := $(CURDIR)/lib:$(CURDIR)/lib/pacman:$(CURDIR)/lib/aurweb:$(CURDIR)/lib/util
+TEST_ENV = env AUR_ENV=/dev/null AUR_EXEC_PATH='$(TEST_EXEC_PATH)' PERL5LIB='$(CURDIR)/perl'
+# use the built aur instead of the one in PATH:
+#TEST_ENV += PATH="$(CURDIR):$$PATH"
 
 .PHONY: shellcheck install build completion aur
 
@@ -18,6 +22,7 @@ build: aur completion
 aur: aur.in
 	sed -e 's|AURUTILS_LIB_DIR|$(AURUTILS_LIB_DIR)|' \
 	    -e 's|AURUTILS_VERSION|$(AURUTILS_VERSION)|' $< >$@
+	chmod +x $@
 
 completion:
 	@$(MAKE) -C completions bash zsh
@@ -26,14 +31,14 @@ shellcheck: aur
 	@shellcheck -x -f gcc -e 1071 $(AURUTILS_LIB)
 
 test: aur shellcheck
-# TODO: use script paths directly
-# tests which require AUR_EXEC_PATH and PERL5LIB
+# tests which run the source tree's lib/ through `aur`, with AUR_EXEC_PATH
+# and PERL5LIB set here and ~/.config/aurutils/env ignored
 # TODO: AUR dependencies modified -- turn bitlbee into fixture
-#	@tests/lib/depends
-	@tests/lib/format
-	@tests/lib/graph
-	@tests/lib/query
-	@tests/lib/repo-parse
+#	@$(TEST_ENV) tests/lib/depends
+	@$(TEST_ENV) tests/lib/format
+	@$(TEST_ENV) tests/lib/graph
+	@$(TEST_ENV) tests/lib/query
+	@$(TEST_ENV) tests/lib/repo-parse
 
 # tests which use script paths directly
 	@tests/parseopt-consistency
