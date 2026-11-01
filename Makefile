@@ -26,9 +26,20 @@ shellcheck: aur
 	@shellcheck -x -f gcc -e 1071 $(AURUTILS_LIB)
 
 test: aur shellcheck
-	@tests/graph
+# TODO: use script paths directly
+# tests which require AUR_EXEC_PATH and PERL5LIB
+# TODO: AUR dependencies modified -- turn bitlbee into fixture
+#	@tests/lib/depends
+	@tests/lib/format
+	@tests/lib/graph
+	@tests/lib/query
+	@tests/lib/repo-parse
+
+# tests which use script paths directly
 	@tests/parseopt-consistency
 	@tests/completion-bash
+
+# tests run with prove (1perl)
 	@$(MAKE) -C perl test
 
 install-aur: aur
