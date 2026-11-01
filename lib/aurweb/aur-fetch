@@ -232,13 +232,15 @@ for pkg in "${!packages[@]}"; do
         git() { command git -C "$pkg" "$@"; }
 
         # Retrieve per-package configuration (aurutils.rebase, #1007)
+        pkg_sync=$sync
+
         if [[ $sync = auto ]]; then
             case $(git config --default=false --get --type bool aurutils.rebase) in
-                true)  sync=rebase ;;
-                false) sync=merge
+                true)  pkg_sync=rebase ;;
+                false) pkg_sync=merge
             esac
 
-            warn 'aurutils.rebase is set for %s\n' "$sync"
+            warn 'aurutils.rebase is set for %s\n' "$pkg_sync"
         fi
 
         # Retrieve new upstream commits
@@ -251,7 +253,7 @@ for pkg in "${!packages[@]}"; do
         # Merge in new history
         upstream=origin/HEAD
 
-        case $sync in
+        case $pkg_sync in
             rebase)
                 dest=HEAD
 
@@ -282,13 +284,13 @@ for pkg in "${!packages[@]}"; do
             fetch)
                 dest=$upstream
         esac || {
-            warn 'failed to %s %s\n' "$sync" "$pkg"
+            warn 'failed to %s %s\n' "$pkg_sync" "$pkg"
             exit 1
         }
 
         head=$(git rev-parse --verify "$dest")
 
-        results "$sync" "$orig_head" "$head" "$PWD"/"$pkg" "$results_file"
+        results "$pkg_sync" "$orig_head" "$head" "$PWD"/"$pkg" "$results_file"
 
         exec {fd}<&- # release lock
     fi >&2 # print all git output to stderr
