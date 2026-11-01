@@ -1,0 +1,53 @@
+#!/bin/bash
+# Check versioned dependencies in aur-graph as pacman does
+set -e
+graph=$(realpath -- "${BASH_SOURCE[0]%/*}/../lib/util/aur-graph")
+trap 'printf >&2 "%s: failed at line %s\n" "$0" "$LINENO"' ERR
+
+# satisfies VERSION DEPENDENCY: libfoo of VERSION ([epoch:]pkgver-pkgrel)
+# fulfills DEPENDENCY of app, i.e. aur-graph succeeds and prints app and
+# libfoo as a pair
+satisfies() {
+    local epoch=0 pkgver=${1%-*} pkgrel=${1##*-} pairs
+
+    if [[ $pkgver == *:* ]]; then
+        epoch=${pkgver%%:*} pkgver=${pkgver#*:}
+    fi
+    # Return on failure, so that `set -e` reports the caller
+    pairs=$("$graph" 2>/dev/null <<EOF
+pkgbase = libfoo
+	pkgver = $pkgver
+	pkgrel = $pkgrel
+	epoch = $epoch
+	arch = any
+
+pkgname = libfoo
+
+pkgbase = app
+	pkgver = 1
+	pkgrel = 1
+	arch = any
+	depends = $2
+
+pkgname = app
+EOF
+    ) || return
+
+    grep -qFx $'app\tlibfoo' <<< "$pairs" || return
+}
+
+# `! satisfies` is ignored by `set -e`
+rejects() {
+    ! satisfies "$@"
+}
+
+# Epoch
+satisfies 1:2.0-1 'libfoo>=1:1.5'
+satisfies 1:2.0-1 'libfoo>=1.5'
+satisfies 1:2.0-1 'libfoo=1:2.0'
+rejects 1:2.0-1 'libfoo<3.0'
+rejects 1:2.0-1 'libfoo=2.0'
+rejects 2.0-1 'libfoo>=1:1.5'
+
+# Unversioned dependency
+satisfies 1:2.0-1 'libfoo'

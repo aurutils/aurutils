@@ -47,6 +47,11 @@ function has_valid_arch(attr) {
     return !i || (substr(attr, i+1) in arch)
 }
 
+# Version of the current pkgbase, as in pacman
+function full_version() {
+    return (epoch > 0 ? epoch ":" : "") pkgver
+}
+
 function print2(str1, str2) {
     if (REVERSE)
         printf("%s\t%s\n", str2, str1)
@@ -66,6 +71,7 @@ BEGIN {
 $1 == "pkgbase" {
     pkgbase = $3
     pkgver = ""
+    epoch = ""
 
     # SRCINFO(5), "Section headers"
     in_split_pkg = 0
@@ -77,6 +83,10 @@ $1 == "pkgbase" {
 
 $1 == "pkgver" && !in_split_pkg {
     pkgver = $3
+}
+
+$1 == "epoch" && !in_split_pkg {
+    epoch = $3
 }
 
 $1 == "arch" {
@@ -114,17 +124,17 @@ $1 == "pkgname" {
     in_split_pkg = 1
 
     pkg_map[$3] = pkgbase # node
-    ver_map[$3] = pkgver  # weight
+    ver_map[$3] = full_version()  # weight
 }
 
 index($1, "provides") == 1 && has_valid_arch($1) {
     split($3, prov, "=")
 
-    # if provider is unversioned, use pkgver
+    # if provider is unversioned, use the package version
     if ("2" in prov)
         ver_map[prov[1]] = prov[2]
     else
-        ver_map[prov[1]] = pkgver
+        ver_map[prov[1]] = full_version()
 
     # append node
     pkg_map[prov[1]] = pkgbase

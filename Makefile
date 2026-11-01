@@ -26,6 +26,7 @@ shellcheck: aur
 	@shellcheck -x -f gcc -e 1071 $(AURUTILS_LIB)
 
 test: aur shellcheck
+	@tests/graph
 	@tests/parseopt-consistency
 	@tests/completion-bash
 	@$(MAKE) -C perl test
