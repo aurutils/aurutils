@@ -61,7 +61,7 @@ exec {fd}< "$AUR_ROOT"
   git_ls_remote_ttl 'remote-pkgbase'
 
   # Retrieve list of active remotes
-  mapfile -t active_remotes < <(git_active_remotes | grep -v "$AUR_MIRROR_BRANCH")
+  mapfile -t active_remotes < <(git_active_remotes | grep -vFx -- "$AUR_MIRROR_BRANCH")
 
   # Only consider AUR targets
   mapfile -t target_remotes < <(printf '%s\n' "$@" | grep -Fxf 'remote-pkgbase')
