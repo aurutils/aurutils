@@ -105,7 +105,7 @@ trap 'trap_exit' EXIT
 if (( stdin )); then
     mapfile "${mapfile_args[@]}" -t packages
 
-elif [[ -v argfile ]]; then
+elif [[ -v arg_file ]]; then
     mapfile "${mapfile_args[@]}" -t packages <"$arg_file"
 else
     packages=("${@:-$PWD}")
