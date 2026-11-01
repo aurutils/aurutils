@@ -36,7 +36,7 @@ for (( t = 0; t < n_trials; t++ )); do
         err '1 reverse dependencies expected (bitlbee-discord-git)'
     fi
 
-    # bitlbee is replaced by its provider in every output format (#1255)
+    # bitlbee is replaced by its provider in every output format
     json=$(names_json bitlbee-libpurple-git bitlbee-discord-git)
     diff -u <(printf '%s\n' "$json") <(names_table bitlbee-libpurple-git bitlbee-discord-git)
     diff -u <(printf '%s\n' "$json") <(names_pairs bitlbee-libpurple-git bitlbee-discord-git)
@@ -56,6 +56,18 @@ for (( t = 0; t < n_trials; t++ )); do
         echo >&2 "$out"
         err '1 reverse dependencies expected (bitlbee-discord-git)'
     fi
+
+    # bitlbee is a target: it is kept even though bitlbee-libpurple-git
+    # provides it (#1255)
+    out=$(aur depends bitlbee bitlbee-libpurple-git --json)
+
+    if ! [[ $(jq -c '.bitlbee.RequiredBy' <<< "$out") == '{"bitlbee":"Self"}' ]]; then
+        echo >&2 "$out"
+        err 'self dependency expected (bitlbee)'
+    fi
+    json=$(names_json bitlbee bitlbee-libpurple-git)
+    diff -u <(printf '%s\n' "$json") <(names_table bitlbee bitlbee-libpurple-git)
+    diff -u <(printf '%s\n' "$json") <(names_pairs bitlbee bitlbee-libpurple-git)
 
     # TODO: same with --all
     #out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json --all)

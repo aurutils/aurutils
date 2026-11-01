@@ -267,10 +267,11 @@ sub graph {
 
             if (defined $results->{$dep_name}) {
                 # Provides take precedence over regular packages, unless
-                # $provides is false.
+                # $provides is false. Command-line targets (Self) are kept
+                # even if another package provides them (#1255).
                 my ($prov_name, $prov_ver) = ($dep_name, $results->{$dep_name}->{'Version'});
 
-                if ($provides and defined $pkgmap->{$dep_name}) {
+                if ($provides and $dep_type ne 'Self' and defined $pkgmap->{$dep_name}) {
                     ($prov_name, $prov_ver) = @{$pkgmap->{$dep_name}};
                 }
 
