@@ -363,7 +363,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     # Run pkgver function before --packagelist (#500)
     if (( run_pkgver )); then
         #shellcheck disable=SC2086
-        ${AUR_MAKEPKG:-makepkg} -od "${makepkg_common_args[@]}" >&2
+        env "${makepkg_env[@]}" ${AUR_MAKEPKG:-makepkg} -od "${makepkg_common_args[@]}" >&2
     fi
 
     # Retrieve list of potential package paths. This is used to (optionally)
