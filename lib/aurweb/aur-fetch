@@ -153,7 +153,7 @@ done < <(
     {
         if (( recurse )); then
             aur depends --reverse "$@" | tsort
-        elif [[ $# = 1 && $1 = - || $1 = /dev/stdin ]]; then
+        elif [[ $1 = - || $1 = /dev/stdin ]]; then
             cat
         else
             printf '%s\n' "$@"
