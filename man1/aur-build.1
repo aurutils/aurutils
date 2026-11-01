@@ -115,6 +115,16 @@ or the
 .B pkgver()
 function run priorly with
 .BR \-\-pkgver .
+.IP
+Rebuilding a package without increasing
+.B pkgrel
+may result in checksum mismatches when installing it, unless the local
+repository is set as a pacman
+.IR CacheDir .
+See
+.B CacheDir
+in
+.BR aur (1).
 .
 .TP
 .BR \-S ", " \-\-sign ", " \-\-gpg\-sign
