@@ -191,7 +191,7 @@ if (( AUR_FETCH_USE_MIRROR > 0 )); then
         results clone "$git_empty_object" "$head" "$PWD"/"$pkg" "$results_file"
 
         is_local_clone["$pkg"]=$head
-    done < <(aur fetch--mirror --lclone "${packages[@]}")
+    done < <(aur fetch--mirror --lclone "${!packages[@]}")
 
     wait "$!" || exit
 fi >&2
