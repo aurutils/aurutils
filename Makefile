@@ -33,12 +33,7 @@ shellcheck: aur
 test: aur shellcheck
 # tests which run the source tree's lib/ through `aur`, with AUR_EXEC_PATH
 # and PERL5LIB set here and ~/.config/aurutils/env ignored
-# TODO: AUR dependencies modified -- turn bitlbee into fixture
-#	@$(TEST_ENV) tests/lib/depends
-	@$(TEST_ENV) tests/lib/format
-	@$(TEST_ENV) tests/lib/graph
-	@$(TEST_ENV) tests/lib/query
-	@$(TEST_ENV) tests/lib/repo-parse
+	@$(TEST_ENV) tests/run tests/lib
 
 # tests which use script paths directly
 	@tests/parseopt-consistency

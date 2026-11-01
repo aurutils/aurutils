@@ -1,0 +1,18 @@
+#!/usr/bin/env perl
+# curl stand-in for AUR::Query: answer info requests with the packages
+# in $AUR_TEST_FIXTURE (an info response) that match the requested names
+use strict;
+use warnings;
+use JSON::PP;
+
+# data: &arg[]=name1&arg[]=name2 with names percent-encoded
+my ($data) = map { $ARGV[$_ + 1] } grep { $ARGV[$_] eq '--data-raw' } 0..$#ARGV-1;
+my %names = map { s/%(..)/chr(hex($1))/ger => 1 } ($data // '') =~ /arg\[\]=([^&]*)/g;
+
+open(my $fh, '<', $ENV{AUR_TEST_FIXTURE}) or die $!;
+my $obj = decode_json(do { local $/ = undef; <$fh> });
+
+# AUR::Query reads a single line
+$obj->{results} = [grep { $names{$_->{Name}} } @{$obj->{results}}];
+$obj->{resultcount} = scalar @{$obj->{results}};
+print encode_json($obj), "\n";

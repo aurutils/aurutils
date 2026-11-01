@@ -1,5 +1,11 @@
 #!/bin/bash
 set -e
+cd "$(dirname "${BASH_SOURCE[0]}")"/..
+
+# answer AUR requests from a fixture instead of aurweb (see bin/curl)
+export PATH=$PWD/bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/json/bitlbee.json
+
 # multiple attempts for random ordering of hashes
 n_trials=10
 
@@ -8,7 +14,12 @@ err() {
     exit 1
 }
 
-for t in {1..$n_trials}; do
+# names listed in --json, --table and pairs output
+names_json()  { aur depends --json "$@" | jq -r 'keys[]' | sort -u; }
+names_table() { aur depends --table "$@" | cut -f1 | sort -u; }
+names_pairs() { aur depends --pkgname "$@" | tr '\t' '\n' | sort -u; }
+
+for (( t = 0; t < n_trials; t++ )); do
     # bitlbee-libpurple-git provides bitlbee
     out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json)
 
@@ -25,16 +36,21 @@ for t in {1..$n_trials}; do
         err '1 reverse dependencies expected (bitlbee-discord-git)'
     fi
 
+    # bitlbee is replaced by its provider in every output format (#1255)
+    json=$(names_json bitlbee-libpurple-git bitlbee-discord-git)
+    diff -u <(printf '%s\n' "$json") <(names_table bitlbee-libpurple-git bitlbee-discord-git)
+    diff -u <(printf '%s\n' "$json") <(names_pairs bitlbee-libpurple-git bitlbee-discord-git)
+
     # bitlbee-discord-git requires bitlbee
     out=$(aur depends bitlbee-discord-git --json)
-    
+
     if ! [[ $(jq '. | length' <<< "$out") == 2 ]]; then
         echo >&2 "$out"
         err '2 dependencies expected (bitlbee-discord-git)'
     fi
-    if ! [[ $(jq '."bitlbee".RequiredBy | length' <<< "$out") == 2 ]]; then
+    if ! [[ $(jq '."bitlbee".RequiredBy | length' <<< "$out") == 1 ]]; then
         echo >&2 "$out"
-        err '2 reverse dependencies expected (bitlbee)'
+        err '1 reverse dependencies expected (bitlbee)'
     fi
     if ! [[ $(jq '."bitlbee-discord-git".RequiredBy | length' <<< "$out") == 1 ]]; then
         echo >&2 "$out"

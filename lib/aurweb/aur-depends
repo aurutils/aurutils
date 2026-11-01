@@ -35,6 +35,12 @@ sub solve {
         delete @{$results}{@removed};           # drop from results
     }
 
+    # Drop packages replaced by their provider: dependencies on them were
+    # redirected to the provider, so they have no node in the graph (#1255)
+    if ($opt_provides) {
+        delete @{$results}{grep { not defined $dag->{$_} } keys %{$pkgmap}};
+    }
+
     # Possible further pruning by the caller
     return ($results, $dag, $dag_foreign);
 }
