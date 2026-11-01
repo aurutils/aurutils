@@ -105,7 +105,7 @@ while true; do
             shift; db_ext=$1 ;;
         --buildscript)
             shift; makepkg_common_args+=(-p "$1")
-            makepkg_pkglist_args+=(-p "$1") ;;
+            pkglist_args+=(-p "$1") ;;
         --nosync|--no-sync)
             no_sync=1 ;;
         --makepkg-conf)
@@ -372,7 +372,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     # repo-add (create_package=0). If no paths are available, the package is
     # assumed to not exist and the build proceeds as usual (create_package=1).
     if (( ! overwrite )); then
-        mapfile -t pkglist < <(PKGDEST="$db_root" ${AUR_BUILD_PKGLIST:-aur build--pkglist} "${makepkg_pkglist_args[@]}")
+        mapfile -t pkglist < <(PKGDEST="$db_root" ${AUR_BUILD_PKGLIST:-aur build--pkglist} "${pkglist_args[@]}")
         wait "$!" # Check `build--pkglist` exit status
 
         exists=()
