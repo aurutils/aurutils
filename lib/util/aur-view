@@ -55,7 +55,7 @@ while true; do
                 diff|log)
                     log_fmt=$1 ;;
                 *)
-                    printf >&2 '%s: invalid --format option: %s' "$argv0" "$1"
+                    printf >&2 '%s: invalid --format option: %s\n' "$argv0" "$1"
                     usage ;;
             esac ;;
         --confirm)
@@ -111,7 +111,7 @@ else
 fi
 
 if (( ! ${#packages[@]} )); then
-    printf >&2 "there is nothing to do"
+    printf >&2 '%s: there is nothing to do\n' "$argv0"
     exit
 fi
 
