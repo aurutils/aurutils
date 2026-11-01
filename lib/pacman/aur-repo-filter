@@ -7,7 +7,7 @@ if [[ -v AUR_DEBUG ]]; then
 fi
 
 argv0='repo-filter'
-arch_repo=(core extra testing community{,-testing} multilib{,-testing})
+arch_repo=(core{,-testing} extra{,-testing} multilib{,-testing})
 
 # default options
 sync_repo=0
