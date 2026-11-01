@@ -129,6 +129,24 @@ subtest 'graph: provider ($provides=1)' => sub {
         'libfoo not in DAG (replaced by provider-pkg)');
 };
 
+subtest 'graph: versioned dependencies ($verify=1)' => sub {
+    my %results = make_results(
+        { Name => 'app',    Version => '1-1' },
+        { Name => 'libfoo', Version => '1:2.0-3' },
+    );
+    # True if the dependency of app on libfoo is satisfied
+    my $satisfies = sub {
+        my %pkgdeps = make_pkgdeps(['app'], { 'app' => [[$_[0], 'Depends']] });
+        return eval { graph(\%results, \%pkgdeps, {}, 1, 1); 1 };
+    };
+    ok($satisfies->('libfoo=1:2.0-3'),   'epoch:pkgver-pkgrel');
+    ok($satisfies->('libfoo=1:2.0'),     'pkgrel only compared if specified');
+    ok($satisfies->('libfoo<1:2.0-4'),   'older pkgrel');
+    ok(!$satisfies->('libfoo=1:2.0-4'),  'other pkgrel');
+    ok(!$satisfies->('libfoo>=1:2.0-4'), 'newer pkgrel');
+    ok(!$satisfies->('libfoo=2.0-3'),    'epoch compared');
+};
+
 subtest 'graph: provider disabled ($provides=0)' => sub {
     my %results = make_results(
         { Name => 'mypkg',  Version => '1.0-1' },

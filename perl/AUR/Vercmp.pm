@@ -68,6 +68,9 @@ Returns true if C<$ver1 $op $ver2> holds. If C<$ver2> or C<$op> is
 undefined (an unversioned dependency), the result is always true. Dies
 on an unknown operator, or if C<vercmp> fails.
 
+As with C<vercmp> and pacman, C<pkgrel> is only compared if both versions
+have one, so that C<2.0-3> equals C<2.0> but not C<2.0-4>.
+
 =cut
 
 sub vercmp {
@@ -78,7 +81,7 @@ sub vercmp {
         return "true";  # unversioned dependency
     }
     elsif ($op eq '=') {
-        return $ver1 eq $ver2;
+        return ($ver1 eq $ver2 or vercmp_run($ver1, $ver2) == 0);
     }
     elsif (defined $cmp{$op}) {
         # check if cmp(ver1, ver2) holds        
