@@ -144,11 +144,11 @@ END {
             }
             dep_op = "-" # unversioned / no comparison
 
-            # valid operators (important: <= before <)
-            split("<=|>=|<|=|>", cmp, "|")
+            # valid operators, in order (important: <= before <)
+            ncmp = split("<=|>=|<|=|>", cmp, "|")
 
             # split: fourth argument is gawk extension
-            for (i in cmp) {
+            for (i = 1; i <= ncmp; i++) {
                 split(pkg_deps[pkgbase, dep], dep_split, cmp[i])
 
                 if ("2" in dep_split) {
