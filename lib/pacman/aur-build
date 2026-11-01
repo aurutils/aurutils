@@ -396,12 +396,13 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         elif (( ${#exists[@]} )); then
             # Since `makepkg` does not allow building split packages
             # individually, we restart the build when part of the
-            # package group is unavailable (including -debug packages)
+            # package group is unavailable
             printf >&2 '%s: warning: package group partially built\n' "$argv0"
             printf '%q\n' >&2 "${exists[@]}"
-            # This is necessarily a warning, not an error, since makepkg
-            # unconditionally prints `-debug` packages even when they will
-            # later not be created (#1218)
+            # This is necessarily a warning, not an error, since `makepkg
+            # --packagelist` unconditionally prints `-debug` packages even
+            # when they will later not be created (#1218). `aur
+            # build--pkglist` only prints them if they exist.
         fi
 
         if (( ${#exists[@]} )) && [[ -v results_file ]]; then

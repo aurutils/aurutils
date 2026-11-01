@@ -79,7 +79,23 @@ fi
 case $mode in
     pkglist)
         source /usr/share/makepkg/util/pkgbuild.sh
-        print_all_package_names
+
+        # makepkg only creates the debug package if there are debug symbols,
+        # which is not known before the build. As with `makepkg --install`,
+        # only print the debug package if it exists in PKGDEST. Without the
+        # debug and strip options, a package of this name is a regular
+        # package.
+        debug_pkg=
+        if check_option "debug" "y" && check_option "strip" "y"; then
+            debug_pkg=$PKGDEST/$pkgbase-debug-$(get_full_version)-$(get_pkg_arch)$PKGEXT
+        fi
+        mapfile -t packages < <(print_all_package_names)
+
+        for p in "${packages[@]}"; do
+            if [[ $p != "$debug_pkg" ]] || [[ -f $p ]]; then
+                printf '%s\n' "$p"
+            fi
+        done
         ;;
     srcinfo) 
         source /usr/share/makepkg/srcinfo.sh

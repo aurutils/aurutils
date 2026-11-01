@@ -382,7 +382,15 @@ repository. Defaults to
 Compared to
 .BR "makepkg \-\-packagelist" ,
 the default command runs faster by not linting the
-.IR PKGBUILD .
+.IR PKGBUILD ,
+and only prints the debug package if it exists in the local
+repository, since
+.BR makepkg (8)
+only creates it for packages with debug symbols. A package whose debug
+package was removed from the local repository is then not built again,
+unless
+.B \-\-force
+is specified.
 .
 .TP
 .B AUR_GPG
