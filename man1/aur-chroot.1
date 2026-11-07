@@ -21,13 +21,37 @@ Build
 packages inside a
 .BR systemd\-nspawn (1)
 container.
+.PP
+By default, containers are managed with the
+.B devtools
+scripts
+.BR mkarchroot ,
+.B arch\-nspawn
+and
+.BR makechrootpkg .
+If
+.B AUR_CHROOT_DEVTOOLS
+is set to
+.BR 0 ,
+.BR systemd\-nspawn (1)
+is used directly and devtools is not required. See
+.B Standalone mode
+in
+.BR NOTES .
 .
 .SH OPERATIONS
 .TP
 .BR \-B ", " \-\-build
 Build a package inside the container with
 .BR makechrootpkg .
-Assumes
+In standalone mode,
+.BR makepkg (8)
+is run in
+.B /root
+with
+.BR "systemd\-nspawn \-\-volatile=overlay" ,
+so that changes made inside the container are discarded after the
+build. Assumes
 .B \-\-create
 was run at least once.
 .
@@ -37,6 +61,10 @@ Update or create the
 .B /root
 copy of the container with
 .BR arch\-nspawn .
+In standalone mode,
+.B "pacman \-Syu"
+is run inside the container with
+.BR systemd\-nspawn (1).
 .
 .TP
 .BR \-\-create
@@ -116,6 +144,10 @@ parameter is specified to
 .BR makechrootpkg ,
 the user container has a random name and is removed on build
 completion.
+.IP
+In standalone mode, user containers are not used. Builds run on
+.B /root
+with a temporary overlay.
 .
 .TP
 .BI \-C " FILE" "\fR,\fP \-\-pacman\-conf=" FILE
@@ -197,15 +229,16 @@ directory exists, it is mounted to
 .BI \-\-cargs= ARGS "\fR,\fP \-\-makechrootpkg\-args=" ARGS
 Arguments (comma-separated) to be passed to
 .B makechrootpkg
-for 
+for
 .BR \-\-build .
 Defaults to
 .BR "makechrootpkg \-cu" .
+Ignored in standalone mode.
 .
 .TP
 .BI \-\-margs= ARGS "\fR,\fP \-\-makepkg\-args=" ARGS
 Additional (comma-separated)
-.B makepkg 
+.B makepkg
 arguments for
 .BR makechrootpkg .
 A default list of
@@ -218,18 +251,20 @@ In standalone mode, the arguments are appended to
 .TP
 .B \-\-bind
 Bind a directory read-only to the container.
-.RB ( makechrootpkg " " \-D )
+.RB ( makechrootpkg " " \-D ,
+.BR "systemd\-nspawn \-\-bind\-ro" )
 .
 .TP
 .B \-\-bind\-rw
 Bind a directory read-write to the container.
-.RB ( makechrootpkg " " \-d )
+.RB ( makechrootpkg " " \-d ,
+.BR "systemd\-nspawn \-\-bind" )
 .
 .TP
 .BR \-\-checkpkg
 Run
 .BR checkpkg (1)
-on the built package.
+on the built package. Ignored in standalone mode.
 .
 .TP
 .BR \-N ", " \-\-namcap
@@ -248,7 +283,8 @@ Logs are written to
 .BR \-T ", " \-\-temp
 Build in a temporary container. (\fBmakechrootpkg \-T\fR) Temporary
 means that the user container has a random name and is removed on
-build completion.
+build completion. Ignored in standalone mode, where builds always use a
+temporary overlay.
 .
 .TP
 .BI \-\-user= USER
@@ -335,6 +371,28 @@ is used. See
 .BR makepkg.conf (5)
 and
 .BR "makechrootpkg \-h" .
+.IP
+In standalone mode,
+.BR PKGDEST ,
+.BR LOGDEST ,
+.B SRCDEST
+and
+.B SRCPKGDEST
+(each defaulting to
+.BR $PWD )
+are mounted read-write to
+.BR /pkgdest ,
+.BR /logdest ,
+.B /srcdest
+and
+.B /srcpkgdest
+inside the container.
+.B $PWD
+is mounted read-write to the same path and used as
+.BR BUILDDIR .
+.TP
+.B SOURCE_DATE_EPOCH
+In standalone mode, set to the current time if unset.
 .
 .SH NOTES
 .SS Building with makechrootpkg
@@ -373,8 +431,69 @@ with
 .BR \-\-bind
 and
 .BR \-d ,
-respectively.
+respectively. In standalone mode, they are passed to
+.BR systemd\-nspawn (1)
+with
+.BR \-\-bind .
+.
+.SS Standalone mode
+With
+.BR AUR_CHROOT_DEVTOOLS=0 ,
+containers are managed with
+.BR systemd\-nspawn (1)
+and
+.BR pacstrap (8)
+(from
+.BR arch\-install\-scripts )
+on the host. devtools is not required. The container must provide
+.BR sudo (8),
+which is part of
+.BR base\-devel .
 .PP
+.B aur\-chroot
+runs itself as root with
+.B AUR_PACMAN_AUTH
+for
+.BR \-\-create ,
+.B \-\-update
+and
+.BR \-\-build .
+.B \-\-status
+and
+.B \-\-path
+(on its own) do not require root.
+.PP
+Builds use
+.B /root
+as lower directory of a temporary overlay, which must not change while
+mounted. Builds therefore hold a shared lock on
+.I $directory/root.lock
+until they complete, and
+.B \-\-create
+and
+.B \-\-update
+wait for an exclusive lock.
+.PP
+Packages are built by
+.I builduser
+inside the container (see
+.BR \-\-user ),
+which may run
+.B pacman
+through
+.BR sudo (8)
+to install dependencies.
+Sources are retrieved and verified inside the container:
+.B aur\-chroot
+does not run
+.BR makepkg (8)
+on the host, unlike
+.BR makechrootpkg .
+Note that
+.BR aur\-build (1)
+still runs
+.B "makepkg \-\-packagelist"
+on the host.
 .
 .SS Avoiding password prompts
 .BR makepkg (8)
@@ -543,7 +662,8 @@ directive.
 .BR makepkg (8),
 .BR makepkg.conf (5),
 .BR pacman.conf (5),
-.BR setarch (8)
+.BR setarch (8),
+.BR systemd\-nspawn (1)
 .
 .SH AUTHORS
 .MT https://github.com/AladW
