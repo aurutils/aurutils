@@ -21,7 +21,7 @@ makechrootpkg_args=(-cu)  # XXX: allow unsetting these options?
 makepkg_args=()
 
 # default options
-update=0 build=0 create=0 status=0 print_path=0 run_namcap=0
+update=0 build=0 create=0 status=0 print_path=0 run_namcap=0 run=0
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -48,6 +48,7 @@ EOF
 
 usage() {
     printf 'usage: %s [-BU] [--create] [-CDM path] [package...]\n' "$argv0"
+    printf '       %s --run [-CDM path] [--] command...\n' "$argv0"
     exit 1
 }
 
@@ -55,7 +56,7 @@ opt_short='C:D:M:x:ABNTU'
 opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
           'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:' 'holdver'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
-          'margs:' 'cargs:' 'nocheck' 'suffix:' 'path')
+          'margs:' 'cargs:' 'nocheck' 'suffix:' 'path' 'run')
 opt_hidden=('dump-options' 'status')
 
 if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
@@ -80,6 +81,8 @@ while true; do
             status=1 ;;
         --path)
             print_path=1 ;;
+        --run)
+            run=1 ;;
         # makepkg options (`--build`)
         -A|--ignorearch)
             makepkg_args+=(--ignorearch) ;;
@@ -123,6 +126,20 @@ while true; do
     esac
     shift
 done
+
+# --run uses the positional arguments as command
+if (( run )); then
+    if (( AUR_CHROOT_DEVTOOLS )); then
+        printf >&2 '%s: --run requires AUR_CHROOT_DEVTOOLS=0\n' "$argv0"
+        exit 1
+    elif (( build + update + create + print_path )); then
+        printf >&2 '%s: --run can not be combined with other operations\n' "$argv0"
+        exit 1
+    elif ! (( $# )); then
+        printf >&2 '%s: --run requires a command\n' "$argv0"
+        exit 1
+    fi
+fi
 
 # XXX: default paths can be set through the Makefile (`aur-chroot.in`)
 etcdir=/etc/aurutils shrdir=/usr/share/devtools
@@ -186,7 +203,7 @@ fi
 
 # Print paths to container and used makepkg/pacman paths. This does
 # not require a priorly created container, nor root privileges.
-if (( status )) || ! (( update + build + create + print_path )); then
+if (( status )) || ! (( update + build + create + print_path + run )); then
     printf 'chroot:%s\npacman:%s\nmakepkg:%s\n' "$directory" "$pacman_conf" "$makepkg_conf"
     exit 0
 fi
@@ -194,7 +211,7 @@ fi
 # Define the user mapping for the container before elevation, so that it does
 # not depend on the elevation command setting SUDO_USER.
 reexec_args=()
-if (( build )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+if (( build + run )) && (( ! AUR_CHROOT_DEVTOOLS )); then
     if [[ ! -v makepkg_user ]]; then
         if (( EUID == 0 )); then
             makepkg_user=${SUDO_USER:-root}
@@ -233,7 +250,7 @@ esac
 # policy in aur-chroot(1). The standalone mode runs several privileged commands
 # and is re-executed as a whole. Added options are prepended, since orig_argv
 # ends with `--`.
-if (( EUID != 0 )) && (( create + update + build )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+if (( EUID != 0 )) && (( create + update + build + run )) && (( ! AUR_CHROOT_DEVTOOLS )); then
     # shellcheck disable=SC2086
     exec $AUR_PACMAN_AUTH "${auth_args[@]}" -- "${BASH_SOURCE[0]}" "${reexec_args[@]}" "${orig_argv[@]}"
 fi
@@ -379,7 +396,8 @@ if (( build )) && (( AUR_CHROOT_DEVTOOLS )); then
         "${bindmounts_rw[@]/#/-d}" \
         "${makechrootpkg_args[@]}" -- "${makepkg_args[@]}"
 
-elif (( build )); then
+# --run: same container and mounts as --build, with an arbitrary command
+elif (( build )) || (( run )); then
     # converts an exclusive lock from --create/--update
     lock_root -s
 
@@ -392,13 +410,23 @@ elif (( build )); then
         "${SRCPKGDEST:-$PWD}:/srcpkgdest"
     )
 
-    # makechrootpkg defaults, except --holdver and --skipinteg: sources are
-    # retrieved and verified inside the container, not on the host
-    makepkg_args=(--syncdeps --noconfirm --log "${makepkg_args[@]}")
+    # --run: connect output directly (no pseudo TTY) when not on a terminal,
+    # so that it can be processed by other tools. Output of --build goes to
+    # stderr, as for devtools.
+    if (( run )); then
+        command=("$@") run_namcap=0 output_fd=1
+        nspawn_output_args=(--console=autopipe --quiet)
+    else
+        output_fd=2 nspawn_output_args=()
+        # makechrootpkg defaults, except --holdver and --skipinteg: sources are
+        # retrieved and verified inside the container, not on the host
+        makepkg_args=(--syncdeps --noconfirm --log "${makepkg_args[@]}")
 
-    # install built packages for namcap checks (makechrootpkg -n)
-    if (( run_namcap )); then
-        makepkg_args+=(--install)
+        # install built packages for namcap checks (makechrootpkg -n)
+        if (( run_namcap )); then
+            makepkg_args+=(--install)
+        fi
+        command=(makepkg "${makepkg_args[@]}")
     fi
 
     # GNUPGHOME and SSH_AUTH_SOCK are not passed, since their paths are not
@@ -419,6 +447,7 @@ elif (( build )); then
         --as-pid2 \
         --chdir="$PWD" \
         --volatile=overlay \
+        "${nspawn_output_args[@]}" \
         --setenv=PKGDEST=/pkgdest \
         --setenv=LOGDEST=/logdest \
         --setenv=SRCDEST=/srcdest \
@@ -430,7 +459,7 @@ elif (( build )); then
         "${bindmounts_rw[@]/#/--bind=}" \
         /bin/bash -c "$container_script" bash build \
         "$builduser_uid" "$builduser_gid" "$(args_csv "${builduser_env[@]}")" "$run_namcap" \
-        makepkg "${makepkg_args[@]}"
-fi >&2
+        "${command[@]}" >&"$output_fd"
+fi
 
 # vim: set et sw=4 sts=4 ft=sh:
