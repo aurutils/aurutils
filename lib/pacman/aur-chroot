@@ -134,12 +134,6 @@ while true; do
     shift
 done
 
-keepenv=SOURCE_DATE_EPOCH,BUILDTOOL,BUILDTOOLVER,GNUPGHOME,SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER
-
-if (( EUID != 0 )); then
-	exec sudo --preserve-env="$keepenv" -- "${BASH_SOURCE[0]}" "${orig_argv[@]}"
-fi
-
 # XXX: default paths can be set through the Makefile (`aur-chroot.in`)
 etcdir=/etc/aurutils shrdir=/usr/share/devtools
 
@@ -201,10 +195,57 @@ elif [[ ! -f $makepkg_conf ]]; then
 fi
 
 # Print paths to container and used makepkg/pacman paths. This does
-# not require a priorly created container.
+# not require a priorly created container, nor root privileges.
 if (( status )) || ! (( update + build + create + print_path )); then
     printf 'chroot:%s\npacman:%s\nmakepkg:%s\n' "$directory" "$pacman_conf" "$makepkg_conf"
     exit 0
+fi
+
+# Define the user mapping for the container before elevation, so that it does
+# not depend on the elevation command setting SUDO_USER.
+reexec_args=()
+if (( build )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    if [[ ! -v makepkg_user ]]; then
+        if (( EUID == 0 )); then
+            makepkg_user=${SUDO_USER:-root}
+        else
+            makepkg_user=$(id -un)
+        fi
+        reexec_args=(--user "$makepkg_user")
+    fi
+
+    if ! builduser_uid=$(id -u "$makepkg_user"); then
+        printf >&2 "%s: error: user '%s' is invalid\n" "$argv0" "$makepkg_user"
+        exit 1
+    elif (( builduser_uid == 0 )); then
+        printf >&2 '%s: error: running makepkg as root is not allowed\n' "$argv0"
+        exit 1
+    fi
+fi
+
+# Custom elevation command (#1024)
+AUR_PACMAN_AUTH=${AUR_PACMAN_AUTH:-sudo}
+keepenv=(SRCDEST SRCPKGDEST PKGDEST LOGDEST MAKEFLAGS PACKAGER GNUPGHOME SSH_AUTH_SOCK
+         SOURCE_DATE_EPOCH BUILDTOOL BUILDTOOLVER AUR_CHROOT_DEVTOOLS AUR_DEBUG)
+auth_args=()
+
+case $AUR_PACMAN_AUTH in
+    sudo) auth_args+=(--preserve-env="$(args_csv "${keepenv[@]}")") ;;
+    run0) for v in "${keepenv[@]}"; do
+              # only pass set variables (AUR_DEBUG is checked with -v)
+              if [[ -v $v ]]; then
+                  auth_args+=(--setenv="$v")
+              fi
+          done ;;
+esac
+
+# devtools commands are elevated individually, which allows for the sudoers(5)
+# policy in aur-chroot(1). The standalone mode runs several privileged commands
+# and is re-executed as a whole. Added options are prepended, since orig_argv
+# ends with `--`.
+if (( EUID != 0 )) && (( create + update + build )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    # shellcheck disable=SC2086
+    exec $AUR_PACMAN_AUTH "${auth_args[@]}" -- "${BASH_SOURCE[0]}" "${reexec_args[@]}" "${orig_argv[@]}"
 fi
 
 is_multilib=0 cache_dirs=()
@@ -224,15 +265,6 @@ done < <(pacman-conf --config "$pacman_conf")
 wait "$!"
 
 if (( ! AUR_CHROOT_DEVTOOLS )); then
-    # define user mapping for container
-    makepkg_user=${makepkg_user:-${SUDO_USER:-$USER}}
-    builduser_uid=$(id -u "$makepkg_user")
-
-    if [[ -z $builduser_uid ]]; then
-        printf >&2 "%s: error: user '%s' is invalid \n" "$makepkg_user" "$argv0"
-        exit 1
-    fi
-
     # define bind mounts between host and container
     bindmounts_ro+=("$pacman_conf" "$makepkg_conf" /etc/pacman.d/mirrorlist)
     bindmounts_rw+=("${cache_dirs[@]}")
@@ -278,9 +310,11 @@ if (( create )); then
 
     if [[ ! -d $directory/root ]] && (( AUR_CHROOT_DEVTOOLS )); then
         # parent path is not created by mkarchroot (#371)
-        install -d "$directory"/root -m 755 -v
+        # shellcheck disable=SC2086
+        $AUR_PACMAN_AUTH install -d "$directory"/root -m 755 -v
 
-        mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root "${base_packages[@]}"
+        # shellcheck disable=SC2086
+        $AUR_PACMAN_AUTH mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root "${base_packages[@]}"
 
     elif [[ ! -d $directory/root ]]; then
         # create both the root container and a directory for pacman db
@@ -305,7 +339,8 @@ fi >&2
 
 # commands run inside the container for create/update steps
 if (( update )) && (( AUR_CHROOT_DEVTOOLS )); then
-    arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root \
+    # shellcheck disable=SC2086
+    $AUR_PACMAN_AUTH arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root \
         "${bindmounts_ro[@]/#/--bind-ro=}" \
         "${bindmounts_rw[@]/#/--bind=}"    \
         pacman -Syu --noconfirm "$@"
@@ -340,17 +375,12 @@ if (( build )) && (( AUR_CHROOT_DEVTOOLS )); then
     # use makechrootpkg -c as default build command (sync /root container)
     # arguments after -- are used as makechrootpkg arguments
     # shellcheck disable=SC2086
-    makechrootpkg -r "$directory"  \
+    $AUR_PACMAN_AUTH "${auth_args[@]}" makechrootpkg -r "$directory" \
         "${bindmounts_ro[@]/#/-D}" \
         "${bindmounts_rw[@]/#/-d}" \
-         "${makechrootpkg_args[@]}" -- "${makepkg_args[@]}"
+        "${makechrootpkg_args[@]}" -- "${makepkg_args[@]}"
 
 elif (( build )); then
-    if [[ $builduser_uid == 0 ]]; then
-        printf >&2 'error: running makepkg as root is not allowed\n'
-        exit 1
-    fi
-
     # add configurable directories for makepkg (and PWD as BUILDDIR)
     bindmounts_rw+=(
         "$PWD"

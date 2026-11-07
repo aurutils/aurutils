@@ -1,4 +1,4 @@
-.TH AUR-CHROOT 1 2022-03-04 AURUTILS
+.TH AUR-CHROOT 1 2026-11-07 AURUTILS
 .SH NAME
 aur\-chroot \- build pacman packages with systemd-nspawn
 .
@@ -201,31 +201,62 @@ instance as the specified user. (\fBmakechrootpkg \-U\fR)
 .
 .SH ENVIRONMENT
 .TP
+.B AUR_CHROOT_DEVTOOLS
+If set to
+.BR 0 ,
+use the standalone implementation based on
+.BR systemd\-nspawn (1)
+instead of devtools. Defaults to
+.BR 1 .
+.TP
 .B AUR_PACMAN_AUTH
 The agent used to elevate commands. If unset,
 .BR sudo (8)
-is used. When running
-.BR makechrootpkg ,
-the following variables should be preserved:
+is used. In devtools mode,
+.BR mkarchroot ,
+.B arch\-nspawn
+and
+.B makechrootpkg
+are run with this agent. In standalone mode,
+.B aur\-chroot
+runs itself with this agent for
+.BR \-\-create ,
+.B \-\-update
+and
+.BR \-\-build .
+.IP
+When running
+.B makechrootpkg
+(devtools mode) or
+.B aur\-chroot
+(standalone mode), the following variables are preserved:
 .IR PKGDEST ,
 .IR SRCDEST ,
+.IR SRCPKGDEST ,
 .IR LOGDEST ,
-.IR GNUPGHOME
+.IR MAKEFLAGS ,
+.IR PACKAGER ,
+.IR GNUPGHOME ,
+.IR SSH_AUTH_SOCK ,
+.IR SOURCE_DATE_EPOCH ,
+.IR BUILDTOOL ,
+.IR BUILDTOOLVER ,
+.I AUR_CHROOT_DEVTOOLS
 and
-.IR SSH_AUTH_SOCK .
-By default, these variables are preserved with
-.BR "sudo \-\-preserve-env" ,
-which assumes an
+.IR AUR_DEBUG .
+This is done with
+.B "sudo \-\-preserve\-env"
+or
+.BR "run0 \-\-setenv" .
+The former assumes an
 .BR ALL
 directive or a
 .BR SETENV
-tag for
-.BR /usr/bin/makechrootpkg .
-See
+tag for the elevated command. See
 .B SETENV
 in
 .BR sudoers (5)
-for details.
+for details. Other agents do not preserve these variables.
 .TP
 .B PATH
 The contents of this variable are ignored and replaced with
@@ -315,6 +346,23 @@ rule for
 .I /usr/bin/makechrootpkg
 is equivalent to
 .IR "NOPASSWD: ALL" .
+.PP
+In standalone mode,
+.B aur\-chroot
+itself is elevated:
+.EX
+
+  archie ALL = (root) NOPASSWD: SETENV: /usr/lib/aurutils/aur\-chroot
+
+.EE
+.B Warning:
+This rule is equivalent to
+.IR "NOPASSWD: ALL" ,
+since
+.B \-\-bind\-rw
+mounts arbitrary host paths read-write into a container where
+.B pacman
+runs as root.
 .
 .SS Using ccache and distcc
 As in
