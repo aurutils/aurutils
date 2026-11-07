@@ -309,9 +309,12 @@ if (( create )); then
     fi
 
     if [[ ! -d $directory/root ]] && (( AUR_CHROOT_DEVTOOLS )); then
-        # parent path is not created by mkarchroot (#371)
-        # shellcheck disable=SC2086
-        $AUR_PACMAN_AUTH install -d "$directory"/root -m 755 -v
+        # parent path is not created by mkarchroot (#371). The working
+        # directory itself must not exist, or mkarchroot exits.
+        if [[ ! -d $directory ]]; then
+            # shellcheck disable=SC2086
+            $AUR_PACMAN_AUTH install -d "$directory" -m 755 -v
+        fi
 
         # shellcheck disable=SC2086
         $AUR_PACMAN_AUTH mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root "${base_packages[@]}"
@@ -346,7 +349,7 @@ if (( update )) && (( AUR_CHROOT_DEVTOOLS )); then
         pacman -Syu --noconfirm "$@"
 
 # XXX: allow running arbitrary commands similar to arch-nspawn
-elif (( update )) || (( create )); then
+elif (( update + create )) && (( ! AUR_CHROOT_DEVTOOLS )); then
     { if (( create )); then
           declare -f _chroot_create
           printf '_chroot_create || exit\n'
