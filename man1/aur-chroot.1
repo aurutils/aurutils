@@ -128,6 +128,14 @@ or
 .B /usr/share/devtools/pacman.conf.d/multilib.conf
 instead and make the necessary adjustments. Due to devtools limitations, any
 desired repositories should be configured explicitly in this copy.
+.IP
+In standalone mode, the file is mounted read-only to
+.B /etc/pacman.conf
+inside the container, together with
+.B /etc/pacman.d/mirrorlist
+from the host. Other files referenced by
+.B Include
+directives are not mounted.
 .
 .TP
 .BI \-M " FILE" "\fR,\fP \-\-makepkg\-conf=" FILE
@@ -143,6 +151,13 @@ are checked in order:
 .BI /usr/share/devtools/makepkg.conf.d/<suffix>.conf
 .br
 .BI /usr/share/devtools/makepkg.conf.d/<machine>.conf
+.IP
+In standalone mode, the file is mounted read-only to
+.B /etc/makepkg.conf
+inside the container. If a
+.I FILE.d
+directory exists, it is mounted to
+.BR /etc/makepkg.conf.d .
 .
 .SS makechrootpkg options
 .TP
@@ -164,6 +179,8 @@ A default list of
 .BR makepkg (8)
 arguments can be listed with
 .BR "makechrootpkg \-\-help" .
+In standalone mode, the arguments are appended to
+.BR "\-\-syncdeps \-\-noconfirm \-\-log" .
 .
 .TP
 .B \-\-bind
@@ -442,6 +459,19 @@ arguments used in
 can be extended but not overridden. In particular, package conflicts
 can not solved interactively.
 .RB ( "makepkg \-\-noconfirm" )
+The same applies to
+.B "\-\-syncdeps \-\-noconfirm \-\-log"
+in standalone mode.
+.PP
+In standalone mode,
+.B GNUPGHOME
+and
+.B SSH_AUTH_SOCK
+are not available inside the container.
+.B makepkg
+can not use the host keyring to verify PGP signatures of sources
+.RI ( validpgpkeys ),
+nor the SSH agent to retrieve sources.
 .PP
 .B arch\-nspawn
 will unconditionally modify the supplied

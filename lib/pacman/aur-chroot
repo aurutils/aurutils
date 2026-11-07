@@ -265,8 +265,15 @@ done < <(pacman-conf --config "$pacman_conf")
 wait "$!"
 
 if (( ! AUR_CHROOT_DEVTOOLS )); then
-    # define bind mounts between host and container
-    bindmounts_ro+=("$pacman_conf" "$makepkg_conf" /etc/pacman.d/mirrorlist)
+    # define bind mounts between host and container. Configuration files are
+    # mounted to their default paths, as arch-nspawn -C/-M copies them there:
+    # makepkg --syncdeps runs pacman without --config.
+    bindmounts_ro+=("$pacman_conf":/etc/pacman.conf "$makepkg_conf":/etc/makepkg.conf
+                    /etc/pacman.d/mirrorlist)
+
+    if [[ -d $makepkg_conf.d ]]; then
+        bindmounts_ro+=("$makepkg_conf.d":/etc/makepkg.conf.d)
+    fi
     bindmounts_rw+=("${cache_dirs[@]}")
 
     # _chroot functions are "jitted" in a script inside the chroot and executed there
@@ -357,7 +364,7 @@ elif (( update + create )) && (( ! AUR_CHROOT_DEVTOOLS )); then
 
       # XXX: do not hardcode --noconfirm or allow negating it (--confirm)
       if (( update )); then
-          printf 'pacman -Syu --noconfirm --config %q %s || exit' "$pacman_conf" "${*@Q}"
+          printf 'pacman -Syu --noconfirm %s || exit' "${*@Q}"
       fi
     } >"$directory"/root/aur-chroot--helper.$$
 
@@ -403,6 +410,10 @@ builduser ALL = NOPASSWD: /usr/bin/pacman
 EOF
     chmod 440 "$directory/root/etc/sudoers.d/builduser-pacman"
 
+    # makechrootpkg defaults, except --holdver and --skipinteg: sources are
+    # retrieved and verified inside the container, not on the host
+    makepkg_args=(--syncdeps --noconfirm --log "${makepkg_args[@]}")
+
     { printf 'makepkg %s || exit\n' "${makepkg_args[*]@Q}"
 
       if (( run_namcap )); then
@@ -411,9 +422,9 @@ EOF
       fi
     } >"$directory"/root/aur-chroot--helper.$$
 
+    # GNUPGHOME and SSH_AUTH_SOCK are not passed, since their paths are not
+    # available in the container
     preserved_envvars=(
-        GNUPGHOME
-        SSH_AUTH_SOCK
         BUILDTOOL
         BUILDTOOLVER
         MAKEFLAGS
@@ -430,7 +441,6 @@ EOF
         --setenv=SRCDEST=/srcdest \
         --setenv=SRCPKGDEST=/srcpkgdest \
         --setenv=BUILDDIR="$PWD" \
-        --setenv=MAKEPKG_CONF="$makepkg_conf" \
         --setenv=SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}" \
         "${preserved_envvars[@]/#/--setenv=}" \
         "${bindmounts_ro[@]/#/--bind-ro=}" \
