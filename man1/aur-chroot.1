@@ -41,6 +41,14 @@ copy of the container with
 .BR \-\-create
 Create a new container with
 .BR mkarchroot .
+In standalone mode, packages are installed with
+.BR pacstrap (8)
+on the host as in
+.BR mkarchroot ,
+followed by
+.B locale\-gen
+inside the container.
+.IP
 By default, the
 .B base\-devel
 package group is installed to the container.

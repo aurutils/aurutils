@@ -279,12 +279,10 @@ if (( ! AUR_CHROOT_DEVTOOLS )); then
     # _chroot functions are "jitted" in a script inside the chroot and executed there
     # in order to run complex commands and keep things tidy
     # idea comes from https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/makechrootpkg.in
+    # The keyring is copied from the host by pacstrap (mkarchroot)
     _chroot_create() {
         # XXX: use localedef to generate locales directly (outside of nspawn)
         locale-gen
-
-        pacman-key --init
-        pacman-key --populate
     }
 
     # https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/makechrootpkg.in?ref_type=heads#L235
@@ -327,15 +325,15 @@ if (( create )); then
         $AUR_PACMAN_AUTH mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root "${base_packages[@]}"
 
     elif [[ ! -d $directory/root ]]; then
-        # create both the root container and a directory for pacman db
-        install -d "$directory"/root/var/lib/pacman -m 755
+        # same steps as mkarchroot: pacstrap mounts API file systems for
+        # install scriptlets, and copies the host keyring
+        install -d "$directory"/root -m 755
+        unshare --mount pacstrap -Mc -C "$pacman_conf" "$directory"/root \
+            "${cache_dirs[@]/#/--cachedir=}" "${base_packages[@]}"
 
-        # XXX: allow setting machine-id from host (and provide default) to enable .nspawn file usage
-        systemd-firstboot --root="$directory"/root --copy-locale --copy-timezone --setup-machine-id
-
-        # install packages to root container
-        pacman -Sy "${base_packages[@]}" --config "$pacman_conf" -r "$directory"/root \
-            "${cache_dirs[@]/#/--cachedir=}" --noconfirm
+        printf '%s.UTF-8 UTF-8\n' en_US de_DE >"$directory"/root/etc/locale.gen
+        printf 'LANG=C.UTF-8\n' >"$directory"/root/etc/locale.conf
+        systemd-machine-id-setup --root="$directory"/root
     else
         create=0
     fi

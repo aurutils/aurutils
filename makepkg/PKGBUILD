@@ -16,6 +16,7 @@ makedepends=('git')
 optdepends=('bash-completion: bash completion'
             'zsh: zsh completion'
             'devtools: aur-chroot'
+            'arch-install-scripts: aur-chroot (AUR_CHROOT_DEVTOOLS=0)'
             'vifm: default pager'
             'ninja: aur-sync ninja support'
             'bat: view-delta example script'
