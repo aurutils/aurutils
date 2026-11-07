@@ -7,6 +7,7 @@ aur\-chroot \- build pacman packages with systemd-nspawn
 .OP \-\-build
 .OP \-\-update
 .OP \-\-create
+.OP \-\-run
 .OP \-D directory
 .OP \-C pacman_conf
 .OP \-M makepkg_conf
@@ -98,6 +99,29 @@ are installed instead of the above.
 .B \-\-path
 Print the path to the container template
 .RI ( $directory/root ).
+.
+.TP
+.BI \-\-run " command" \fR...\fP
+Run
+.I command
+as the build user inside the container, with the same temporary
+overlay, mounts and environment as
+.BR \-\-build ,
+in the current directory. This allows running
+.BR makepkg (8)
+operations such as
+.B \-\-packagelist
+without sourcing the
+.B PKGBUILD
+on the host. Output is written to standard output (without a pseudo
+terminal, unless run from one), whereas
+.B \-\-build
+writes to standard error. Only available in standalone mode, and can not
+be combined with other operations. Options of
+.B aur\-chroot
+must precede
+.IR command ;
+later arguments are passed on unchanged.
 .
 .SH OPTIONS
 .TP
