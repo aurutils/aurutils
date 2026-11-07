@@ -210,7 +210,14 @@ on the built package.
 .BR \-N ", " \-\-namcap
 Run
 .BR namcap (1)
-on the built package.
+on the built package. In standalone mode,
+.B namcap
+is installed inside the container and run on the
+.B PKGBUILD
+and the packages listed by
+.BR "makepkg \-\-packagelist" .
+Logs are written to
+.BR LOGDEST .
 .
 .TP
 .BR \-T ", " \-\-temp
@@ -223,6 +230,15 @@ build completion.
 Run the host
 .BR makepkg (8)
 instance as the specified user. (\fBmakechrootpkg \-U\fR)
+.IP
+In standalone mode, the build user inside the container
+.RI ( builduser )
+is given the UID of
+.IR USER .
+Defaults to the user running
+.B aur\-chroot
+.RI ( SUDO_USER
+when run as root). Building as root is not allowed.
 .
 .SH ENVIRONMENT
 .TP

@@ -8,6 +8,7 @@ fi
 
 set -o errexit
 argv0=chroot
+lib_dir=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 machine=$(uname -m)
 
@@ -30,24 +31,13 @@ args_csv() {
 
 # XXX: a missing makepkg.conf usually indicates a missing devtools, whereas
 # a missing pacman.conf usually indicates the local repository was not configured
-diag_makepkg_conf() {
+diag_conf() {
+    local file=$1
+    shift
     echo >&2 'Error:'
 
     cat <<EOF | pr -to 4 >&2
-aur-$argv0 could not find a makepkg.conf(5) file for container usage. Before
-using aur-$argv0, make sure this file is created and valid. See OPTIONS in
-aur-$argv0(1) for configuration details.
-
-The following file paths were checked:
-EOF
-    printf '%s\n' "${@@Q}" | pr -to 8 >&2
-}
-
-diag_pacman_conf() {
-    echo >&2 'Error:'
-
-    cat <<EOF | pr -to 4 >&2
-aur-$argv0 could not find a pacman.conf(5) file for container usage. Before
+aur-$argv0 could not find a $file file for container usage. Before
 using aur-$argv0, make sure this file is created and valid. See OPTIONS in
 aur-$argv0(1) for configuration details.
 
@@ -181,16 +171,16 @@ done
 # No pacman configuration is available for the container, or it points to a
 # non-existing file. Print a matching diagnostic and exit.
 if [[ ! -v pacman_conf ]]; then
-    diag_pacman_conf "${default_pacman_paths[@]}"
+    diag_conf 'pacman.conf(5)' "${default_pacman_paths[@]}"
     exit 2
 elif [[ ! -f $pacman_conf ]]; then
-    diag_pacman_conf "$pacman_conf"
+    diag_conf 'pacman.conf(5)' "$pacman_conf"
     exit 2
 elif [[ ! -v makepkg_conf ]]; then
-    diag_makepkg_conf "${default_makepkg_paths[@]}"
+    diag_conf 'makepkg.conf(5)' "${default_makepkg_paths[@]}"
     exit 2
 elif [[ ! -f $makepkg_conf ]]; then
-    diag_makepkg_conf "$makepkg_conf"
+    diag_conf 'makepkg.conf(5)' "$makepkg_conf"
     exit 2
 fi
 
@@ -214,7 +204,7 @@ if (( build )) && (( ! AUR_CHROOT_DEVTOOLS )); then
         reexec_args=(--user "$makepkg_user")
     fi
 
-    if ! builduser_uid=$(id -u "$makepkg_user"); then
+    if ! builduser_uid=$(id -u "$makepkg_user") || ! builduser_gid=$(id -g "$makepkg_user"); then
         printf >&2 "%s: error: user '%s' is invalid\n" "$argv0" "$makepkg_user"
         exit 1
     elif (( builduser_uid == 0 )); then
@@ -258,7 +248,7 @@ while read -r key _ value; do
         CacheDir=*)
             cache_dirs+=("$value") ;;
         \[multilib\]=)
-            # XXX: check if devtools already works with Include directives (-> pacini)
+            # also matches [multilib] sections from Include directives (pacini does not)
             is_multilib=1 ;;
     esac
 done < <(pacman-conf --config "$pacman_conf")
@@ -276,28 +266,10 @@ if (( ! AUR_CHROOT_DEVTOOLS )); then
     fi
     bindmounts_rw+=("${cache_dirs[@]}")
 
-    # _chroot functions are "jitted" in a script inside the chroot and executed there
-    # in order to run complex commands and keep things tidy
-    # idea comes from https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/makechrootpkg.in
-    # The keyring is copied from the host by pacstrap (mkarchroot)
-    _chroot_create() {
-        # XXX: use localedef to generate locales directly (outside of nspawn)
-        locale-gen
-    }
-
-    # https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/makechrootpkg.in?ref_type=heads#L235
-    _chroot_run_namcap() {
-        pacman -S --needed --noconfirm namcap
-
-        for pkgfile in PKGBUILD /pkgdest/*; do
-            sudo -u builduser namcap "$pkgfile" 2>&1 | tee "/logdest/${pkgfile##*/}-namcap.log"
-        done
-    }
-
-    cleanup() {
-        rm "$directory"/root/aur-chroot--helper.$$
-    }
-    trap cleanup EXIT
+    # Commands run inside the container (aur-chroot--container). The script is
+    # passed as argument, so that nothing is written to /root outside of the
+    # container (and its lock).
+    container_script=$(<"$lib_dir"/aur-chroot--container)
 fi
 
 # create new container, required for update/build steps
@@ -355,21 +327,15 @@ if (( update )) && (( AUR_CHROOT_DEVTOOLS )); then
 
 # XXX: allow running arbitrary commands similar to arch-nspawn
 elif (( update + create )) && (( ! AUR_CHROOT_DEVTOOLS )); then
-    { if (( create )); then
-          declare -f _chroot_create
-          printf '_chroot_create || exit\n'
-      fi
+    nspawn_args=(-D "$directory"/root --as-pid2
+                 "${bindmounts_ro[@]/#/--bind-ro=}" "${bindmounts_rw[@]/#/--bind=}")
 
-      # XXX: do not hardcode --noconfirm or allow negating it (--confirm)
-      if (( update )); then
-          printf 'pacman -Syu --noconfirm %s || exit' "${*@Q}"
-      fi
-    } >"$directory"/root/aur-chroot--helper.$$
-
-    systemd-nspawn -D "$directory"/root    \
-        "${bindmounts_ro[@]/#/--bind-ro=}" \
-        "${bindmounts_rw[@]/#/--bind=}"    \
-        /bin/bash /aur-chroot--helper.$$
+    if (( create )); then
+        systemd-nspawn "${nspawn_args[@]}" /bin/bash -c "$container_script" bash create
+    fi
+    if (( update )); then
+        systemd-nspawn "${nspawn_args[@]}" /bin/bash -c "$container_script" bash update "$@"
+    fi
 fi >&2
 
 # print path for processing by other tools (e.g. makepkg --packagelist)
@@ -398,27 +364,14 @@ elif (( build )); then
         "${SRCPKGDEST:-$PWD}:/srcpkgdest"
     )
 
-    # create makepkg_user
-    systemd-sysusers --root "$directory"/root --replace=/usr/lib/sysusers.d/build.conf - \
-        < <(printf 'u %s %s "makepkg user" /build /bin/bash\n' builduser "$builduser_uid")
-
-    # allow makepkg_user to install packages (e.g. --syncdeps)
-    cat <<EOF >"$directory/root/etc/sudoers.d/builduser-pacman"
-builduser ALL = NOPASSWD: /usr/bin/pacman
-EOF
-    chmod 440 "$directory/root/etc/sudoers.d/builduser-pacman"
-
     # makechrootpkg defaults, except --holdver and --skipinteg: sources are
     # retrieved and verified inside the container, not on the host
     makepkg_args=(--syncdeps --noconfirm --log "${makepkg_args[@]}")
 
-    { printf 'makepkg %s || exit\n' "${makepkg_args[*]@Q}"
-
-      if (( run_namcap )); then
-          declare -f _chroot_run_namcap
-          printf '_chroot_run_namcap || exit\n'
-      fi
-    } >"$directory"/root/aur-chroot--helper.$$
+    # install built packages for namcap checks (makechrootpkg -n)
+    if (( run_namcap )); then
+        makepkg_args+=(--install)
+    fi
 
     # GNUPGHOME and SSH_AUTH_SOCK are not passed, since their paths are not
     # available in the container
@@ -429,10 +382,14 @@ EOF
         PACKAGER
     )
 
+    # variables kept when switching from root to builduser inside the container
+    builduser_env=(PKGDEST LOGDEST SRCDEST SRCPKGDEST BUILDDIR SOURCE_DATE_EPOCH
+                   "${preserved_envvars[@]}")
+
     systemd-nspawn \
         -D "$directory"/root \
+        --as-pid2 \
         --chdir="$PWD" \
-        --user=builduser \
         --volatile=overlay \
         --setenv=PKGDEST=/pkgdest \
         --setenv=LOGDEST=/logdest \
@@ -443,7 +400,9 @@ EOF
         "${preserved_envvars[@]/#/--setenv=}" \
         "${bindmounts_ro[@]/#/--bind-ro=}" \
         "${bindmounts_rw[@]/#/--bind=}" \
-        /bin/bash /aur-chroot--helper.$$
+        /bin/bash -c "$container_script" bash build \
+        "$builduser_uid" "$builduser_gid" "$(args_csv "${builduser_env[@]}")" "$run_namcap" \
+        makepkg "${makepkg_args[@]}"
 fi >&2
 
 # vim: set et sw=4 sts=4 ft=sh:
