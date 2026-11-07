@@ -266,10 +266,31 @@ if (( ! AUR_CHROOT_DEVTOOLS )); then
     fi
     bindmounts_rw+=("${cache_dirs[@]}")
 
+    # Builds use /root as overlay lower directory, which must not change while
+    # mounted, and hold a shared lock for their whole duration. --create and
+    # --update take an exclusive lock. Wait for the lock, instead of failing on
+    # the non-blocking lock taken by systemd-nspawn. (devtools uses the same file)
+    lock_root() {
+        local mode=$1
+
+        if [[ ! -v lock_fd ]]; then
+            exec {lock_fd}>"$directory"/root.lock
+        fi
+        if ! flock -n "$mode" "$lock_fd"; then
+            printf >&2 '%s: waiting for lock on %s\n' "$argv0" "$directory"/root.lock
+            flock "$mode" "$lock_fd"
+        fi
+    }
+
     # Commands run inside the container (aur-chroot--container). The script is
     # passed as argument, so that nothing is written to /root outside of the
     # container (and its lock).
     container_script=$(<"$lib_dir"/aur-chroot--container)
+fi
+
+if (( create )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    install -d "$directory" -m 755
+    lock_root -x
 fi
 
 # create new container, required for update/build steps
@@ -317,6 +338,10 @@ if [[ ! -d $directory/root ]]; then
     exit 20
 fi >&2
 
+if (( update )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    lock_root -x
+fi
+
 # commands run inside the container for create/update steps
 if (( update )) && (( AUR_CHROOT_DEVTOOLS )); then
     # shellcheck disable=SC2086
@@ -355,6 +380,9 @@ if (( build )) && (( AUR_CHROOT_DEVTOOLS )); then
         "${makechrootpkg_args[@]}" -- "${makepkg_args[@]}"
 
 elif (( build )); then
+    # converts an exclusive lock from --create/--update
+    lock_root -s
+
     # add configurable directories for makepkg (and PWD as BUILDDIR)
     bindmounts_rw+=(
         "$PWD"
