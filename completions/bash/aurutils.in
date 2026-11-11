@@ -20,8 +20,8 @@ cat <<'EOF'
     fi
 
     # If there's an override for subcommand, use it
-    if declare -F "_aurutils_${words[1]/-/_/}" >/dev/null ; then
-        "_aurutils_${words[1]}"
+    if declare -F "_aurutils_${words[1]//-/_}" >/dev/null ; then
+        "_aurutils_${words[1]//-/_}"
         return
     fi
 
