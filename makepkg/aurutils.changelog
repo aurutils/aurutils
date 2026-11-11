@@ -1,3 +1,48 @@
+## 22
+
+* `aur-build`
+  + check the signature of the database file (`<name>.db.sig`)
+  + pass `--dbext` to `aur-repo`
+  + resolve the `--pool` directory
+
+* `aur-depends`
+  + do not report a complete tree as out of range
+    (`AUR_DEPENDS_CALLBACK_MAX`)
+
+* `aur-fetch`
+  + update local clones of the AUR mirror (`AUR_FETCH_USE_MIRROR`, #1278)
+  + `fetch--mirror`: check that `AUR_ROOT` is a bare repository
+
+* `aur-format`
+  + parse the format once
+
+* `aur-graph`
+  + quote versions passed to `vercmp` (#1275)
+    - a dependency version in `.SRCINFO` could run commands
+
+* `aur-pkglist`
+  + check for download errors, keep the cached list (#1276)
+  + run `--verify` in `AUR_METADEST`
+
+* `aur-repo`
+  + `repo-filter`: warn if no terminal is available (#1276)
+  + `repo-filter`: fix usage message
+
+* `aur-sync`
+  + inspect build files before verifying dependencies (#1277)
+    - `aur-view` is run before `aur-graph` and `--auto-key-retrieve`
+    - build files are presented in the order of `aur-depends`
+  + do not pass keys to `gpg` as options (`--auto-key-retrieve`)
+  + return an error if the ninja build fails (`AUR_SYNC_USE_NINJA`)
+  + resolve a relative `AURDEST`
+
+* `completions`
+  + fix override for subcommands with a hyphen (bash)
+
+* `make`
+  + fix `.PHONY` targets in `completions` and `perl`
+  + do not create an `aurutils` directory in the source tree on install
+
 ## 21.1
 
 * `aur-build`
