@@ -440,7 +440,8 @@ if (( auto_key_retrieve )); then
         for key in "${!keys_uniq[@]}"; do
             printf >&2 '%s: importing key %s\n' "$argv0" "$key"
         done
-        GNUPGHOME="$AUR_SYNC_GNUPGHOME" gpg --recv-keys "${!keys_uniq[@]}" >&2
+        # keys are taken from .SRCINFO, and must not be parsed as options
+        GNUPGHOME="$AUR_SYNC_GNUPGHOME" gpg --recv-keys -- "${!keys_uniq[@]}" >&2
     fi
 
     # Pass on verified keys to makepkg
