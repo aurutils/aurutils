@@ -413,6 +413,13 @@ else
     xargs -a "$tmp"/queue stat >/dev/null || exit 2 # ensure all directories are available
 fi
 
+# Inspect package files. Build files are not processed before this point: the
+# queue follows from AUR metadata (aur-depends). Dependencies are resolved a
+# second time from the inspected .SRCINFO files below (aur-graph).
+if (( view )); then
+    aur view -a "$tmp"/queue "${view_args[@]}"
+fi
+
 if (( auto_key_retrieve )); then
     # shellcheck disable=SC2174
     mkdir -pm 0700 -- "$AUR_SYNC_GNUPGHOME"
@@ -440,7 +447,7 @@ if (( auto_key_retrieve )); then
     build_args+=(--makepkg-gnupghome="$AUR_SYNC_GNUPGHOME")
 fi
 
-# Verify dependency tree (#20)
+# Verify dependency tree (#20). The resulting queue is used for the build.
 # Use pacini to preprocess .SRCINFO to avoid CRLF (#1203)
 if (( graph )); then
     if ! { while read -r pkg; do
@@ -467,11 +474,6 @@ fi
       [[ $pkg ]] && printf '%s\n' "$AURDEST/$pkg"
   done <"$tmp"/queue >"$tmp"/queue.realpath
 }
-
-# Inspect package files
-if (( view )); then
-    aur view -a "$tmp"/queue "${view_args[@]}"
-fi
 
 # `--columns` / `--no-build` output
 if (( columns )) && [[ -v stdout_file ]]; then

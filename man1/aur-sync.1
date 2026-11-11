@@ -26,6 +26,9 @@ Retrieve build files with
 Present build files before their execution with
 .BR aur\-view (1)
 .IP \(bu 4
+Verify dependencies in the presented build files with
+.BR aur\-graph (1)
+.IP \(bu 4
 Build the packages with
 .BR aur-build (1)
 .PP
@@ -104,7 +107,14 @@ succeeded builds. Requires
 .
 .TP
 .BR \-\-noview ", " \-\-no\-view
-Do not present build files for inspection.
+Do not present build files for inspection. Build files are presented in
+the order of AUR dependencies
+.RB ( aur\-depends ),
+and are not read by
+.B aur\-sync
+before they were presented. With this option,
+.B .SRCINFO
+files are read without prior inspection.
 .
 .TP
 .BR \-u ", " \-\-upgrades
@@ -131,6 +141,10 @@ Do not handle
 .BR \-\-nograph ", " \-\-no\-graph
 Do not verify the AUR dependency graph with
 .BR aur\-graph (1).
+The verification is based on the
+.B .SRCINFO
+files of the retrieved packages, takes place after their inspection, and
+defines the order in which packages are built.
 .
 .TP
 .BR \-\-nover ", " \-\-no\-ver
