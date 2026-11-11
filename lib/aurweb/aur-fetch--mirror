@@ -50,8 +50,10 @@ exec {fd}< "$AUR_ROOT"
 { flock --wait 5 "$fd" || exit 1
   cd -- "$AUR_ROOT"
 
-  # Shallow clone
-  if [[ ! $(git rev-parse --is-inside-git-dir 2>/dev/null) ]]; then
+  # Shallow clone. --git-dir prints `.` for a bare repository in the current
+  # directory; --is-inside-git-dir prints `false` (and returns 0) in the work
+  # tree of an enclosing repository.
+  if [[ $(git rev-parse --git-dir 2>/dev/null) != . ]]; then
       git init --bare --initial-branch="$AUR_MIRROR_BRANCH"
       git remote add origin "$AUR_MIRROR"
   fi
