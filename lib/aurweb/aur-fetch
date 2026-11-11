@@ -253,6 +253,12 @@ for pkg in "${!packages[@]}"; do
         # Merge in new history
         upstream=origin/HEAD
 
+        # Local clones of the AUR mirror (fetch--mirror --lclone) only have
+        # a remote-tracking branch for the package
+        if ! git rev-parse --verify --quiet "$upstream" >/dev/null; then
+            upstream=origin/$pkg
+        fi
+
         case $pkg_sync in
             rebase)
                 dest=HEAD
