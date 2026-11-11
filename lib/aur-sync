@@ -522,6 +522,7 @@ elif (( AUR_SYNC_USE_NINJA )); then
 
         # Preserve ninja directory
         printf '%s: build files at %s\n' "$argv0" "$ninja_dir"
+        exit 1
     fi
 else
     # Apply `--save` (#1091)
