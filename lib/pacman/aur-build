@@ -309,6 +309,15 @@ if [[ ! -w $db_path ]]; then
     exit 13
 fi
 
+# Packages are moved from the build directory, resolve relative paths
+if [[ -v db_pool ]]; then
+    if [[ ! -d $db_pool ]]; then
+        printf >&2 '%s: %s: not a directory\n' "$argv0" "$db_pool"
+        exit 2
+    fi
+    db_pool=$(realpath -- "$db_pool")
+fi
+
 # Write successfully built packages to file (#437, #980)
 if [[ -v results_file ]]; then
     results_file=$(realpath -- "$results_file")
