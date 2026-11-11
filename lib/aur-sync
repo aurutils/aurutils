@@ -400,6 +400,7 @@ fi
 
 if [[ -s $tmp/queue ]]; then
     cd -- "$AURDEST"
+    AURDEST=$PWD  # absolute path for --no-build and sync--ninja
 else
     printf >&2 '%s: there is nothing to do\n' "$argv0"
     exit
