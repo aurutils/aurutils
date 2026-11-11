@@ -102,7 +102,8 @@ while true; do
             shift; db_name=$1
             repo_args+=(--repo "$1") ;;
         --dbext)
-            shift; db_ext=$1 ;;
+            shift; db_ext=$1
+            repo_args+=(--dbext "$1") ;;
         --buildscript)
             shift; buildscript=$1; makepkg_common_args+=(-p "$1")
             pkglist_args+=(-p "$1") ;;
