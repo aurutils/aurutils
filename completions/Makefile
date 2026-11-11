@@ -1,6 +1,6 @@
 PREFIX ?= /usr
 SHRDIR ?= $(PREFIX)/share
-.PHONY = bash install-bash install-zsh
+.PHONY: bash install-bash install-zsh
 
 ZSH_SITE_FUNCTIONS = \
 	zsh/_aur \

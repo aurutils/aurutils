@@ -1,7 +1,7 @@
 PREFIX ?= /usr
 SHRDIR ?= $(PREFIX)/share
 PRLDIR ?= $(SHRDIR)/perl5/vendor_perl
-.PHONY = install-perl
+.PHONY: test install-perl
 
 test:
 	@prove -I.
