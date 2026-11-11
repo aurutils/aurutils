@@ -215,11 +215,11 @@ unless (caller) {
         die if $!;
     }
     elsif ($opt_mode eq 'format') {
+        my ($fmt, $suffix) = tokenize($opt_format);
+        die unless (scalar @{$fmt} eq scalar @{$suffix});
+
         while (my $row = <ARGV>) {
             my @results = parse_json_aur($row);
-
-            my ($fmt, $suffix) = tokenize($opt_format);
-            die unless (scalar @{$fmt} eq scalar @{$suffix});
 
             map { info_format($_, $fmt, $suffix, $opt_delim, $opt_verbose, $opt_time_fmt) } @results;
         }
