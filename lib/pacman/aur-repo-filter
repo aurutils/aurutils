@@ -26,6 +26,10 @@ satisfies() {
     if command -v unbuffer >/dev/null; then
         unbuffer  xargs -a <(printf -- "--satisfies=%s\n" "$@") pacsift "${sift_args[@]}"
     else
+        # No controlling terminal, e.g. with cron or CI
+        if ! { : </dev/tty; } 2>/dev/null; then
+            printf >&2 '%s: warning: no terminal available, install expect (unbuffer)\n' "$argv0"
+        fi
         </dev/tty xargs -a <(printf -- "--satisfies=%s\n" "$@") pacsift "${sift_args[@]}"
     fi
 }

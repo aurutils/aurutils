@@ -119,12 +119,17 @@ elif [[ -s $AUR_METADEST/$pkglist ]]; then
 fi
 
 if (( update )); then
-    list_fetch "$AUR_LOCATION/$pkglist.gz" --dump-header "$AUR_METADEST/headers_$pkglist" -o "$AUR_METADEST/$pkglist.gz"
+    # Keep the cached headers and package list if the download fails
+    list_fetch "$AUR_LOCATION/$pkglist.gz" --dump-header "$AUR_METADEST/headers_$pkglist.part" \
+        -o "$AUR_METADEST/$pkglist.gz" || exit
 
     if (( verify )); then
-        list_fetch "$AUR_LOCATION/$pkglist.gz.sha256" -o "$AUR_METADEST/$pkglist.gz.sha256"
-        sha256sum --check --strict --quiet "$AUR_METADEST/$pkglist.gz.sha256" || exit
+        list_fetch "$AUR_LOCATION/$pkglist.gz.sha256" -o "$AUR_METADEST/$pkglist.gz.sha256" || exit
+
+        # The checksum file contains the file name without directory
+        env -C "$AUR_METADEST" sha256sum --check --strict --quiet "$pkglist.gz.sha256" || exit
     fi
+    mv -f -- "$AUR_METADEST/headers_$pkglist.part" "$AUR_METADEST/headers_$pkglist"
 
     if [[ $pkglist == *.json ]]; then
         # Remove newlines separating partial objects, i.e.
