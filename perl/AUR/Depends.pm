@@ -133,6 +133,7 @@ sub recurse {
 
     # XXX: return $a for testing number of requests, e.g. 7 for ros-noetic-desktop
     my $a = 1;
+    my $complete = 0;
     while ($a < $aur_callback_max)
     {
         if (defined $ENV{'AUR_DEBUG'}) {
@@ -142,6 +143,7 @@ sub recurse {
         my @level = $callback->(\@depends);
 
         if (not scalar(@level) and $a == 1) {
+            $complete = 1;
             last;  # no results
         }
         $a++;
@@ -188,6 +190,7 @@ sub recurse {
             }
         }
         if (not scalar(@depends)) {
+            $complete = 1;
             last;  # no further results
         }
     }
@@ -202,7 +205,7 @@ sub recurse {
         croak(AUR::Exception->new(__PACKAGE__ . ": no packages found", EX_FAILURE));
     }
     # Check if request limits have been exceeded
-    if ($a == $aur_callback_max) {
+    if (not $complete) {
         croak(AUR::Exception->new(__PACKAGE__ . ": total requests: $a (out of range)", EX_OUT_OF_RANGE));
     }
     return \%results, \%pkgdeps, \%pkgmap;

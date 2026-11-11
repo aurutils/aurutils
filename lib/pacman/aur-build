@@ -102,7 +102,8 @@ while true; do
             shift; db_name=$1
             repo_args+=(--repo "$1") ;;
         --dbext)
-            shift; db_ext=$1 ;;
+            shift; db_ext=$1
+            repo_args+=(--dbext "$1") ;;
         --buildscript)
             shift; buildscript=$1; makepkg_common_args+=(-p "$1")
             pkglist_args+=(-p "$1") ;;
@@ -308,6 +309,15 @@ if [[ ! -w $db_path ]]; then
     exit 13
 fi
 
+# Packages are moved from the build directory, resolve relative paths
+if [[ -v db_pool ]]; then
+    if [[ ! -d $db_pool ]]; then
+        printf >&2 '%s: %s: not a directory\n' "$argv0" "$db_pool"
+        exit 2
+    fi
+    db_pool=$(realpath -- "$db_pool")
+fi
+
 # Write successfully built packages to file (#437, #980)
 if [[ -v results_file ]]; then
     results_file=$(realpath -- "$results_file")
@@ -322,7 +332,8 @@ fi
 
 # Early consistency check for signed database
 if (( ! sign_pkg )); then
-    db_sigs=("$db_root/$db_name".sig "$db_root/$db_name".files.sig)
+    # repo-add --sign: <name>.db.sig, <name>.files.sig (or AUR_DBEXT)
+    db_sigs=("$db_root/$db_name.${db_ext:-db}".sig "$db_root/$db_name.files${db_ext#db}".sig)
 
     if [[ -f ${db_sigs[0]} ]]; then
         printf >&2 '%s: database signature found, but signing is disabled\n' "$argv0"

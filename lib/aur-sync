@@ -400,6 +400,7 @@ fi
 
 if [[ -s $tmp/queue ]]; then
     cd -- "$AURDEST"
+    AURDEST=$PWD  # absolute path for --no-build and sync--ninja
 else
     printf >&2 '%s: there is nothing to do\n' "$argv0"
     exit
@@ -522,6 +523,7 @@ elif (( AUR_SYNC_USE_NINJA )); then
 
         # Preserve ninja directory
         printf '%s: build files at %s\n' "$argv0" "$ninja_dir"
+        exit 1
     fi
 else
     # Apply `--save` (#1091)

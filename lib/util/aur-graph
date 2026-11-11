@@ -3,11 +3,15 @@
 
 # shellcheck disable=all
 
+# shell_quote(), distributed with gawk
+@include "shellquote"
+
 # < 0 : if ver1 < ver2
 # = 0 : if ver1 == ver2
 # > 0 : if ver1 > ver2
 function get_vercmp(ver1, ver2, op) {
-    command = ("vercmp " ver1 " " ver2)
+    # versions are taken from .SRCINFO and the command is run by the shell
+    command = ("vercmp " shell_quote(ver1) " " shell_quote(ver2))
 
     if (op == "-" || ver2 == "-") {
         return "true" # dependency is unversioned
