@@ -36,7 +36,10 @@ AUR packages have
 .B master
 as the only remote branch, so changes are always merged
 from
-.BR origin/master .
+.B origin/master
+(the
+.B origin/HEAD
+reference), independent of the checked out branch.
 Local changes may however live in different branches.
 .
 .SH OPTIONS
@@ -115,7 +118,7 @@ Retrieve new revisions with
 and
 .B git\-reset
 to the
-.B master@{upstream}
+.B origin/HEAD
 commit, removing any local commits.
 .
 .TP
@@ -242,12 +245,15 @@ mirror instead of
 Upstream changes are merged from
 .I origin/<package>
 instead of
-.IR origin/master .
+.IR origin/master ,
+since local clones of the mirror have no
+.B origin/HEAD
+reference.
 .IP
 Remotes of existing
 .BR git (1)
 repositories are preserved. When enabling or disabling
-.BR AUR_FETCH_MIRROR ,
+.BR AUR_FETCH_USE_MIRROR ,
 repositories should be converted manually with
 .B git\-remote set\-url
 and
