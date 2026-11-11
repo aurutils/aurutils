@@ -322,7 +322,8 @@ fi
 
 # Early consistency check for signed database
 if (( ! sign_pkg )); then
-    db_sigs=("$db_root/$db_name".sig "$db_root/$db_name".files.sig)
+    # repo-add --sign: <name>.db.sig, <name>.files.sig (or AUR_DBEXT)
+    db_sigs=("$db_root/$db_name.${db_ext:-db}".sig "$db_root/$db_name.files${db_ext#db}".sig)
 
     if [[ -f ${db_sigs[0]} ]]; then
         printf >&2 '%s: database signature found, but signing is disabled\n' "$argv0"
