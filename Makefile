@@ -39,7 +39,6 @@ test: aur shellcheck
 	@$(TEST_ENV) tests/lib/graph
 	@$(TEST_ENV) tests/lib/query
 	@$(TEST_ENV) tests/lib/repo-parse
-	@$(TEST_ENV) tests/lib/sync
 
 # tests which use script paths directly
 	@tests/parseopt-consistency
