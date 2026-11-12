@@ -529,6 +529,30 @@ subtest 'recurse: first provider takes precedence' => sub {
     is($pkgmap->{'virt'}[0], 'first', 'first provider wins');
 };
 
+subtest 'recurse: providers which are replaced themselves' => sub {
+    # Provider of each replaced name. Packages are given as [name,
+    # provides...], and retrieved in this order as dependencies of app.
+    my $replaced = sub {
+        my %db = map { $_->[0] => { Name => $_->[0], Version => '1-1',
+                                    Provides => [@{$_}[1..$#{$_}]] } } @_;
+        $db{'app'} = { Name => 'app', Version => '1-1', Depends => [map { $_->[0] } @_] };
+
+        my (undef, undef, $pkgmap) = recurse(
+            ['app'], ['Depends'], sub { map { $db{$_} // () } @{$_[0]} }
+        );
+        return { map { $_ => $pkgmap->{$_}[0] } keys %{$pkgmap} };
+    };
+
+    is_deeply($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full']),
+        { 'foo-full' => 'foo-full-git' }, 'foo-full does not replace foo');
+    is_deeply($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full', 'foo']),
+        { 'foo-full' => 'foo-full-git', 'foo' => 'foo-full-git' }, 'second provider of foo');
+    is_deeply($replaced->(['a'], ['b', 'a'], ['c', 'b'], ['d', 'c']),
+        { 'a' => 'b', 'c' => 'd' }, 'chain of three');
+    is_deeply($replaced->(['p', 'q'], ['q', 'p']),
+        { 'q' => 'p' }, 'packages which provide each other');
+};
+
 subtest 'recurse: dep type filtering' => sub {
     my $callback = sub {
         my ($deps) = @_;

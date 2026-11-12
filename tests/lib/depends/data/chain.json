@@ -1,0 +1,44 @@
+{
+  "resultcount": 5,
+  "results": [
+    {
+      "Name": "foo",
+      "PackageBase": "foo",
+      "Version": "1-1"
+    },
+    {
+      "Name": "foo-full",
+      "PackageBase": "foo-full",
+      "Version": "1-1",
+      "Provides": [
+        "foo"
+      ]
+    },
+    {
+      "Name": "foo-full-git",
+      "PackageBase": "foo-full-git",
+      "Version": "1-1",
+      "Provides": [
+        "foo-full"
+      ]
+    },
+    {
+      "Name": "app",
+      "PackageBase": "app",
+      "Version": "1-1",
+      "Depends": [
+        "foo"
+      ]
+    },
+    {
+      "Name": "app-full",
+      "PackageBase": "app-full",
+      "Version": "1-1",
+      "Depends": [
+        "foo-full"
+      ]
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}

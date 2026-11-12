@@ -6,6 +6,8 @@
 #   bitlbee-libpurple-git (provides bitlbee)
 # * virtual.json: app, which depends on brave-browser>=1.50 (not a
 #   package), and brave-bin, which provides brave-browser=1.60
+# * chain.json: foo-full-git provides foo-full, which provides foo. app
+#   depends on foo, app-full on foo-full
 set -o pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit
 export PATH=$PWD/../../bin:$PATH
@@ -116,5 +118,15 @@ EOF
     expect_graph brave-browser brave-bin --all 2>/dev/null <<EOF
 brave-bin: brave-bin=Self
 gtk3: brave-bin=Depends
+EOF
+
+    export AUR_TEST_FIXTURE=$PWD/data/chain.json
+
+    # foo-full is replaced by foo-full-git, and does not replace foo
+    expect_graph app app-full foo-full-git <<EOF
+app: app=Self
+app-full: app-full=Self
+foo: app=Depends
+foo-full-git: app-full=Depends foo-full-git=Self
 EOF
 done
