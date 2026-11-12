@@ -9,6 +9,7 @@
 # * foo.SRCINFO, bar-1.SRCINFO, bar-2.SRCINFO: committed as .SRCINFO to git
 #   repositories for foo and bar. The repository of bar starts at version
 #   1-1. Only aur-graph reads this file, and fails on the dependency of foo.
+# * foo-pkgbase.SRCINFO: foo with a pkgbase (baz) other than its repository
 #
 # AUR_PAGER, run by aur-view, approves the build files (true) or aborts the
 # inspection (false). The git repositories, an empty local repository and
@@ -89,3 +90,13 @@ queue=$(AUR_PAGER=true sync) ||
     fail 'aur-sync failed with fulfilled dependencies'
 [[ $queue == "$AURDEST/bar"$'\n'"$AURDEST/foo" ]] ||
     fail "unexpected queue: $queue"
+
+# The pkgbase of foo does not match its repository: the build queue only
+# contains directories which were retrieved and inspected.
+commit foo foo-pkgbase.SRCINFO || exit
+
+if AUR_PAGER=true sync >/dev/null; then
+    fail 'aur-sync succeeded with a pkgbase that was not retrieved'
+fi
+grep -q 'pkgbase in .SRCINFO does not match a retrieved package' "$tmp"/stderr ||
+    fail 'aur-sync did not check the pkgbase of foo'
