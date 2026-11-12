@@ -21,7 +21,7 @@ unset build_user
 while getopts :U:d:k:fSuN OPT; do
     case $OPT in
         d) build_args+=(-d "$OPTARG"); sync_args+=(-d "$OPTARG") ;;
-        f) build_args+=(-f "$OPTARG") ;;
+        f) build_args+=(-f) ;;
         S) build_args+=(-S) ;;
         U) build_user=$OPTARG ;;
         k) keep_going=$OPTARG ;;
