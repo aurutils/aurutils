@@ -264,9 +264,9 @@ while true; do
     shift
 done
 
-# shellcheck disable=SC2174
-mkdir -pm 0700 -- "${TMPDIR:-/tmp}/aurutils-$UID"
-tmp=$(mktemp -d --tmpdir "aurutils-$UID/$argv0.XXXXXXXX")
+# mktemp creates the path exclusively, with access for the owner only. A
+# parent directory of fixed name in /tmp could be created by another user.
+tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX")
 trap 'trap_exit' EXIT
 
 if (( rotate )); then
@@ -461,10 +461,22 @@ if (( graph )); then
     fi <"$tmp"/queue >"$tmp"/graph
 
     # Recompute dependencies to include `provides` (#837)
-    if ! tsort < "$tmp"/graph >"$tmp"/queue; then
+    if ! tsort < "$tmp"/graph >"$tmp"/queue.graph; then
         diag_depcycle
         exit 22
     fi
+
+    # The pkgbase is taken from .SRCINFO, and used as build directory below.
+    # It must match a directory which was retrieved and inspected. aurweb
+    # rejects a .SRCINFO with a pkgbase other than the name of the repository:
+    # a mismatch follows from local changes, or a remote other than the AUR.
+    if grep -Fxvf "$tmp"/queue "$tmp"/queue.graph >"$tmp"/queue.unknown; then
+        printf >&2 '%s: pkgbase in .SRCINFO does not match a retrieved package:\n' "$argv0"
+        mapfile -t unknown <"$tmp"/queue.unknown
+        printf >&2 '%q\n' "${unknown[@]}"
+        exit 1
+    fi
+    mv -f -- "$tmp"/queue.graph "$tmp"/queue
 fi
 
 { # Sort dependencies (`aur-sync--ninja`, `--columns`)

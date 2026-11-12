@@ -279,6 +279,27 @@ and
 respectively.
 .PP
 .
+.SS Security
+A container protects the host against accidental changes by a build, and
+against dependencies which are not declared. It is not a security boundary:
+.IP \(bu 2
+the container does not use a user namespace (see
+.BR systemd\-nspawn (1));
+.IP \(bu 2
+the build user may run
+.BR pacman (8)
+as root inside the container;
+.IP \(bu 2
+.B file://
+repositories and the pacman cache of the host are mounted read-write;
+.IP \(bu 2
+.B makechrootpkg
+sources the
+.B PKGBUILD
+and retrieves sources on the host, and sources the user's
+.BR makepkg.conf (5)
+as root.
+.
 .SS Avoiding password prompts
 .BR makepkg (8)
 must be run as a regular user as of version 4.2, with privileged

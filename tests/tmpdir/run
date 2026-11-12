@@ -1,0 +1,81 @@
+#!/bin/bash
+# Check that temporary files are created directly in TMPDIR, with access for
+# the owner only, and that an existing aurutils-$UID in TMPDIR is not used.
+#
+# Before, temporary files were created in TMPDIR/aurutils-$UID. This directory
+# was used if it existed, also if it belonged to another user. It is created
+# here in two forms: as a directory which is writable by all users, and as a
+# symbolic link to such a directory.
+#
+# With AUR_DEBUG, temporary files are kept and their path is printed.
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+shopt -s nullglob dotglob
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    exit 1
+}
+
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+export TMPDIR=$tmp/tmpdir
+export AURDEST=$tmp/aurdest XDG_CONFIG_HOME=$tmp/config XDG_DATA_HOME=$tmp/data
+export AUR_ASROOT=1  # aur-build, if the tests are run as root
+unset AUR_VIEW_DB
+
+# https://mywiki.wooledge.org/BashFAQ/004
+is_empty() {
+    local files=("$1"/*)
+    (( ! ${#files[@]} ))
+}
+
+# check NAME MODE COMMAND...: every path printed by COMMAND is directly in
+# TMPDIR, owned by the user and has the specified mode.
+check() {
+    local name=$1 mode=$2 paths path
+    shift 2
+
+    mapfile -t paths < <(
+        AUR_DEBUG=1 "$@" 2>&1 >/dev/null </dev/null |
+            sed -n 's/^AUR_DEBUG: [^:]*: temporary files at //p')
+
+    (( ${#paths[@]} )) ||
+        fail "$name: no temporary files"
+
+    for path in "${paths[@]}"; do
+        [[ ${path%/*} == "$TMPDIR" ]] ||
+            fail "$name: $path is not directly in TMPDIR"
+        [[ ${path##*/} == aurutils-"$name".* ]] ||
+            fail "$name: unexpected name: $path"
+        [[ -O $path ]] ||
+            fail "$name: $path has a different owner"
+        [[ $(stat -c %a "$path") == "$mode" ]] ||
+            fail "$name: $path has mode $(stat -c %a "$path"), expected $mode"
+    done
+}
+
+check_all() {
+    check sync   700 aur sync
+    check build  700 aur build --status
+    check view   700 aur view -a /dev/null
+    check srcver 700 aur srcver -
+    check vercmp 600 aur vercmp -p /dev/null
+}
+
+# 1. aurutils-$UID is a directory which is writable by all users
+mkdir "$TMPDIR" || exit
+mkdir -m 0777 "$TMPDIR/aurutils-$UID" || exit
+check_all
+
+is_empty "$TMPDIR/aurutils-$UID" ||
+    fail "files were created in the existing directory aurutils-$UID"
+
+# 2. aurutils-$UID is a symbolic link to such a directory
+rm -rf -- "$TMPDIR" && mkdir "$TMPDIR" || exit
+mkdir -m 0777 "$tmp"/other || exit
+ln -s "$tmp"/other "$TMPDIR/aurutils-$UID" || exit
+check_all
+
+is_empty "$tmp"/other ||
+    fail "files were created through the symbolic link aurutils-$UID"

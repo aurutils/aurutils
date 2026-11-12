@@ -76,6 +76,13 @@ while true; do
     shift
 done
 
+# pactrans takes end-of-file as confirmation. Without a terminal, the
+# transaction would proceed without --noconfirm.
+if [[ ! -t 0 ]] && (( confirm )); then
+    printf >&2 '%s: no terminal available, use --noconfirm to proceed\n' "$argv0"
+    exit 1
+fi
+
 if (( EUID != 0 )); then
     exec ${AUR_PACMAN_AUTH:-sudo} "${BASH_SOURCE[0]}" "${orig_argv[@]}"
 fi

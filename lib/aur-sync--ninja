@@ -11,15 +11,18 @@ srcdir=.
 if [[ -d $1 ]]; then
     srcdir=$1
     # https://github.com/ninja-build/ninja/blob/master/misc/ninja_syntax.py
-    srcdir=${srcdir//\$ /\$\$} srcdir=${srcdir// /\$ } srcdir=${srcdir//:/\$:}
+    srcdir=${srcdir//\$/\$\$} srcdir=${srcdir// /\$ } srcdir=${srcdir//:/\$:}
 fi
 shift
 
-# use quoted expansion (@Q) - heredocs are expanded like double-quoted strings
+# The command is run by the shell: use quoted expansion (@Q), and escape $
+# for ninja. Heredocs are expanded like double-quoted strings.
+command=${*@Q} command=${command//\$/\$\$}
+
 # shellcheck disable=SC2154
 cat <<EOF
 rule aurbuild
-    command = env -C \${directory} ${@@Q} && date --rfc-3339=ns > \${out}
+    command = env -C \${directory} $command && date --rfc-3339=ns > \${out}
     pool = console
 EOF
 
@@ -27,7 +30,8 @@ EOF
 current_package=
 while read -r pkgbase depends_pkgbase _; do
     if [[ $pkgbase != "$current_package" ]] && [[ $current_package ]]; then
-        printf '\n%-4sdirectory = %s\n' ' ' "$srcdir/$current_package"
+        directory=$srcdir/$current_package
+        printf '\n%-4sdirectory = %s\n' ' ' "${directory@Q}"
     fi
     if [[ $pkgbase != "$current_package" ]] || [[ ! $current_package ]]; then
         # TODO: take input file (monitored for changes by ninja) as argument
@@ -40,6 +44,7 @@ while read -r pkgbase depends_pkgbase _; do
         printf '%s.stamp ' "$depends_pkgbase"
     fi
 done
-printf '\n%-4sdirectory = %s\n' ' ' "$srcdir/$current_package"
+directory=$srcdir/$current_package
+printf '\n%-4sdirectory = %s\n' ' ' "${directory@Q}"
 
 # vim: set et sw=4 sts=4 ft=sh:

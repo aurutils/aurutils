@@ -211,13 +211,10 @@ if [[ -v AUR_MAKEPKG_GNUPGHOME ]]; then
     makepkg_env+=("GNUPGHOME=$AUR_MAKEPKG_GNUPGHOME")
 fi
 
-# shellcheck disable=SC2174
-mkdir -pm 0700 -- "${TMPDIR:-/tmp}/aurutils-$UID"
-tmp=$(mktemp -d --tmpdir "aurutils-$UID/$argv0.XXXXXXXX")
-
-# shellcheck disable=SC2174
-mkdir -pm 0700 -- "${TMPDIR:-/var/tmp}/aurutils-$UID"
-var_tmp=$(mktemp -d --tmpdir="${TMPDIR:-/var/tmp/}" "aurutils-$UID/$argv0.XXXXXXXX")
+# mktemp creates the path exclusively, with access for the owner only. A
+# parent directory of fixed name in /tmp could be created by another user.
+tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX")
+var_tmp=$(mktemp -d --tmpdir="${TMPDIR:-/var/tmp/}" "aurutils-$argv0.XXXXXXXX")
 
 trap 'trap_exit' EXIT
 trap 'exit' INT
@@ -424,7 +421,10 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         fi
 
         cd -- "$var_tmp"
-        pkglist=(!(*.sig)) # discard makepkg --sign from package list (#410)
+        # Only take package files from the build: other names, in particular
+        # those starting with -, are not passed to mv, gpg or repo-add.
+        # Signatures from makepkg --sign are discarded (#410)
+        pkglist=([!-]*.pkg.tar!(*.sig))
     else
         cd -- "$var_tmp"
         # pkglist has paths to $db_root/<pkg>
@@ -458,13 +458,13 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     if (( create_package )); then
         # pkglist/siglist contain basename
         if [[ -v db_pool ]] && [[ $db_root != "$db_pool" ]]; then
-            mv -f "${siglist[@]}" "${pkglist[@]}" "$db_pool"
+            mv -f -- "${siglist[@]}" "${pkglist[@]}" "$db_pool"
 
             # Absolute links for packages in pool (repose --pool). Replace
             # existing links when rebuilding a package (--force).
             ln -t "$db_root" -sf -- "${pkglist[@]/#/$db_pool/}" "${siglist[@]/#/$db_pool/}"
         else
-            mv -f "${siglist[@]}" "${pkglist[@]}" "$db_root"
+            mv -f -- "${siglist[@]}" "${pkglist[@]}" "$db_root"
         fi
 
         if [[ -v results_file ]]; then
@@ -472,7 +472,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         fi
 
     elif (( ${#siglist[@]} )); then
-        mv -f "${siglist[@]}" "$db_root"
+        mv -f -- "${siglist[@]}" "$db_root"
     fi
 
     # Update database. Wait for the lock file if another aur-build process
