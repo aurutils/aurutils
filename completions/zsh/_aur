@@ -109,6 +109,7 @@ _aur-chroot() {
      makepkg'
         '(-M --makepkg-conf)'{-M,--makepkg-conf=}'[the makepkg.conf to use inside the container]:configuration file: _files'
         '--path[print the path to the container template]'
+        '--holdver[do not update VCS sources]'
         
         + '(pacman_conf)'
         {-C,--pacman-conf=}'[the pacman.conf to use inside the container]:configuration file: _files'

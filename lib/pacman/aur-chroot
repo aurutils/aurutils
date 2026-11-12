@@ -60,7 +60,7 @@ usage() {
 
 opt_short='C:D:M:x:ABNTU'
 opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
-          'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:'
+          'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:' 'holdver'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
           'margs:' 'cargs:' 'nocheck' 'suffix:')
 opt_hidden=('dump-options' 'status' 'path')
@@ -91,6 +91,8 @@ while true; do
             makechrootpkg_makepkg_args+=(--ignorearch) ;;
         --nocheck)
             makechrootpkg_makepkg_args+=(--nocheck) ;;
+        --holdver)
+            makechrootpkg_makepkg_args+=(--holdver) ;;
         # XXX: cannot take arguments that contain commas (e.g. for file paths)
         --makepkg-args|--margs)
             shift; IFS=, read -a arg -r <<< "$1"
