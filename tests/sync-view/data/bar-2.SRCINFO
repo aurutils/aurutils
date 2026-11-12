@@ -1,0 +1,6 @@
+pkgbase = bar
+	pkgver = 2
+	pkgrel = 1
+	arch = any
+
+pkgname = bar
