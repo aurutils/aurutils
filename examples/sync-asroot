@@ -67,16 +67,24 @@ build_env=(AUR_MAKEPKG="${as_user[*]} makepkg"
            AUR_BUILD_PKGLIST="${as_user[*]} aur build--pkglist")
 
 # 2. retrieve sources ------------------------------------------------------------->
-ninja_dir=$("${as_user[@]}" mktemp -d) || exit
+# ninja runs as root: build.ninja and the stamp files are kept in a directory
+# owned by root. The build user is only able to write to the graph file.
+ninja_dir=$(mktemp -d) || exit
 trap 'rm -rf "$ninja_dir"' EXIT
+
+chmod 0711 -- "$ninja_dir"
+install -m 0600 -o "$build_user" /dev/null "$ninja_dir"/graph || exit
 
 "${as_user[@]}" \
     AURDEST="$AURDEST" aur sync "${sync_args[@]}" "$@" --columns --save "$ninja_dir"/graph || exit 1
 
 # 3. build queue ------------------------------------------------------------------>
 if [[ -s $ninja_dir/graph ]]; then
-    "${as_user[@]}" aur sync--ninja "$AURDEST" <"$ninja_dir"/graph >"$ninja_dir"/build.ninja -- \
-        env AUR_ASROOT=1 "${build_env[@]}" aur build "${build_args[@]}"
+    # XXX: The graph was written by the build user, and its names are not
+    # checked. A name is used as directory in AURDEST and as stamp file in
+    # $ninja_dir: with a path such as ../foo, both are outside of these.
+    aur sync--ninja "$AURDEST" <"$ninja_dir"/graph >"$ninja_dir"/build.ninja -- \
+        env AUR_ASROOT=1 "${build_env[@]}" aur build "${build_args[@]}" || exit
 
     env NINJA_STATUS='[%s/%t] ' ninja -C "$ninja_dir" -k "$keep_going"
 
