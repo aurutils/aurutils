@@ -45,10 +45,12 @@ directories are available. This suggests to use a persistent directory for
 
 Instead of elevating to the root user for these tasks, `aur-build` can be run as
 root, dropping privileges where necessary. `sync-asroot` does do by running
-`makepkg`, `gpg`, `repo-add` and `aur-build--pkglist` with `runuser -u <user>`.
-Sources are also retrieved this way with `runuser -u <user> aur sync`.
+`makepkg`, `gpg`, `repo-add` and `aur-build--pkglist` with `setpriv --reuid <user>`.
+Sources are also retrieved this way with `setpriv --reuid <user> aur sync`.
+`setpriv --no-new-privs` is used, so that these commands can not elevate
+privileges through `setuid` programs such as `sudo`.
 
-Other possible agents are `runuser`, `setpriv`, and `systemd-run`.
+Other possible agents are `runuser` and `systemd-run`.
 
 > **Note**
 > Dropping privileges allows to restrict elevated commands during the build process.
