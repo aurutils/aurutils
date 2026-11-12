@@ -4,6 +4,9 @@
   + check the signature of the database file (`<name>.db.sig`)
   + pass `--dbext` to `aur-repo`
   + resolve the `--pool` directory
+  + `build--sync`: exit if no terminal is available, unless `--no-confirm`
+    is specified
+  + only move package files (`*.pkg.tar*`) to the local repository
 
 * `aur-depends`
   + do not report a complete tree as out of range

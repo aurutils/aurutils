@@ -1,0 +1,37 @@
+#!/bin/bash
+# Check that aur-build--sync does not run a transaction without a terminal,
+# unless --noconfirm is specified.
+#
+# pactrans asks for confirmation on standard input, and takes end-of-file as
+# "yes". aur-build--sync redirects standard input from /dev/null if it is not
+# a terminal, so that the transaction was run without any confirmation.
+#
+# aur-build--sync runs itself with AUR_PACMAN_AUTH if it is not run as root.
+# As in sync-view (AUR_PAGER), this command is set to false or true: the test
+# does not elevate, and does not change the host.
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    [[ ! -s $tmp/stderr ]] || cat >&2 "$tmp"/stderr
+    exit 1
+}
+
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+# No terminal, no --noconfirm: exit with a diagnostic, before elevation
+if AUR_PACMAN_AUTH=false aur build--sync -d test --sysupgrade </dev/null 2>"$tmp"/stderr; then
+    fail 'aur-build--sync succeeded without a terminal'
+fi
+grep -q 'no terminal available' "$tmp"/stderr ||
+    fail 'no diagnostic for a missing terminal'
+
+# As root, the following runs pacsync and pactrans on the host.
+if (( EUID == 0 )); then
+    exit 0
+fi
+
+# No terminal, --noconfirm: elevation is reached
+AUR_PACMAN_AUTH=true aur build--sync -d test --sysupgrade --noconfirm </dev/null 2>"$tmp"/stderr ||
+    fail 'aur-build--sync failed without a terminal and with --noconfirm'

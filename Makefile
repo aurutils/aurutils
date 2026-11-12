@@ -41,6 +41,7 @@ test: aur shellcheck
 	@$(TEST_ENV) tests/repo-parse/run
 	@$(TEST_ENV) tests/sync-view/run
 	@$(TEST_ENV) tests/tmpdir/run
+	@$(TEST_ENV) tests/build-sync/run
 
 # tests which use script paths directly
 	@tests/parseopt-consistency

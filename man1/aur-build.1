@@ -441,10 +441,16 @@ When building on the host (outside of a container), installed packages in the
 local repository are upgraded to the latest available version by running
 .BI "pacsync " <repository>
 followed by
-.BI "pacman \-S \-\-noconfirm " <repository>/<upgrades...> \fR.
+.BR "pactrans \-\-install \-\-sysupgrade" ,
+with a configuration that only contains the local repository.
 This is comparable to
 .BR "makepkg \-i" ,
 except that only priorly installed packages are upgraded to a new version.
+.PP
+The transaction is confirmed interactively, unless
+.B \-\-no\-confirm
+is specified. If no terminal is available, the transaction is not run
+without this option.
 .
 .SS Using a dedicated build user
 While using a dedicated user for the build process does not increase
@@ -484,6 +490,13 @@ file with the following contents:
     aurbuild ALL = (root) NOPASSWD: /usr/bin/pacman
     aurbuild ALL = (root) NOPASSWD: /usr/lib/aurutils/aur-build--sync
 .EE
+.PP
+.B Warning:
+This policy is equivalent to
+.IR "NOPASSWD: ALL" ,
+since
+.B "pacman \-U"
+installs any package file and runs its install script as root.
 .PP
 The following
 .B aur\-build
