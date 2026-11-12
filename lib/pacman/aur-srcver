@@ -93,9 +93,9 @@ if (( $# == 1 )) && [[ $1 == "-" || $1 == "/dev/stdin" ]]; then
     stdin=1
 fi
 
-# shellcheck disable=SC2174
-mkdir -pm 0700 -- "${TMPDIR:-/tmp}/aurutils-$UID"
-tmp=$(mktemp -d --tmpdir "aurutils-$UID/$argv0.XXXXXXXX") || exit
+# mktemp creates the path exclusively, with access for the owner only. A
+# parent directory of fixed name in /tmp could be created by another user.
+tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX") || exit
 trap 'trap_exit' EXIT
 
 # A pipeline `foo | bar &` causes `bar` to detach from the script. In

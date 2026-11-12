@@ -17,8 +17,9 @@ AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
 cd "$AURDEST"
 
 # Scratch space for intermediary results.
-mkdir -pm 0700 "${TMPDIR:-/tmp}/aurutils-$UID"
-tmp=$(mktemp -d --tmpdir "aurutils-$UID/$argv0.XXXXXXXX")
+# mktemp creates the path exclusively, with access for the owner only. A
+# parent directory of fixed name in /tmp could be created by another user.
+tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX")
 trap 'rm -rf "$tmp"' EXIT
 
 # Retrieve a list of the local repository contents. The repository
