@@ -1,0 +1,75 @@
+#!/bin/bash
+# Check that aur-sync--ninja quotes the source directory and the build
+# command, for ninja and for the shell which runs the command.
+#
+# build.ninja is generated for bar and foo, where foo depends on bar, and is
+# built with ninja. The build command writes its working directory and its
+# arguments to a file.
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    [[ ! -s $tmp/stderr ]] || cat >&2 "$tmp"/stderr
+    exit 1
+}
+
+if ! type -P ninja >/dev/null; then
+    printf >&2 '%s: ninja is not installed, test skipped\n' "${BASH_SOURCE[0]}"
+    exit 0
+fi
+
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+# ninja_build SRCDIR ARG...: the build writes to $tmp/log, and to the stamp
+# files in $tmp/ninja.
+ninja_build() {
+    local srcdir=$1
+    shift
+
+    rm -rf -- "$tmp"/ninja "$tmp"/log
+    mkdir -p -- "$tmp"/ninja "$srcdir"/foo "$srcdir"/bar || exit
+    touch -- "$srcdir"/foo/PKGBUILD "$srcdir"/bar/PKGBUILD
+
+    # shellcheck disable=SC2016
+    printf '%s\n' 'bar bar' 'foo bar' 'foo foo' |
+        aur sync--ninja "$srcdir" -- sh -c 'printf "%s\n" "$PWD" "$@" >>"$0"' \
+            "$tmp"/log "$@" >"$tmp"/ninja/build.ninja 2>"$tmp"/stderr ||
+        fail 'aur-sync--ninja failed'
+
+    ninja -C "$tmp"/ninja >"$tmp"/stderr 2>&1 ||
+        fail 'ninja failed'
+}
+
+# check SRCDIR ARG...: every build ran in its directory with ARG..., in
+# dependency order, and no other command was run.
+check() {
+    local srcdir=$1
+    shift
+    ninja_build "$srcdir" "$@"
+
+    diff -u <(printf '%s\n' "$srcdir"/bar "$@" "$srcdir"/foo "$@") "$tmp"/log >"$tmp"/stderr ||
+        fail "unexpected build in ${srcdir@Q} with arguments ${*@Q}"
+    [[ -f $tmp/ninja/bar.stamp && -f $tmp/ninja/foo.stamp ]] ||
+        fail 'no stamp files'
+    [[ ! $(find "$tmp" -name 'INJECTED*' -print -quit) ]] ||
+        fail "command was run from ${srcdir@Q} or ${*@Q}"
+}
+
+# shellcheck disable=SC2016
+{
+    check "$tmp/src"
+    check "$tmp/src" --flag 'a  b' '$HOME' '$$' '$(touch INJECTED1)' '`touch INJECTED2`' \
+        "it's" '"' ';touch INJECTED3' '$ a' 'a:b'
+
+    # ninja escapes: $, space and :
+    check "$tmp/a b"
+    check "$tmp/a:b"
+    check "$tmp/a\$b \$HOME \$ c"
+
+    # shell metacharacters
+    check "$tmp/x;touch INJECTED4;"
+    check "$tmp/x\$(touch INJECTED5)\`touch INJECTED6\`"
+    check "$tmp/it's \"x\" && touch INJECTED7"
+    check "$tmp/x>z*?[a]&y"
+}
