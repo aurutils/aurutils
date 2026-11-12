@@ -1,5 +1,5 @@
 #!/bin/bash
-# run as: `sudo sync-asroot ...`
+# run as: `sudo sync-asroot -U <user> ...`
 [[ -v AUR_DEBUG ]] && set -o xtrace
 argv0=sync-asroot
 
@@ -29,7 +29,18 @@ done
 shift $(( OPTIND-1 ))
 
 # 1. define unprivileged commands ------------------------------------------------->
-build_user=${build_user:-${SUDO_USER:-$USER}}
+# Package files are retrieved, inspected and built as this user. There is no
+# default: with SUDO_USER, all of this runs as the invoking user.
+if [[ ! -v build_user ]]; then
+    printf >&2 '%s: build user not specified (-U)\n' "$argv0"
+    exit 1
+fi
+build_uid=$(id -u "$build_user") || exit
+
+if (( build_uid == 0 )); then
+    printf >&2 '%s: build user is privileged\n' "$argv0"
+    exit 1
+fi
 build_home=$(getent passwd "$build_user" | cut -d: -f6)
 
 if [[ -z $build_home ]]; then

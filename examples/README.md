@@ -52,6 +52,10 @@ privileges through `setuid` programs such as `sudo`.
 
 Other possible agents are `runuser` and `systemd-run`.
 
+The build user is specified with `-U` and has no default. If the invoking user
+is specified, package files are retrieved, inspected and built with access to
+the files of this user.
+
 > **Note**
 > Dropping privileges allows to restrict elevated commands during the build process.
 >
