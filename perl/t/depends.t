@@ -629,6 +629,23 @@ subtest 'graph: versioned dep fails vercmp' => sub {
         'graph croaks on version mismatch');
 };
 
+subtest 'graph: provides without a version ($verify=1)' => sub {
+    my %results = make_results(
+        { Name => 'app',          Version => '1-1' },
+        { Name => 'provider-pkg', Version => '3.0-1' },
+    );
+    my %pkgmap = ( 'libfoo' => ['provider-pkg', undef] );
+
+    # True if the dependency of app is satisfied by provider-pkg
+    my $satisfies = sub {
+        my %pkgdeps = make_pkgdeps(['app'], { 'app' => [[$_[0], 'Depends']] });
+        return eval { graph(\%results, \%pkgdeps, \%pkgmap, 1, 1); 1 };
+    };
+    ok($satisfies->('libfoo'), 'unversioned dependency');
+    ok(!$satisfies->('libfoo>=2.0'), 'versioned dependency');
+    like($@, qr/invalid node: provider-pkg \(required: >=2\.0 by: app\)/, 'no version in message');
+};
+
 subtest 'tsort: cycle detection' => sub {
     # A -> B -> A (cycle), plus self-loops
     eval { tsort(0, ['A', 'A', 'A', 'B', 'B', 'B', 'B', 'A']) };

@@ -287,8 +287,8 @@ sub graph {
                     $dag{$prov_name}{$name} = $dep_type;
                 }
                 else {
-                    push @invalid,
-                        "invalid node: $prov_name=$prov_ver (required: $dep_op$dep_req by: $name)";
+                    push @invalid, "invalid node: " . join('=', $prov_name, $prov_ver // ())
+                        . " (required: $dep_op$dep_req by: $name)";
                 }
             }
             # Dependency is foreign
