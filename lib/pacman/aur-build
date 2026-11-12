@@ -49,7 +49,7 @@ trap_exit() {
         rm -rf -- "$tmp"
 
         # Only remove package directory if all files were moved (#593)
-        if ! rm -df -- "$var_tmp"; then
+        if ! rm -df -- "$var_tmp" ${var_tmp_root:+"$var_tmp_root"}; then
             diag_moved_packages "$var_tmp"/*
         fi
     else
@@ -88,7 +88,7 @@ else
     usage
 fi
 
-unset buildscript db_ext db_name db_path db_pool db_root makepkg_conf pacman_conf queue results_file
+unset build_user var_tmp_root buildscript db_ext db_name db_path db_pool db_root makepkg_conf pacman_conf queue results_file
 while true; do
     case "$1" in
         # build options
@@ -140,7 +140,8 @@ while true; do
             shift; chroot_args+=(--bind-rw "$1") ;;
         # XXX: different meaning between aur-build -U (--user) and aur-chroot -U (--update)
         -U|--user)
-            shift; chroot_args+=(--user "$1") ;;
+            shift; build_user=$1
+            chroot_args+=(--user "$1") ;;
         -N|--namcap)
             chroot_args+=(--namcap) ;;
         --checkpkg)
@@ -217,6 +218,16 @@ trap 'rm -rf -- "$tmp"' EXIT
 var_tmp=$(mktemp -d --tmpdir="${TMPDIR:-/var/tmp/}" "aurutils-$argv0.XXXXXXXX") || exit
 trap 'trap_exit' EXIT
 trap 'exit' INT
+
+# When run as root (AUR_ASROOT), makepkg and gpg may run as a regular user
+# (--user) and write to the package directory. It is created inside the
+# directory owned by root, so that this user can not replace its path.
+if (( UID == 0 )) && [[ -v build_user ]]; then
+    var_tmp_root=$var_tmp var_tmp=$var_tmp/pkg
+
+    chmod 0711 -- "$var_tmp_root"
+    install -d -m 0700 -o "$build_user" -- "$var_tmp"
+fi
 
 if (( chroot )); then
     # If the database name is specified (no auto-detection), use it for
