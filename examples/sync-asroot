@@ -1,9 +1,6 @@
 #!/bin/bash
 # run as: `sudo sync-asroot ...`
 [[ -v AUR_DEBUG ]] && set -o xtrace
-SUDO_HOME=$(eval echo "~$SUDO_USER")
-XDG_CACHE_HOME=${XDG_CACHE_HOME:-$SUDO_HOME/.cache}
-AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
 argv0=sync-asroot
 
 # default options
@@ -33,6 +30,16 @@ shift $(( OPTIND-1 ))
 
 # 1. define unprivileged commands ------------------------------------------------->
 build_user=${build_user:-${SUDO_USER:-$USER}}
+build_home=$(getent passwd "$build_user" | cut -d: -f6)
+
+if [[ -z $build_home ]]; then
+    printf >&2 '%s: user %s: home directory not found\n' "$argv0" "$build_user"
+    exit 1
+fi
+
+# sources are retrieved to the cache directory of the build user
+XDG_CACHE_HOME=${XDG_CACHE_HOME:-$build_home/.cache}
+AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
 build_args+=(-U "$build_user")
 
 build_env=(AUR_MAKEPKG="runuser -u $build_user -- makepkg"
