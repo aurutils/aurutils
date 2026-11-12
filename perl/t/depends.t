@@ -127,6 +127,25 @@ subtest 'graph: provider ($provides=1)' => sub {
         'libfoo not in DAG (replaced by provider-pkg)');
 };
 
+subtest 'graph: provider of a name which is not a package' => sub {
+    my %results = make_results(
+        { Name => 'mypkg',        Version => '1.0-1' },
+        { Name => 'provider-pkg', Version => '3.0-1' },
+    );
+    # libfoo is not in the results
+    my %pkgdeps = make_pkgdeps(['mypkg', 'provider-pkg'], {
+        'mypkg' => [['libfoo', 'Depends']],
+    });
+    my %pkgmap = ( 'libfoo' => ['provider-pkg', '2.0'] );
+
+    my ($dag, $dag_foreign) = graph(\%results, \%pkgdeps, \%pkgmap, 0, 1);
+    is($dag->{'provider-pkg'}{'mypkg'}, 'Depends', 'dependency on libfoo goes to provider-pkg');
+    ok(not(defined $dag_foreign->{'libfoo'}), 'libfoo is not foreign');
+
+    ($dag, $dag_foreign) = graph(\%results, \%pkgdeps, \%pkgmap, 0, 0);
+    is($dag_foreign->{'libfoo'}{'mypkg'}, 'Depends', 'libfoo is foreign when $provides=0');
+};
+
 subtest 'graph: versioned dependencies ($verify=1)' => sub {
     my %results = make_results(
         { Name => 'app',    Version => '1-1' },
@@ -439,6 +458,24 @@ subtest 'recurse: provides populate pkgmap' => sub {
     ok(defined $pkgmap->{'virtual-pkg'}, 'virtual-pkg in pkgmap');
     is($pkgmap->{'virtual-pkg'}[0], 'real-pkg', 'provider is real-pkg');
     is($pkgmap->{'virtual-pkg'}[1], '2.0',      'provider version is 2.0');
+};
+
+subtest 'recurse: target which is a package is not in pkgmap' => sub {
+    my $callback = sub {
+        my ($deps) = @_;
+        my %db = (
+            'libfoo'     => { Name => 'libfoo',     Version => '2.0-1' },
+            'libfoo-git' => { Name => 'libfoo-git', Version => '2.1-1',
+                              Provides => ['libfoo=2.1'] },
+        );
+        return map { $db{$_} // () } @{$deps};
+    };
+
+    my ($results, $pkgdeps, $pkgmap) = recurse(['libfoo', 'libfoo-git'], ['Depends'], $callback);
+    ok(not(defined $pkgmap->{'libfoo'}), 'libfoo as target not in pkgmap');
+
+    ($results, $pkgdeps, $pkgmap) = recurse(['libfoo-git'], ['Depends'], $callback);
+    is($pkgmap->{'libfoo'}[0], 'libfoo-git', 'libfoo otherwise provided by libfoo-git');
 };
 
 subtest 'recurse: self-provide excluded from pkgmap' => sub {

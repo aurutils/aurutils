@@ -1,52 +1,120 @@
 #!/bin/bash
-set -e
-# multiple attempts for random ordering of hashes
-n_trials=10
+# Check the dependency graph of aur-depends for packages with provides.
+# AUR requests are answered from a file in data/ by ../../bin/curl:
+#
+# * bitlbee.json: bitlbee, bitlbee-discord-git (depends on bitlbee) and
+#   bitlbee-libpurple-git (provides bitlbee)
+# * virtual.json: app, which depends on brave-browser>=1.50 (not a
+#   package), and brave-bin, which provides brave-browser=1.60
+set -o pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+export PATH=$PWD/../../bin:$PATH
 
-err() {
-    echo >&2 "$1"
-    exit 1
+# usage: expect <expected output> <command> [argument...]
+expect() {
+    local expected=$1 actual
+    shift
+
+    if ! actual=$("$@") || [[ $actual != "$expected" ]]; then
+        printf >&2 '%s (PERL_HASH_SEED=%s)\n--- expected\n%s\n--- actual\n%s\n' \
+            "$*" "$PERL_HASH_SEED" "$expected" "$actual"
+        exit 1
+    fi
 }
 
-for t in {1..$n_trials}; do
-    # bitlbee-libpurple-git provides bitlbee
-    out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json)
+# usage: graph <aur-depends argument>...
+# Print each package in --json output with its reverse dependencies:
+#   <name>: <required by>=<type>...
+graph() {
+    aur depends --json "$@" | jq -r 'keys[] as $k |
+        "\($k): \(.[$k].RequiredBy // {} | to_entries | sort_by(.key) | map("\(.key)=\(.value)") | join(" "))"'
+}
 
-    if ! [[ $(jq '. | length' <<< "$out") == 2 ]]; then
-        echo >&2 "$out"
-        err '2 dependencies expected (bitlbee-discord-git)'
-    fi
-    if ! [[ $(jq '."bitlbee-libpurple-git".RequiredBy | length' <<< "$out") == 2 ]]; then
-        echo >&2 "$out"
-        err '2 reverse dependencies expected (bitlbee-libpurple-git)'
-    fi
-    if ! [[ $(jq '."bitlbee-discord-git".RequiredBy | length' <<< "$out") == 1 ]]; then
-        echo >&2 "$out"
-        err '1 reverse dependencies expected (bitlbee-discord-git)'
-    fi
+# usage: expect_graph <aur-depends argument>... < <graph>
+expect_graph() {
+    expect "$(cat)" graph "$@"
+}
 
-    # bitlbee-discord-git requires bitlbee
-    out=$(aur depends bitlbee-discord-git --json)
-    
-    if ! [[ $(jq '. | length' <<< "$out") == 2 ]]; then
-        echo >&2 "$out"
-        err '2 dependencies expected (bitlbee-discord-git)'
-    fi
-    if ! [[ $(jq '."bitlbee".RequiredBy | length' <<< "$out") == 2 ]]; then
-        echo >&2 "$out"
-        err '2 reverse dependencies expected (bitlbee)'
-    fi
-    if ! [[ $(jq '."bitlbee-discord-git".RequiredBy | length' <<< "$out") == 1 ]]; then
-        echo >&2 "$out"
-        err '1 reverse dependencies expected (bitlbee-discord-git)'
-    fi
+# usage: table_depends <package> <aur-depends argument>...
+# Print the dependencies of a package in --table output on one line.
+table_depends() {
+    aur depends --table "${@:2}" |
+        awk -F'\t' -v pkg="$1" '$1 == pkg && $5 != "Self" { print $2 }' | sort | paste -sd' '
+}
 
-    # TODO: same with --all
-    #out=$(aur depends bitlbee-libpurple-git bitlbee-discord-git --json --all)
+discord=bitlbee-discord-git      # depends on bitlbee
+libpurple=bitlbee-libpurple-git  # provides bitlbee
 
-    #out=$(aur depends bitlbee-discord-git --json-all)
+# The order of hashes differs between runs of perl. Use fixed seeds, so that
+# a failure can be reproduced.
+for PERL_HASH_SEED in 1 2 3; do
+    export PERL_HASH_SEED AUR_TEST_FIXTURE=$PWD/data/bitlbee.json
 
-    # TODO: purely virtual dependencies specified on the command-line
+    # bitlbee is retrieved as dependency
+    expect_graph "$discord" --all <<EOF
+bitlbee: $discord=Depends
+$discord: $discord=Self
+git: $discord=MakeDepends
+glib2: bitlbee=Depends
+gnutls: bitlbee=Depends
+libotr: bitlbee=MakeDepends
+python: bitlbee=MakeDepends
+EOF
 
-    # TODO: --assume-installed
+    # bitlbee is replaced by its provider, and removed with its dependencies
+    expect_graph "$libpurple" "$discord" --all <<EOF
+$discord: $discord=Self
+$libpurple: $discord=Depends $libpurple=Self
+git: $discord=MakeDepends $libpurple=MakeDepends
+glib2: $libpurple=Depends
+gnutls: $libpurple=Depends
+libotr: $libpurple=Depends
+libpurple: $libpurple=Depends
+python: $libpurple=MakeDepends
+EOF
+    expect "$libpurple git" table_depends "$discord" "$libpurple" "$discord"
+
+    # --no-provides: bitlbee is not replaced
+    expect_graph "$libpurple" "$discord" --no-provides <<EOF
+bitlbee: $discord=Depends
+$discord: $discord=Self
+$libpurple: $libpurple=Self
+EOF
+    expect "bitlbee git" table_depends "$discord" "$libpurple" "$discord" --no-provides
+
+    # bitlbee is a target: it is kept (#1255), and fulfills dependencies on
+    # its name
+    expect_graph bitlbee "$libpurple" "$discord" <<EOF
+bitlbee: bitlbee=Self $discord=Depends
+$discord: $discord=Self
+$libpurple: $libpurple=Self
+EOF
+
+    # --assume-installed: the provider and what only it requires are removed,
+    # including repository packages
+    expect_graph "$libpurple" "$discord" --all --assume-installed "$libpurple",git <<EOF
+$discord: $discord=Self
+EOF
+
+    export AUR_TEST_FIXTURE=$PWD/data/virtual.json
+
+    # brave-browser is replaced by its provider
+    expect_graph app brave-bin --all --verify <<EOF
+app: app=Self
+brave-bin: app=Depends brave-bin=Self
+gtk3: brave-bin=Depends
+EOF
+    expect "brave-bin" table_depends app app brave-bin
+
+    # the provider is not retrieved through brave-browser
+    expect_graph app --all <<EOF
+app: app=Self
+brave-browser: app=Depends
+EOF
+
+    # brave-browser as target is left out
+    expect_graph brave-browser brave-bin --all 2>/dev/null <<EOF
+brave-bin: brave-bin=Self
+gtk3: brave-bin=Depends
+EOF
 done

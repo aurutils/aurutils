@@ -1,0 +1,55 @@
+{
+  "resultcount": 3,
+  "results": [
+    {
+      "Name": "bitlbee",
+      "PackageBase": "bitlbee",
+      "Version": "3.6-3",
+      "Depends": [
+        "glib2",
+        "gnutls"
+      ],
+      "MakeDepends": [
+        "libotr",
+        "python"
+      ]
+    },
+    {
+      "Name": "bitlbee-discord-git",
+      "PackageBase": "bitlbee-discord-git",
+      "Version": "0.4.3-1",
+      "Depends": [
+        "bitlbee"
+      ],
+      "MakeDepends": [
+        "git"
+      ]
+    },
+    {
+      "Name": "bitlbee-libpurple-git",
+      "PackageBase": "bitlbee-libpurple-git",
+      "Version": "3.5.1.r80.gc3599e03-1",
+      "Depends": [
+        "gnutls",
+        "glib2",
+        "libpurple",
+        "libotr"
+      ],
+      "MakeDepends": [
+        "git",
+        "python"
+      ],
+      "Provides": [
+        "bitlbee"
+      ],
+      "Conflicts": [
+        "bitlbee",
+        "bitlbee-bzr",
+        "bitlbee-libpurple",
+        "bitlbee-git"
+      ]
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}
