@@ -1,9 +1,6 @@
 #!/bin/bash
-# run as: `sudo sync-asroot ...`
+# run as: `sudo sync-asroot -U <user> ...`
 [[ -v AUR_DEBUG ]] && set -o xtrace
-SUDO_HOME=$(eval echo "~$SUDO_USER")
-XDG_CACHE_HOME=${XDG_CACHE_HOME:-$SUDO_HOME/.cache}
-AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
 argv0=sync-asroot
 
 # default options
@@ -21,7 +18,7 @@ unset build_user
 while getopts :U:d:k:fSuN OPT; do
     case $OPT in
         d) build_args+=(-d "$OPTARG"); sync_args+=(-d "$OPTARG") ;;
-        f) build_args+=(-f "$OPTARG") ;;
+        f) build_args+=(-f) ;;
         S) build_args+=(-S) ;;
         U) build_user=$OPTARG ;;
         k) keep_going=$OPTARG ;;
@@ -32,25 +29,62 @@ done
 shift $(( OPTIND-1 ))
 
 # 1. define unprivileged commands ------------------------------------------------->
-build_user=${build_user:-${SUDO_USER:-$USER}}
+# Package files are retrieved, inspected and built as this user. There is no
+# default: with SUDO_USER, all of this runs as the invoking user.
+if [[ ! -v build_user ]]; then
+    printf >&2 '%s: build user not specified (-U)\n' "$argv0"
+    exit 1
+fi
+build_uid=$(id -u "$build_user") || exit
+
+if (( build_uid == 0 )); then
+    printf >&2 '%s: build user is privileged\n' "$argv0"
+    exit 1
+fi
+build_home=$(getent passwd "$build_user" | cut -d: -f6)
+
+if [[ -z $build_home ]]; then
+    printf >&2 '%s: user %s: home directory not found\n' "$argv0" "$build_user"
+    exit 1
+fi
+
+# sources are retrieved to the cache directory of the build user
+XDG_CACHE_HOME=${XDG_CACHE_HOME:-$build_home/.cache}
+AURDEST=${AURDEST:-$XDG_CACHE_HOME/aurutils/sync}
 build_args+=(-U "$build_user")
 
-build_env=(AUR_MAKEPKG="runuser -u $build_user -- makepkg"
-           AUR_GPG="runuser -u $build_user -- gpg"
-           AUR_REPO_ADD="runuser -u $build_user -- repo-add"
-           AUR_BUILD_PKGLIST="runuser -u $build_user -- aur build--pkglist")
+build_gid=$(id -g "$build_user") || exit
+
+# no_new_privs: setuid programs such as sudo can not elevate privileges. The
+# environment is set as runuser(1) does.
+as_user=(setpriv --reuid "$build_user" --regid "$build_gid" --init-groups --no-new-privs
+         env USER="$build_user" LOGNAME="$build_user" HOME="$build_home")
+
+# XXX: aur-build splits these on whitespace (home directory)
+build_env=(AUR_MAKEPKG="${as_user[*]} makepkg"
+           AUR_GPG="${as_user[*]} gpg"
+           AUR_REPO_ADD="${as_user[*]} repo-add"
+           AUR_BUILD_PKGLIST="${as_user[*]} aur build--pkglist")
 
 # 2. retrieve sources ------------------------------------------------------------->
-ninja_dir=$(runuser -u "$build_user" -- mktemp -d) || exit
+# ninja runs as root: build.ninja and the stamp files are kept in a directory
+# owned by root. The build user is only able to write to the graph file.
+ninja_dir=$(mktemp -d) || exit
 trap 'rm -rf "$ninja_dir"' EXIT
 
-runuser -u "$build_user" -- \
-    env AURDEST="$AURDEST" aur sync "${sync_args[@]}" "$@" --columns --save "$ninja_dir"/graph || exit 1
+chmod 0711 -- "$ninja_dir"
+install -m 0600 -o "$build_user" /dev/null "$ninja_dir"/graph || exit
+
+"${as_user[@]}" \
+    AURDEST="$AURDEST" aur sync "${sync_args[@]}" "$@" --columns --save "$ninja_dir"/graph || exit 1
 
 # 3. build queue ------------------------------------------------------------------>
 if [[ -s $ninja_dir/graph ]]; then
-    runuser -u "$build_user" -- aur sync--ninja "$AURDEST" <"$ninja_dir"/graph >"$ninja_dir"/build.ninja -- \
-        env AUR_ASROOT=1 "${build_env[@]}" aur build "${build_args[@]}"
+    # XXX: The graph was written by the build user, and its names are not
+    # checked. A name is used as directory in AURDEST and as stamp file in
+    # $ninja_dir: with a path such as ../foo, both are outside of these.
+    aur sync--ninja "$AURDEST" <"$ninja_dir"/graph >"$ninja_dir"/build.ninja -- \
+        env AUR_ASROOT=1 "${build_env[@]}" aur build "${build_args[@]}" || exit
 
     env NINJA_STATUS='[%s/%t] ' ninja -C "$ninja_dir" -k "$keep_going"
 

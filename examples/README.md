@@ -45,22 +45,30 @@ directories are available. This suggests to use a persistent directory for
 
 Instead of elevating to the root user for these tasks, `aur-build` can be run as
 root, dropping privileges where necessary. `sync-asroot` does do by running
-`makepkg`, `gpg`, `repo-add` and `aur-build--pkglist` with `runuser -u <user>`.
-Sources are also retrieved this way with `runuser -u <user> aur sync`.
+`makepkg`, `gpg`, `repo-add` and `aur-build--pkglist` with `setpriv --reuid <user>`.
+Sources are also retrieved this way with `setpriv --reuid <user> aur sync`.
+`setpriv --no-new-privs` is used, so that these commands can not elevate
+privileges through `setuid` programs such as `sudo`.
 
-Other possible agents are `runuser`, `setpriv`, and `systemd-run`.
+Other possible agents are `runuser` and `systemd-run`.
+
+The build user is specified with `-U` and has no default. If the invoking user
+is specified, package files are retrieved, inspected and built with access to
+the files of this user.
 
 > **Note**
 > Dropping privileges allows to restrict elevated commands during the build process.
 >
-> For example, if `sudo` is run in the same session as `makepkg` (for example through 
-> `makepkg --syncdeps`), commands in the PKGBUILD or upstream sources may run `sudo` 
-> without authorization for a period of `timeout_timestamp`. This defaults to 5 minutes.
+> For example, if `sudo` is run in the same session as `makepkg` (for example by
+> `aur-build--sync` or `aur-chroot`), commands in the PKGBUILD or upstream sources may run `sudo`
+> without authorization for a period of `timestamp_timeout`. This defaults to 5 minutes.
+> As of pacman 7, `makepkg --syncdeps` runs `sudo -k` and does not use or update
+> these credentials.
 >
 > The following steps can be taken to avoid this:
 >
 > 1. specify a build user without `sudoers` access;
-> 2. set `timeout_timestamp` to 0;
+> 2. set `timestamp_timeout` to 0;
 > 3. disable the `setuid` bit with `setpriv --no-new-privs`.
 >
 > **Warning**
