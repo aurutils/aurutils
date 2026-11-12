@@ -55,14 +55,16 @@ Other possible agents are `runuser` and `systemd-run`.
 > **Note**
 > Dropping privileges allows to restrict elevated commands during the build process.
 >
-> For example, if `sudo` is run in the same session as `makepkg` (for example through 
-> `makepkg --syncdeps`), commands in the PKGBUILD or upstream sources may run `sudo` 
-> without authorization for a period of `timeout_timestamp`. This defaults to 5 minutes.
+> For example, if `sudo` is run in the same session as `makepkg` (for example by
+> `aur-build--sync` or `aur-chroot`), commands in the PKGBUILD or upstream sources may run `sudo`
+> without authorization for a period of `timestamp_timeout`. This defaults to 5 minutes.
+> As of pacman 7, `makepkg --syncdeps` runs `sudo -k` and does not use or update
+> these credentials.
 >
 > The following steps can be taken to avoid this:
 >
 > 1. specify a build user without `sudoers` access;
-> 2. set `timeout_timestamp` to 0;
+> 2. set `timestamp_timeout` to 0;
 > 3. disable the `setuid` bit with `setpriv --no-new-privs`.
 >
 > **Warning**
