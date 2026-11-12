@@ -2,8 +2,8 @@
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-tests_t=(json/{ascii,depends,meta,none,empty_a,search,utf-8}.json*)
-tests_f=(json/{empty,error}.json)
+tests_t=(data/{ascii,depends,meta,none,empty_a,search,utf-8}.json*)
+tests_f=(data/{empty,error}.json)
 
 for t in "${tests_t[@]}"; do
     # check if correct amount of entries were parsed
@@ -11,7 +11,7 @@ for t in "${tests_t[@]}"; do
 
     # variable input formats
     u=${t%%.json}
-    case ${u##json/} in
+    case ${u##data/} in
         ascii|depends|search|utf-8|none)
             cnt2=$(jq < "$t" '.results | length') ;;
         meta|empty_a)
@@ -28,9 +28,9 @@ done
 # 4: invalid input
 
 # exit on invalid potion
-aur format json/ascii.json --doesnotexit || err=$?
+aur format data/ascii.json --doesnotexit || err=$?
 [[ $err == 1 ]]
-aur format json/ascii.json || err=$?
+aur format data/ascii.json || err=$?
 [[ $err == 1 ]]
 
 # exit >0 if file path does not exist
@@ -38,7 +38,7 @@ aur format -f '%n' /does/not/exist || err=$?
 [[ $err == 2 ]]
 
 # check for errors on invalid inputs
-aur format -f '%n' json/error.json || err=$? # response error
+aur format -f '%n' data/error.json || err=$? # response error
 [[ $err == 4 ]]
 
 # check modes with empty stdin

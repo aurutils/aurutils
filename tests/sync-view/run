@@ -1,0 +1,91 @@
+#!/bin/bash
+# Check that aur-sync presents build files (aur-view) before it reads them
+# (aur-graph), and does not read them when the inspection is aborted.
+#
+# All aur programs are run as is. Input is in data/:
+#
+# * aur.json: the AUR lists foo 1-1, which depends on bar>=2, and bar 2-1
+#   (answered by ../bin/curl)
+# * foo.SRCINFO, bar-1.SRCINFO, bar-2.SRCINFO: committed as .SRCINFO to git
+#   repositories for foo and bar. The repository of bar starts at version
+#   1-1. Only aur-graph reads this file, and fails on the dependency of foo.
+#
+# AUR_PAGER, run by aur-view, approves the build files (true) or aborts the
+# inspection (false). The git repositories, an empty local repository and
+# files written by aur are in a temporary directory.
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+data=$PWD/data
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    [[ ! -s $tmp/stderr ]] || cat >&2 "$tmp"/stderr
+    exit 1
+}
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../bin/curl)
+export PATH=$PWD/../bin:$PATH
+export AUR_TEST_FIXTURE=$data/aur.json
+
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+# git repositories, cloned by aur-fetch
+commit() {
+    local pkg=$1 srcinfo=$2
+
+    cp "$data/$srcinfo" "$tmp/aur/$pkg"/.SRCINFO &&
+        git -C "$tmp/aur/$pkg" add .SRCINFO &&
+        git -C "$tmp/aur/$pkg" -c user.name=test -c user.email=test@localhost \
+            commit -q -m "$srcinfo"
+}
+
+for pkg in foo bar; do
+    git init -q -b master "$tmp/aur/$pkg" || exit
+done
+commit foo foo.SRCINFO   || exit
+commit bar bar-1.SRCINFO || exit
+
+# local repository
+mkdir "$tmp"/repo || exit
+repo-add -q "$tmp"/repo/test.db.tar.gz >/dev/null 2>&1 || exit
+printf '[options]\n[test]\nServer = file://%s\n' "$tmp"/repo >"$tmp"/pacman.conf
+
+# files written by aur-sync, aur-fetch and aur-view
+export AURDEST=$tmp/aurdest XDG_CONFIG_HOME=$tmp/config XDG_DATA_HOME=$tmp/data
+export AUR_LOCATION=file://$tmp/aur
+unset AUR_FETCH_USE_MIRROR AUR_SYNC_USE_NINJA AUR_VIEW_DB AUR_CONFIRM_PAGER
+
+# --no-provides: aur-repo-filter reads the sync databases of the host
+sync() {
+    aur sync --pacman-conf "$tmp"/pacman.conf --database test \
+        --no-provides --no-build foo 2>"$tmp"/stderr
+}
+
+# The inspection is aborted: the build files were retrieved, but not read.
+if AUR_PAGER=false sync >/dev/null; then
+    fail 'aur-sync succeeded although aur-view failed'
+fi
+[[ -f $AURDEST/bar/.SRCINFO ]] ||
+    fail 'build files were not retrieved'
+[[ ! -e $XDG_DATA_HOME/aurutils/view/bar ]] ||
+    fail 'aur-view marked bar as inspected'
+! grep -q 'invalid node\|dependency graph' "$tmp"/stderr ||
+    fail 'aur-graph was run although aur-view failed'
+
+# The inspection succeeds: the build files are read, and bar 1-1 does not
+# fulfill bar>=2.
+if AUR_PAGER=true sync >/dev/null; then
+    fail 'aur-sync succeeded with an unfulfilled dependency'
+fi
+[[ -f $XDG_DATA_HOME/aurutils/view/bar ]] ||
+    fail 'aur-view did not mark bar as inspected'
+grep -q 'invalid node: bar 1-1 (required: >=2)' "$tmp"/stderr ||
+    fail 'aur-graph did not check the dependency of foo'
+
+# bar is updated to 2-1: the queue is printed in dependency order.
+commit bar bar-2.SRCINFO || exit
+
+queue=$(AUR_PAGER=true sync) ||
+    fail 'aur-sync failed with fulfilled dependencies'
+[[ $queue == "$AURDEST/bar"$'\n'"$AURDEST/foo" ]] ||
+    fail "unexpected queue: $queue"
