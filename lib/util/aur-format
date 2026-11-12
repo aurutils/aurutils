@@ -51,39 +51,26 @@ sub tokenize {
         say STDERR "$argv0: empty format specified";
         exit(1);
     }
-    # omit trailing empty fields
-    my @tokens = split('%', $format);
+    # Unescape shell-quoted strings, e.g. --format '%n\t%v\n'
+    $format =~ s/(?<!\\)\\t/\t/g; # do not unescape '\\t'
+    $format =~ s/(?<!\\)\\n/\n/g;
+    $format =~ s/(?<!\\)\\0/\0/g;
 
-    # ignore first field: split("%a%b") -> ("", 'a', 'b')
+    # Fields and the text which follows them. The first label is empty, for
+    # the text before the first field.
     my @labels = ("");
-    my @suffix = ($tokens[0]);
+    my @suffix = ("");
 
-    for my $i (1..$#tokens) {
-        my $token = $tokens[$i];
+    # Read from left to right: after %%, the next character is not a key
+    for my $token ($format =~ /%.?|[^%]+/gs) {
+        if ($token =~ /^%([^%])/) {
+            my $label = $aur_formats{$1} or die $argv0 . ': invalid format key specified';
 
-        if (length($token)) {
-            # Expand first character, preserve the rest
-            my $token_1 = substr($token, 0, 1);
-            my $label = $aur_formats{$token_1}->[1] // "";
-            my $rest;
-
-            if (not length($label) and (length($tokens[$i-1]) > 0 or $i == 1)) {
-                die $argv0 . ': invalid format key specified';
-            } elsif (not length($label)) {
-                $rest = $token; # Special case for %%
-            } else {
-                $rest = substr($token, 1);
-            }
-            # Unescape shell-quoted strings, e.g. --format '%n\t%v\n'
-            $rest =~ s/(?<!\\)\\t/\t/g; # do not unescape '\\t'
-            $rest =~ s/(?<!\\)\\n/\n/g;
-            $rest =~ s/(?<!\\)\\0/\0/g;
-
-            push(@labels, $label);
-            push(@suffix, $rest);
+            push(@labels, $label->[1]);
+            push(@suffix, "");
         } else {
-            push(@labels, "");
-            push(@suffix, "%");
+            # text, %% or a single % at the end
+            $suffix[-1] .= $token eq '%%' ? '%' : $token;
         }
     }
     return \@labels, \@suffix;
