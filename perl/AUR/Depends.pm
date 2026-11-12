@@ -108,7 +108,7 @@ type C<Self>.
 =item C<$pkgmap>
 
 Provided name to C<[$name, $version]> of the first package that
-provides it.
+provides it. Targets which are a package are left out.
 
 =back
 
@@ -206,6 +206,10 @@ sub recurse {
     if (not $complete) {
         croak(AUR::Exception->new(__PACKAGE__ . ": total requests: $a (out of range)", EX_OUT_OF_RANGE));
     }
+    # A target fulfills dependencies on its name, even if another package
+    # provides it (#1255), as in pacman: see resolvedep() in libalpm
+    delete @pkgmap{grep { defined $results{$_} } @{$targets}};
+
     return \%results, \%pkgdeps, \%pkgmap;
 }
 
@@ -235,7 +239,7 @@ Check versioned dependencies with C<vercmp> (default true).
 =item C<$provides>
 
 Let providers in C<$pkgmap> take precedence over packages of the same
-name.
+name, and fulfill dependencies on names which are not a package.
 
 =back
 
@@ -266,14 +270,14 @@ sub graph {
             # Retrieve dependency requirements
             my ($dep_name, $dep_op, $dep_req) = split(/(<=|>=|<|=|>)/, $dep_spec);
 
-            if (defined $results->{$dep_name}) {
-                # Provides take precedence over regular packages, unless
-                # $provides is false.
-                my ($prov_name, $prov_ver) = ($dep_name, $results->{$dep_name}->{'Version'});
+            my $provider = $provides ? $pkgmap->{$dep_name} : undef;
 
-                if ($provides and defined $pkgmap->{$dep_name}) {
-                    ($prov_name, $prov_ver) = @{$pkgmap->{$dep_name}};
-                }
+            if (defined $results->{$dep_name} or defined $provider) {
+                # Provides take precedence over regular packages, unless
+                # $provides is false. This includes names which are not a
+                # package, e.g. brave-browser provided by brave-bin.
+                my ($prov_name, $prov_ver) = defined $provider ? @{$provider}
+                    : ($dep_name, $results->{$dep_name}->{'Version'});
 
                 # Run vercmp with provider and versioned dependency
                 # XXX: a dependency can be both fulfilled by a package and a
