@@ -1,0 +1,17 @@
+{
+  "resultcount": 1,
+  "results": [
+    {
+      "Name": "control",
+      "PackageBase": "control",
+      "Version": "1.0-1",
+      "Description": "a\u001b[2Jb\u009b31m\tc\ndé",
+      "URL": "q\"q\\",
+      "Depends": ["x\ty", "z"],
+      "NumVotes": 1,
+      "Popularity": 0.5
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}

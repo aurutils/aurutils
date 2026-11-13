@@ -34,6 +34,18 @@ format() {
 [[ $(format '%n%') == 'aurutils-git%' ]]
 [[ $(format '%z' 2>&1) == *'invalid format key'* ]]
 
+# control characters in fields are shown as \xNN (control.json), not in
+# the format or the delimiter
+[[ $(aur format -f '%d\n' data/control.json) == 'a\x1B[2Jb\x9B31m\x09c\x0Adé' ]]
+[[ $(aur format -d $'\t' -f '%D\n' data/control.json) == $'x\\x09y\tz' ]]
+
+# gron: strings are JSON-encoded, with DEL and C1 escaped
+gron=$(aur format --gron data/control.json)
+[[ $gron != *[$'\x1b\t']* ]]
+grep -qxF 'json.results[0].Description = "a\u001b[2Jb\u009B31m\tc\ndé";' <<< "$gron"
+grep -qxF 'json.results[0].URL = "q\"q\\";' <<< "$gron"
+grep -qxF 'json.results[0].NumVotes = 1;' <<< "$gron"
+
 # error codes:
 # 1: option error
 # 2: file error

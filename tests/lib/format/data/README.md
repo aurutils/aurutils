@@ -9,3 +9,4 @@
 * `error.json`: request with error response
 * `none.json`: search request with no results
 * `empty.json`: empty JSON object (`{}`)
+* `control.json`: info request, control characters (pkgdesc, url, depends)

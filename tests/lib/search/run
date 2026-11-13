@@ -1,0 +1,28 @@
+#!/bin/bash
+# Check that aur-search shows control characters in AUR fields as \xNN
+# instead of passing them to the terminal, and keeps non-ASCII text.
+set -e
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/data/aur.json
+
+esc=$'\x1b'
+c1=$'\xc2\x9b'  # U+009B in UTF-8
+
+# short format (search)
+out=$(aur search --color=never control)
+[[ $out != *"$esc"* && $out != *"$c1"* ]]
+[[ $out == *'a\x1B[2Jb\x9B31m\x09c\x0Adé'* ]]
+
+# long format (info)
+out=$(aur search --color=never -i control)
+[[ $out != *"$esc"* && $out != *"$c1"* ]]
+[[ $out == *'Description:    a\x1B[2Jb\x9B31m\x09c\x0Adé'* ]]
+[[ $out == *'Depends:        x\x09y z'* ]]
+
+# JSON output keeps the data
+aur search --json -i control | jq -e '.[0].Description == "a\u001b[2Jb\u009b31m\tc\ndé"' >/dev/null
+
+# vim: set et sw=4 sts=4 ft=sh:
