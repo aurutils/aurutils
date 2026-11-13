@@ -19,9 +19,14 @@ subtest 'new: exit code defaults to 1' => sub {
     is(AUR::Exception->new("msg", undef)->exit_code, 1, 'undef exit code');
 };
 
-subtest 'new: exit code 0 is kept' => sub {
-    # $exit_code //= 1, not ||=
-    is(AUR::Exception->new("msg", 0)->exit_code, 0, 'exit code 0 not replaced');
+subtest 'new: exit code must be from 1 to 255' => sub {
+    is(AUR::Exception->new("msg", 255)->exit_code, 255, '255 accepted');
+
+    for my $code (0, 256, -1, 1.5, '4x', ' 4', "4\n", '') {
+        eval { AUR::Exception->new("msg", $code) };
+        like($@, qr/^AUR::Exception: exit code must be an integer from 1 to 255 at \Q${\__FILE__}\E/,
+             "'$code' croaks at caller");
+    }
 };
 
 subtest 'new: subclass' => sub {
