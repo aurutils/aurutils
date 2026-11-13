@@ -1,0 +1,19 @@
+{
+  "resultcount": 2,
+  "results": [
+    {
+      "Name": "perl-git",
+      "PackageBase": "perl-git",
+      "Version": "5.43.0.r1.g0123456-1",
+      "Description": "A highly capable, feature-rich programming language (git)"
+    },
+    {
+      "Name": "rpm-tools",
+      "PackageBase": "rpm-tools",
+      "Version": "4.20.1-1",
+      "Description": "RPM Package Manager"
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}

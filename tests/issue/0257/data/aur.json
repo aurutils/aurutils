@@ -1,0 +1,17 @@
+{
+  "resultcount": 1,
+  "results": [
+    {
+      "Name": "aurutils",
+      "PackageBase": "aurutils",
+      "Version": "22.2-1",
+      "Description": "helper tools for the arch user repository",
+      "NumVotes": 1,
+      "Popularity": 1.0,
+      "Maintainer": "test",
+      "OutOfDate": null
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}
