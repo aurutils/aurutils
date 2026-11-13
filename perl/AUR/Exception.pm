@@ -1,9 +1,9 @@
 package AUR::Exception;
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 
-use overload '""' => \&message;
+# bool: an exception is true whatever its message, for `if ($@)`
+# fallback: eq, ne, . etc. are derived from ""
+use overload '""' => \&message, bool => sub { 1 }, fallback => 1;
 
 our $VERSION = 'unstable';
 
@@ -22,21 +22,24 @@ AUR::Exception - Structured error with exit code for AUR modules
 
 A lightweight exception class that carries a human-readable message
 and a numeric exit code. When stringified (e.g. inside C<die> or
-C<warn>), only the message is returned.
+C<warn>) or compared as a string, the message is used. In boolean
+context, an exception is always true.
 
 Programs catch these exceptions at the top level, print the message and
 exit with the exit code:
 
-  use Scalar::Util qw(blessed);
+  use v5.40;
 
-  eval { main(); 1 } or do {
-      my $error = $@;
-      if (blessed($error) and $error->isa('AUR::Exception')) {
+  try {
+      main();
+  }
+  catch ($error) {
+      if ($error isa AUR::Exception) {
           say STDERR $error->message;
           exit($error->exit_code);
       }
       die $error;
-  };
+  }
 
 =head1 METHODS
 

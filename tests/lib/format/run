@@ -53,5 +53,13 @@ aur format -f '%n' /does/not/exist || err=$?
 aur format -f '%n' data/error.json || err=$? # response error
 [[ $err == 4 ]]
 
+# exit 4 on input that is not a JSON object or array, in both modes
+for input in 'garbage' '{"a":' '"str"' '{}{}'; do
+    err=0; printf '%s\n' "$input" | aur format -f '%n' 2>/dev/null || err=$?
+    [[ $err == 4 ]]
+    err=0; printf '%s\n' "$input" | aur format --gron 2>/dev/null || err=$?
+    [[ $err == 4 ]]
+done
+
 # check modes with empty stdin
 printf '' | aur format -f '%n\n'

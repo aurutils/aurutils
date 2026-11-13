@@ -1,7 +1,5 @@
 #!/usr/bin/env perl
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 
 use POSIX qw(strftime setlocale LC_NUMERIC LC_TIME LC_ALL);
 use locale qw(:numeric :time);
