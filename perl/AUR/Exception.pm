@@ -23,7 +23,7 @@ AUR::Exception - Structured error with exit code for AUR modules
   use AUR::Exception qw(run_main);
   use Carp;
 
-  croak AUR::Exception->new("no packages found", 1);
+  croak(AUR::Exception->new("no packages found", 1));
 
   # top level of a program
   unless (caller) {
@@ -38,6 +38,10 @@ A lightweight exception class that carries a human-readable message
 and a numeric exit code. When stringified (e.g. inside C<die> or
 C<warn>) or compared as a string, the message is used. In boolean
 context, an exception is always true.
+
+Call C<croak> with parentheses. In a package that loads C<AUR::Exception>
+at compile time, C<croak AUR::Exception-E<gt>new(...)> is parsed as the
+method call C<AUR::Exception-E<gt>croak>.
 
 Programs run their main code with C<run_main>, which prints the message
 of an uncaught exception and exits with its exit code. Without it, Perl
@@ -74,6 +78,37 @@ Return the message.
 =head2 exit_code()
 
 Return the exit code.
+
+=head1 SEE ALSO
+
+=over
+
+=item L<perlfunc/die>
+
+Exit code of an uncaught exception (C<$!>, C<$? E<gt>E<gt> 8> or 255),
+and why it should not be relied upon. C<$SIG{__DIE__}> is called inside
+C<eval> too, so it cannot replace C<run_main>.
+
+=item L<perlfunc/exit>
+
+C<END> blocks and destructors run before the program exits, and can
+change C<$?>. The exit status is truncated to its lower 8 bits
+(C<status & 0377>, L<exit(3)>).
+
+=item L<perlsyn/"Try Catch Exception Handling">, L<feature/"The 'try' feature">
+
+C<try>/C<catch>, as used by C<run_main> (Perl 5.34; stable in 5.40).
+
+=item L<perlobj/"Indirect Object Syntax">, L<feature/"The 'indirect' feature">
+
+Why C<croak AUR::Exception-E<gt>new(...)> needs parentheses.
+
+=item L<overload/"Magic Autogeneration">, L<overload/fallback>
+
+Without a C<bool> method, truth is derived from C<"">; without
+C<fallback>, C<eq> is not available.
+
+=back
 
 =head1 AUTHORS
 

@@ -1,6 +1,7 @@
 package AUR::Query;
 use v5.40;
 use Carp;
+use AUR::Exception;
 
 use Exporter qw(import);
 our @EXPORT_OK = qw(urlencode query query_multi);
@@ -25,9 +26,10 @@ AUR::Query - Retrieve data from AurJSON
 This module offers perl aur(1) scripts a direct way to retrieve data from AurJson
 using GET or POST requests. Arguments are url-encoded beforehand.
 
-Requests are made with curl(1). If curl fails or is not found, the
-program exits with status 2. This generic code avoids overlap with exit
-codes of other programs in pipelines, such as aur-repo(1).
+Requests are made with curl(1). If curl is not found, fails, or prints
+more than one line, an L<AUR::Exception> with exit code 2 is thrown.
+This generic code avoids overlap with exit codes of other programs in
+pipelines, such as aur-repo(1).
 
 =head1 ENVIRONMENT
 
@@ -88,19 +90,21 @@ sub query_curl {
     if (defined $ENV{'AUR_DEBUG'}) {
         say STDERR join(" ", map(qq/'$_'/, @cmd));
     }
-    my $str;
-    my $child_pid = open(my $fh, "-|", @cmd) or die $!;
+    # A generic exit code on `curl` failure, to avoid overlap with codes
+    # from other tools which use pipelines (`aur-repo`, `aur-vercmp`).
+    my $child_pid = open(my $fh, "-|", @cmd)
+        or croak(AUR::Exception->new(__PACKAGE__ . ": curl: $!", 2));
 
-    if ($child_pid) { # parent process
-        $str = <$fh>;
-        croak 'response error (multi-line output)' if defined(<$fh>);
+    my $str = <$fh>;
+    my $multi_line = defined(<$fh>);
+    waitpid($child_pid, 0);
 
-        waitpid($child_pid, 0);
+    if ($?) {
+        croak(AUR::Exception->new(__PACKAGE__ . ": curl failed (exit status " . ($? >> 8) . ")", 2));
     }
-    # Return a generic error code on `curl` failure, to avoid overlap with
-    # codes from other tools which use pipelines (`aur-repo`, `aur-vercmp`).
-    # 2 is the same code returned if `curl` is not found in `open` above.
-    exit (2) if $?;
+    if ($multi_line) {
+        croak(AUR::Exception->new(__PACKAGE__ . ": response error (multi-line output)", 2));
+    }
     return $str;
 }
 
@@ -163,6 +167,30 @@ sub query_multi {
     }
     return @results;
 }
+
+=head1 SEE ALSO
+
+=over
+
+=item L<AUR::Exception>
+
+Exceptions thrown on C<curl> failure, and C<run_main>.
+
+=item L<perlfunc/open>
+
+The list form of a piped open runs C<curl> without a shell, and returns
+the pid of the subprocess.
+
+=item L<perlvar/"$?">
+
+The exit status of C<curl> is C<$? E<gt>E<gt> 8> after C<waitpid>.
+
+=item L<perllocale>
+
+C<$!> (in the message for a missing C<curl>) is translated according to
+C<LC_MESSAGES> only within the scope of C<use locale>.
+
+=back
 
 =head1 AUTHORS
 

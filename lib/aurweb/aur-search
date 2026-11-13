@@ -11,6 +11,7 @@ use constant ST   => "\033\\";
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query query_multi);
 use AUR::Options qw(add_from_stdin dump_options);
+use AUR::Exception qw(run_main);
 my $argv0 = 'search';
 my $aur_location = $ENV{AUR_LOCATION} // 'https://aur.archlinux.org';
 
@@ -103,7 +104,7 @@ sub results_rsort {
     }
 }
 
-unless(caller) {
+sub main {
     # option handling
     use Getopt::Long;
     my $opt_multiple  = 'section';
@@ -183,7 +184,7 @@ unless(caller) {
     # TODO: handle '-' as stdin argument
     if ($opt_type eq 'search') {
         # Apply union/intersection starting at the first argument
-        my $first = shift;
+        my $first = shift @ARGV;
         my %query_args = (type => 'search', by => $opt_search_by, callback => \&parse_json_aur);
         @results = query(term => $first, %query_args);
 
@@ -227,5 +228,7 @@ unless(caller) {
         die 'invalid format';
     }
 }
+
+run_main(\&main) unless caller;
 
 # vim: set et sw=4 sts=4 ft=perl:

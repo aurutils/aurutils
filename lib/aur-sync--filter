@@ -3,11 +3,12 @@ use v5.40;
 
 use AUR::Depends qw(prune);
 use AUR::Json    qw(parse_json_aur);
+use AUR::Exception qw(run_main);
 my $argv0 = "sync--filter";
 
 # TODO: depends: adjust pkgname for lib32
 
-unless(caller) {
+sub main {
     use Getopt::Long;
     my $opt_ignore = [];
     my $opt_json;
@@ -68,3 +69,5 @@ unless(caller) {
         }
     }
 }
+
+run_main(\&main) unless caller;

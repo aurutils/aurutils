@@ -41,6 +41,7 @@ test: aur shellcheck
 	@$(TEST_ENV) tests/lib/graph/run
 	@$(TEST_ENV) tests/lib/query/run
 	@$(TEST_ENV) tests/lib/repo-parse/run
+	@$(TEST_ENV) tests/lib/run-main/run
 	@$(TEST_ENV) tests/lib/sync-ninja/run
 	@$(TEST_ENV) tests/lib/sync-view/run
 	@$(TEST_ENV) tests/lib/tmpdir/run

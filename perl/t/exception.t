@@ -84,7 +84,7 @@ subtest 'die: object is preserved in $@' => sub {
 };
 
 subtest 'croak: object is preserved in $@' => sub {
-    eval { croak AUR::Exception->new("croaked", 4) };
+    eval { croak(AUR::Exception->new("croaked", 4)) };
 
     isa_ok($@, 'AUR::Exception');
     is($@->message,   'croaked', 'message survives croak');
@@ -114,7 +114,7 @@ subtest 'run_main: main is called without arguments' => sub {
 
 subtest 'run_main: exception exits with its exit code' => sub {
     my ($status, $out, $err) = run_child(sub {
-        run_main(sub { croak AUR::Exception->new("AUR::Test: failed", 4) });
+        run_main(sub { croak(AUR::Exception->new("AUR::Test: failed", 4)) });
     });
     is($status, 4, 'exit status 4');
     is($err, "AUR::Test: failed\n", 'message on stderr, no location');
@@ -145,7 +145,7 @@ subtest 'run_main: subclass' => sub {
 };
 
 subtest 'run_main: exception from a nested call' => sub {
-    my $inner = sub { croak AUR::Exception->new("inner", 6) };
+    my $inner = sub { croak(AUR::Exception->new("inner", 6)) };
     my ($status) = run_child(sub {
         run_main(sub { my @x = map { $inner->() } 1..2 });
     });

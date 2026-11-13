@@ -1,36 +1,18 @@
 #!/usr/bin/env perl
 use v5.40;
-use File::Copy qw(copy);
-use File::Path qw(make_path);
-use File::Temp qw(tempdir tempfile);
+use Cwd qw(abs_path);
+use File::Basename qw(dirname);
+use File::Temp qw(tempdir);
 use Test::More;
+
+# dies { ... } returns the exception thrown by the block, or undef if
+# there is none. Test2::Tools::Exception is part of perl since 5.40.
+use Test2::Tools::Exception qw(dies);
 
 # Check if module can be imported
 require_ok "AUR::Json";
 
 use AUR::Json qw(parse_json parse_json_aur write_json);
-
-# --- Helper: run code in a child process ---
-# Returns the exit status and standard error of the child.
-sub run_child {
-    my ($code) = @_;
-    my ($fh, $file) = tempfile(UNLINK => 1);
-
-    my $pid = fork // die "fork: $!";
-    if ($pid == 0) {
-        Test::More->builder->no_ending(1);
-        open STDERR, '>&', $fh or die "redirect stderr: $!";
-        open STDOUT, '>', '/dev/null';
-        $code->();
-        exit(0);
-    }
-    waitpid($pid, 0);
-    my $status = $? >> 8;
-
-    open my $in, '<', $file or die "$file: $!";
-    my $err = do { local $/; <$in> };
-    return ($status, $err);
-}
 
 subtest 'backend: JSON::XS or JSON::PP' => sub {
     my $ref = ref($AUR::Json::aur_json);
@@ -162,13 +144,14 @@ subtest 'parse_json_aur: null results is a single object' => sub {
     is($results[0]{Name}, 'a', 'whole object returned');
 };
 
-subtest 'parse_json_aur: error response exits 4' => sub {
-    my ($status, $err) = run_child(sub {
+subtest 'parse_json_aur: error response throws exit code 4' => sub {
+    my $e = dies {
         parse_json_aur('{"error":"Too many package results.","resultcount":0,'
                      . '"results":[],"type":"error","version":5}');
-    });
-    is($status, 4, 'exit status 4');
-    is($err, "AUR::Json: response error (Too many package results.)\n", 'error on stderr');
+    };
+    isa_ok($e, 'AUR::Exception');
+    is($e->exit_code, 4, 'exit code 4');
+    is($e->message, 'AUR::Json: response error (Too many package results.)', 'message');
 };
 
 subtest 'parse_json_aur: error without results' => sub {
@@ -177,41 +160,51 @@ subtest 'parse_json_aur: error without results' => sub {
     is_deeply(\@results, [{ error => 'x' }], 'returned as single object');
 };
 
-subtest 'parse_json_aur: scalar exits 4' => sub {
-    my ($status, $err) = run_child(sub { parse_json_aur('"str"') });
-    is($status, 4, 'exit status 4');
-    is($err, "AUR::Json: invalid input (expected JSON object or array)\n", 'error on stderr');
+subtest 'parse_json_aur: scalar throws exit code 4' => sub {
+    my $e = dies { parse_json_aur('"str"') };
+    isa_ok($e, 'AUR::Exception');
+    is($e->exit_code, 4, 'exit code 4');
+    is($e->message, 'AUR::Json: invalid input (expected JSON object or array)', 'message');
 };
 
-subtest 'parse_json_aur: invalid input exits 4' => sub {
+subtest 'parse_json_aur: invalid input throws exit code 4' => sub {
     for my $str ('', 'garbage', '{"a":', '{}{}') {
-        my ($status, $err) = run_child(sub { parse_json_aur($str) });
-        is($status, 4, "exit status 4 for '$str'");
-        like($err, qr/^AUR::Json: invalid input \(.+\)\n\z/, "one line on stderr for '$str'");
-        unlike($err, qr/ line \d+/, "no source location for '$str'");
+        my $e = dies { parse_json_aur($str) };
+        isa_ok($e, 'AUR::Exception');
+        is($e->exit_code, 4, "exit code 4 for '$str'");
+        like($e->message, qr/^AUR::Json: invalid input \(.+\)\z/s, "message for '$str'");
+        unlike($e->message, qr/ line \d+/, "no source location for '$str'");
     }
 };
 
 subtest 'parse_json_aur: invalid input from a file handle' => sub {
     # die appends ", <$fh> line N." after reading from a handle
-    my ($status, $err) = run_child(sub {
+    my $e = dies {
         open my $fh, '<', \"garbage\n" or die;
         while (my $row = <$fh>) { parse_json_aur($row) }
-    });
-    is($status, 4, 'exit status 4');
-    unlike($err, qr/ line \d+/, 'no source location');
+    };
+    isa_ok($e, 'AUR::Exception');
+    unlike($e->message, qr/ line \d+/, 'no source location');
 };
 
 subtest 'parse_json_aur: invalid input, module path with spaces' => sub {
-    my $dir = tempdir(CLEANUP => 1) . '/a b';
-    make_path("$dir/AUR");
-    copy($INC{'AUR/Json.pm'}, "$dir/AUR/Json.pm") or die "copy: $!";
+    # The location is removed by its file name: load the modules from a
+    # path with spaces, which itself looks like a location
+    my $dir = tempdir(CLEANUP => 1) . '/a b at c line 1';
+    mkdir($dir) or die "mkdir: $!";
+    symlink(dirname(abs_path($INC{'AUR/Json.pm'})), "$dir/AUR") or die "symlink: $!";
 
-    my ($status, $err) = run_child(sub {
-        exec $^X, "-I$dir", '-MAUR::Json=parse_json_aur', '-e', 'parse_json_aur("garbage")';
-    });
-    is($status, 4, 'exit status 4');
-    unlike($err, qr/ line \d+/, 'no source location');
+    # The first line of output is the path the module was loaded from
+    open(my $fh, '-|', $^X, "-I$dir", '-MAUR::Json=parse_json_aur', '-e',
+         'print $INC{"AUR/Json.pm"}, "\n"; eval { parse_json_aur("garbage") }; print $@->message')
+        or die "perl: $!";
+    chomp(my $path = <$fh>);
+    my $message = do { local $/; <$fh> };
+    close $fh;
+
+    is($path, "$dir/AUR/Json.pm", 'module loaded from the path with spaces');
+    like($message, qr/^AUR::Json: invalid input \(/, 'message');
+    unlike($message, qr/ line \d+/, 'no source location');
 };
 
 subtest 'write_json: sorted keys, no newline' => sub {

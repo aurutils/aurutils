@@ -6,7 +6,7 @@ use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query_multi);
 use AUR::Depends qw(recurse prune graph);
 use AUR::Options qw(add_from_stdin dump_options);
-use AUR::Exception;
+use AUR::Exception qw(run_main);
 my $argv0 = 'depends';
 
 sub solve {
@@ -100,7 +100,7 @@ sub pairs {
     }
 }
 
-unless(caller) {
+sub main {
     # Command-line arguments
     use Getopt::Long;
     my $opt_depends      = 1;
@@ -170,19 +170,8 @@ unless(caller) {
 
     # Retrieve AUR results
     #    JSON -> hash -> extract depends[] -> repeat until none -> prune
-    my ($results, $dag, $dag_foreign, $replaced);
-
-    try {
-        ($results, $dag, $dag_foreign, $replaced) = solve(\@ARGV, \@types, \&callback_query,
-                                                          $opt_verify, $opt_provides, $opt_installed);
-    }
-    catch ($error) {
-        if ($error isa AUR::Exception) {
-            say STDERR $error->message;
-            exit($error->exit_code);
-        }
-        die $error;  # re-throw unexpected errors
-    }
+    my ($results, $dag, $dag_foreign, $replaced) = solve(\@ARGV, \@types, \&callback_query,
+                                                         $opt_verify, $opt_provides, $opt_installed);
 
     # Add `RequiredBy` to results
     for my $name (keys %{$dag}) {
@@ -216,5 +205,7 @@ unless(caller) {
         exit(1);
     }
 }
+
+run_main(\&main) unless caller;
 
 # vim: set et sw=4 sts=4 ft=perl:

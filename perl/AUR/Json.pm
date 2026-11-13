@@ -1,6 +1,8 @@
 package AUR::Json;
 use v5.40;
 
+use Carp;
+use AUR::Exception;
 use Exporter qw(import);
 our @EXPORT_OK = qw(parse_json parse_json_aur write_json);
 our $VERSION = 'unstable';
@@ -94,8 +96,7 @@ aur-repo-parse(1))
 =back
 
 If C<$str> is not valid input for C<parse_json>, or the response
-contains an C<error>, a message is printed to standard error and the
-program exits with status 4.
+contains an C<error>, an L<AUR::Exception> with exit code 4 is thrown.
 
 =cut
 
@@ -108,8 +109,7 @@ sub parse_json_aur {
     }
     catch ($e) {
         chomp($e);
-        say STDERR __PACKAGE__ . ': invalid input (' . $e . ')';
-        exit(4);
+        croak(AUR::Exception->new(__PACKAGE__ . ': invalid input (' . $e . ')', 4));
     }
 
     # Possible AUR responses:
@@ -120,8 +120,7 @@ sub parse_json_aur {
         my $error = $obj->{'error'};
 
         if (defined($error)) {
-            say STDERR __PACKAGE__ . ': response error (' . $error . ')';
-            exit(4);
+            croak(AUR::Exception->new(__PACKAGE__ . ': response error (' . $error . ')', 4));
         }
         return @{$obj->{'results'}};
     }
@@ -145,6 +144,27 @@ sub write_json {
     my $str = $aur_json->canonical()->encode($obj);
     return $str;
 }
+
+=head1 SEE ALSO
+
+=over
+
+=item L<AUR::Exception>
+
+Exceptions thrown by C<parse_json_aur>, and C<run_main>.
+
+=item L<JSON::XS>
+
+C<decode> parses a complete JSON text in one pass; the incremental
+parser (C<incr_parse>) keeps its buffer after an error, and suits
+streams only. The SECURITY CONSIDERATIONS section notes that error
+messages may contain the input.
+
+=item L<perlsyn/"Try Catch Exception Handling">
+
+C<try>/C<catch> in C<parse_json_aur>.
+
+=back
 
 =head1 AUTHORS
 

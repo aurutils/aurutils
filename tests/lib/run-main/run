@@ -1,0 +1,52 @@
+#!/bin/bash
+# Check that Perl programs exit with the code of an AUR::Exception thrown
+# by the AUR modules (run_main), not with 255 or $!:
+#
+# * 2: request failed (AUR::Query)
+# * 4: invalid input or response error (AUR::Json)
+# * 1: no packages found (AUR::Depends)
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/data/aur.json
+
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+printf 'garbage\n' >"$tmp"/garbage.json
+
+# expect <code> <command>...: run command, compare exit status
+ret=0
+expect() {
+    local code=$1 err=0
+    shift
+    "$@" >/dev/null 2>"$tmp"/stderr </dev/null || err=$?
+
+    if (( err != code )); then
+        printf >&2 '%s: %s: exit %d, expected %d\n' "${BASH_SOURCE[0]}" "$*" "$err" "$code"
+        cat >&2 "$tmp"/stderr
+        ret=1
+    fi
+}
+
+# requests the stand-in does not answer fail like curl
+expect 2 aur query -t unsupported foo
+expect 2 env -u AUR_TEST_FIXTURE aur search foo
+expect 2 env -u AUR_TEST_FIXTURE aur search -i foo
+expect 2 env -u AUR_TEST_FIXTURE aur depends foo
+
+# invalid input
+expect 4 aur format -f '%n' "$tmp"/garbage.json
+expect 4 aur format --gron "$tmp"/garbage.json
+expect 4 aur sync--filter -p "$tmp"/garbage.json
+
+# no packages found
+expect 1 aur depends bar
+
+# success
+expect 0 aur depends foo
+expect 0 aur search -i foo
+
+exit $ret
+
+# vim: set et sw=4 sts=4 ft=sh:

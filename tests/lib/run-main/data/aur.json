@@ -1,0 +1,12 @@
+{
+  "resultcount": 1,
+  "results": [
+    {
+      "Name": "foo",
+      "PackageBase": "foo",
+      "Version": "1.0-1"
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}

@@ -6,6 +6,7 @@ use v5.40;
 
 use AUR::Json qw(parse_json parse_json_aur);
 use AUR::Options qw(dump_options);
+use AUR::Exception qw(run_main);
 my $argv0 = 'format';
 
 # Dictionary for formatter string - subset of package-query(1) format options
@@ -151,8 +152,7 @@ sub info_gron {
     }
 }
 
-# https://www.drdobbs.com/scripts-as-modules/184416165
-unless (caller) {
+sub main {
     # option handling
     use Getopt::Long;
     my $opt_mode;
@@ -200,8 +200,7 @@ unless (caller) {
             }
             catch ($e) {
                 chomp($e);
-                say STDERR "$argv0: invalid input ($e)";
-                exit(4);
+                die(AUR::Exception->new("$argv0: invalid input ($e)", 4));
             }
 
             info_gron($obj, "json");
@@ -224,5 +223,8 @@ unless (caller) {
         exit(1);
     }
 }
+
+# https://www.drdobbs.com/scripts-as-modules/184416165
+run_main(\&main) unless caller;
 
 # vim: set et sw=4 sts=4 ft=perl:
