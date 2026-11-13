@@ -1,3 +1,56 @@
+## 23
+
+* `aur`
+  + require perl 5.40 (`use v5.40`, `try`/`catch`)
+  + exit if a temporary file cannot be created (`aur-build`, `aur-sync`,
+    `aur-view`, `build--sync`)
+
+* `aur-build`
+  + pass package files to `gpg` and `repo-add` after `--`
+    - `AUR_GPG` and `AUR_REPO_ADD` must take `--` as the end of options
+  + remove the directory in `/tmp` if the package directory is not created
+
+* `aur-depends`
+  + keep targets which are provided by another package (#1255)
+  + resolve dependencies on names which only exist as `provides`
+  + leave out packages which are replaced by a provider
+    - `--table`: print the provider as the dependency
+    - `--all`: do not print them as reverse dependencies
+  + `--assume-installed`: also apply to repository packages
+  + `--verify`: a `provides` without a version does not fulfill a
+    versioned dependency
+  + do not select a provider which is replaced itself
+
+* `aur-format`
+  + exit 4 on input that is not a JSON object or array (was 255)
+  + reject text after the first JSON value on a line (`{...}{...}`, `{...},`);
+    only the first value was formatted before
+
+* `aur-sync`
+  + exit if the ninja directory cannot be created
+
+* `examples`
+  + `sync-devel`, `sync-list`, `vercmp-devel`: exit if a temporary file
+    cannot be created
+
+* `perl`
+  + `AUR::Exception`: exceptions are always true and can be compared with `eq`
+  + `AUR::Json`
+    - `parse_json`: decode with `decode()`; a failed parse no longer breaks
+      later calls
+    - `parse_json`: die on scalars and on text after the first JSON value
+    - `parse_json_aur`: exit 4 on invalid input
+  + `AUR::Options`: `dump_options` dies on `!`, `+` and `<>` specs
+  + `AUR::Vercmp`: `vercmp` is false if the first version is undefined
+
+* `tests`
+  + answer AUR requests from files (`tests/bin/curl`): `depends`, `query`
+    and `issue-test`
+  + move tests of `aur` programs to `tests/lib`, issue tests to
+    `tests/issue/<issue>/run`
+  + add unit tests for `AUR::Exception`, `AUR::Json`, `AUR::Options`,
+    `AUR::Query`, `AUR::Vercmp`
+
 ## 22.2
 
 * `aur`
