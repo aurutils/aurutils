@@ -25,6 +25,7 @@ AUR::Query - Retrieve data from AurJSON
 
 This module offers perl aur(1) scripts a direct way to retrieve data from AurJson
 using GET or POST requests. Arguments are url-encoded beforehand.
+Responses are decoded from UTF-8 and returned as character strings.
 
 Requests are made with curl(1). If curl is not found, fails, or prints
 more than one line, an L<AUR::Exception> with exit code 2 is thrown.
@@ -70,16 +71,15 @@ our $aur_splitno  = $ENV{AUR_QUERY_RPC_SPLITNO} // 5000;
 
 =head2 urlencode($str)
 
-Return C<$str> with every character except C<A-Z>, C<a-z> and C<0-9>
-percent-encoded. C<$str> is a byte string, such as an undecoded
-argument from C<@ARGV>: UTF-8 input results in percent-encoded UTF-8.
-Characters above U+00FF are not encoded correctly.
+Encode the character string C<$str> as UTF-8 and return it with every
+byte except C<A-Z>, C<a-z> and C<0-9> percent-encoded.
 
 =cut
 
 # https://code.activestate.com/recipes/577450-perl-url-encode-and-decode/#c6
 sub urlencode {
     my $s = shift;
+    utf8::encode($s);
     $s =~ s/([^A-Za-z0-9])/sprintf("%%%2.2X", ord($1))/ge;
     return $s;
 }
@@ -95,6 +95,7 @@ sub query_curl {
     my $child_pid = open(my $fh, "-|", @cmd)
         or croak(AUR::Exception->new(__PACKAGE__ . ": curl: $!", 2));
 
+    binmode($fh, ":encoding(UTF-8)");
     my $str = <$fh>;
     my $multi_line = defined(<$fh>);
     waitpid($child_pid, 0);

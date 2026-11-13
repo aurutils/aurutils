@@ -14,7 +14,8 @@ use AUR::Query qw(urlencode query query_multi);
 
 # --- Fake curl ---
 # Prints its arguments on one line, separated by tabs. FAKE_CURL selects
-# failure modes: `fail` exits non-zero, `multi` prints two lines.
+# other modes: `fail` exits non-zero, `multi` prints two lines, `utf8`
+# prints U+00E9 encoded as UTF-8.
 my $bindir = tempdir(CLEANUP => 1);
 {
     open my $fh, '>', "$bindir/curl" or die "$bindir/curl: $!";
@@ -23,6 +24,7 @@ my $bindir = tempdir(CLEANUP => 1);
 case $FAKE_CURL in
     fail)  echo 'curl: (22) The requested URL returned error: 503' >&2; exit 22 ;;
     multi) printf 'line1\nline2\n' ;;
+    utf8)  printf '\303\251\n' ;;
     *)     printf '%s\t' "$@"; printf '\n' ;;
 esac
 EOF
@@ -107,13 +109,13 @@ subtest 'urlencode: everything else is encoded' => sub {
 
 subtest 'urlencode: two hex digits, upper case' => sub {
     is(urlencode("\x01"), '%01', 'zero padded');
-    is(urlencode("\xff"), '%FF', 'upper case');
+    is(urlencode("\x1b"), '%1B', 'upper case');
 };
 
-subtest 'urlencode: byte strings' => sub {
-    # Arguments are passed as bytes, UTF-8 stays UTF-8
-    is(urlencode("caf\xc3\xa9"), 'caf%C3%A9', 'UTF-8 bytes');
-    is(urlencode("\xe2\x98\xba"), '%E2%98%BA', 'three-byte sequence');
+subtest 'urlencode: characters are encoded as UTF-8' => sub {
+    is(urlencode("\x{e9}"),    '%C3%A9',    'U+00E9');
+    is(urlencode("\x{263a}"),  '%E2%98%BA', 'U+263A');
+    is(urlencode("caf\x{e9}"), 'caf%C3%A9', 'mixed');
 };
 
 subtest 'query: GET request path' => sub {
@@ -145,6 +147,11 @@ subtest 'query: RPC version and endpoint' => sub {
 subtest 'query: response returned with trailing newline' => sub {
     my $response = query(type => 'info', term => 'foo');
     like($response, qr/\n\z/, 'raw first line');
+};
+
+subtest 'query: response is decoded from UTF-8' => sub {
+    local $ENV{FAKE_CURL} = 'utf8';
+    is(query(type => 'info', term => 'foo'), "\x{e9}\n", 'character string');
 };
 
 subtest 'query: callback' => sub {

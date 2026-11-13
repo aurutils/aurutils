@@ -105,6 +105,11 @@ sub results_rsort {
 }
 
 unless(caller) {
+    # Character strings throughout: AUR::Query decodes responses from UTF-8
+    use Encode qw(decode);
+    binmode($_, ":encoding(UTF-8)") for (*STDIN, *STDOUT, *STDERR);
+    @ARGV = map { decode("UTF-8", $_) } @ARGV;
+
     # option handling
     use Getopt::Long;
     my $opt_multiple  = 'section';

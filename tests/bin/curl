@@ -30,6 +30,7 @@ sub unsupported {
 sub urldecode {
     my $str = shift;
     $str =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge;
+    utf8::decode($str);  # as decode_json for the fixture
     return $str;
 }
 
