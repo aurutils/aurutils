@@ -1,10 +1,38 @@
 #!/usr/bin/env perl
 use v5.40;
 use Carp;
+use File::Temp qw(tempfile);
 use Test::More;
 
 # Check if module can be imported
 require_ok "AUR::Exception";
+
+AUR::Exception->import(qw(run_main));
+
+# --- Helper: run code in a child process ---
+# Returns the exit status, standard output and standard error of the child.
+sub run_child {
+    my ($code) = @_;
+    my ($out_fh, $out_file) = tempfile(UNLINK => 1);
+    my ($err_fh, $err_file) = tempfile(UNLINK => 1);
+
+    my $pid = fork // die "fork: $!";
+    if ($pid == 0) {
+        Test::More->builder->no_ending(1);
+        open STDOUT, '>&', $out_fh or die "redirect stdout: $!";
+        open STDERR, '>&', $err_fh or die "redirect stderr: $!";
+        $code->();
+        exit(0);
+    }
+    waitpid($pid, 0);
+    my $status = $? >> 8;
+
+    my @output = map {
+        open my $in, '<', $_ or die "$_: $!";
+        local $/; scalar <$in>;
+    } ($out_file, $err_file);
+    return ($status, @output);
+}
 
 subtest 'new: message and exit code' => sub {
     my $e = AUR::Exception->new("no packages found", 3);
@@ -19,9 +47,14 @@ subtest 'new: exit code defaults to 1' => sub {
     is(AUR::Exception->new("msg", undef)->exit_code, 1, 'undef exit code');
 };
 
-subtest 'new: exit code 0 is kept' => sub {
-    # $exit_code //= 1, not ||=
-    is(AUR::Exception->new("msg", 0)->exit_code, 0, 'exit code 0 not replaced');
+subtest 'new: exit code must be from 1 to 255' => sub {
+    is(AUR::Exception->new("msg", 255)->exit_code, 255, '255 accepted');
+
+    for my $code (0, 256, -1, 1.5, '4x', ' 4', "4\n", '') {
+        eval { AUR::Exception->new("msg", $code) };
+        like($@, qr/^AUR::Exception: exit code must be an integer from 1 to 255 at \Q${\__FILE__}\E/,
+             "'$code' croaks at caller");
+    }
 };
 
 subtest 'new: subclass' => sub {
@@ -58,44 +91,90 @@ subtest 'croak: object is preserved in $@' => sub {
     is($@->exit_code, 4,         'exit code survives croak');
 };
 
-subtest 'catch pattern from POD' => sub {
-    my ($message, $code);
-    try {
-        croak AUR::Exception->new("caught", 6);
-    }
-    catch ($error) {
-        if ($error isa AUR::Exception) {
-            ($message, $code) = ($error->message, $error->exit_code);
-        }
-    }
-    is($message, 'caught', 'message from handler');
-    is($code,    6,        'exit code from handler');
-};
-
-subtest 'catch pattern: plain die is not an exception object' => sub {
+subtest 'plain die is not an exception object' => sub {
     eval { die "plain\n" };
 
     ok(!blessed($@), 'string error not blessed');
     is($@, "plain\n", 'string error unchanged');
 };
 
-subtest 'top-level exit code' => sub {
-    # Child process mirrors the handler in aur-depends
-    my $pid = fork // die "fork: $!";
-    if ($pid == 0) {
-        Test::More->builder->no_ending(1);
-        open STDERR, '>', '/dev/null';
-        try {
-            croak AUR::Exception->new("child", 9);
-        }
-        catch ($error) {
-            exit($error->exit_code) if $error isa AUR::Exception;
-            exit(255);
-        }
-        exit(0);
-    }
-    waitpid($pid, 0);
-    is($? >> 8, 9, 'process exits with exception exit code');
+subtest 'run_main: returns if main returns' => sub {
+    my $called = 0;
+    my $ret = run_main(sub { $called++; return 'ignored' });
+
+    is($called, 1, 'main called once');
+    ok(!defined $ret, 'returns nothing');
+};
+
+subtest 'run_main: main is called without arguments' => sub {
+    my @args;
+    run_main(sub { @args = @_ });
+    is(scalar @args, 0, '@_ empty');
+};
+
+subtest 'run_main: exception exits with its exit code' => sub {
+    my ($status, $out, $err) = run_child(sub {
+        run_main(sub { croak AUR::Exception->new("AUR::Test: failed", 4) });
+    });
+    is($status, 4, 'exit status 4');
+    is($err, "AUR::Test: failed\n", 'message on stderr, no location');
+    is($out, '', 'nothing on stdout');
+};
+
+subtest 'run_main: multi-line message is printed as is' => sub {
+    my ($status, $out, $err) = run_child(sub {
+        run_main(sub { die AUR::Exception->new("line 1\nline 2", 2) });
+    });
+    is($status, 2, 'exit status 2');
+    is($err, "line 1\nline 2\n", 'both lines');
+};
+
+subtest 'run_main: empty message' => sub {
+    my ($status, $out, $err) = run_child(sub {
+        run_main(sub { die AUR::Exception->new("", 3) });
+    });
+    is($status, 3, 'exit status 3');
+};
+
+subtest 'run_main: subclass' => sub {
+    @My::Exception2::ISA = ('AUR::Exception');
+    my ($status) = run_child(sub {
+        run_main(sub { die My::Exception2->new("sub", 5) });
+    });
+    is($status, 5, 'exit status of subclass');
+};
+
+subtest 'run_main: exception from a nested call' => sub {
+    my $inner = sub { croak AUR::Exception->new("inner", 6) };
+    my ($status) = run_child(sub {
+        run_main(sub { my @x = map { $inner->() } 1..2 });
+    });
+    is($status, 6, 'propagates through subs and map');
+};
+
+subtest 'run_main: caught exception inside main' => sub {
+    my ($status, $out) = run_child(sub {
+        run_main(sub {
+            eval { die AUR::Exception->new("handled", 7) };
+            print "handled\n" if $@;
+        });
+    });
+    is($status, 0, 'not handled by run_main');
+    is($out, "handled\n", 'handled by main');
+};
+
+subtest 'run_main: plain die is re-thrown unchanged' => sub {
+    eval { run_main(sub { die "plain\n" }) };
+    is($@, "plain\n", 'string error');
+
+    my $obj = bless {}, 'Other::Error';
+    eval { run_main(sub { die $obj }) };
+    is($@, $obj, 'other object');
+};
+
+subtest 'run_main: exit inside main' => sub {
+    my ($status) = run_child(sub { run_main(sub { exit(3) }) });
+    is($status, 3, 'exit status of main');
 };
 
 subtest 'overload: string comparison' => sub {
