@@ -3,6 +3,7 @@ use v5.40;
 
 use AUR::Query qw(query query_multi);
 use AUR::Options qw(add_from_stdin dump_options);
+use AUR::Exception;
 my $argv0 = 'query';
 
 unless (caller) {
@@ -44,10 +45,19 @@ unless (caller) {
     my %query_args = (type => $opt_type, by => $opt_by, callback => sub { say @_ });
 
     # search requests take a single argument only
-    if ($opt_type eq "search" or $opt_type eq "suggest" or $opt_type eq "suggest-pkgbase") {
-        map { query(term => $_, %query_args) } @ARGV;
-    } else {
-        query_multi(terms => \@ARGV, %query_args);
+    try {
+        if ($opt_type eq "search" or $opt_type eq "suggest" or $opt_type eq "suggest-pkgbase") {
+            map { query(term => $_, %query_args) } @ARGV;
+        } else {
+            query_multi(terms => \@ARGV, %query_args);
+        }
+    }
+    catch ($error) {
+        if ($error isa AUR::Exception) {
+            say STDERR $error->message;
+            exit($error->exit_code);
+        }
+        die $error;  # re-throw unexpected errors
     }
 }
 

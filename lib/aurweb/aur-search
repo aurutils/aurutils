@@ -11,6 +11,7 @@ use constant ST   => "\033\\";
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query query_multi);
 use AUR::Options qw(add_from_stdin dump_options);
+use AUR::Exception;
 my $argv0 = 'search';
 my $aur_location = $ENV{AUR_LOCATION} // 'https://aur.archlinux.org';
 
@@ -181,30 +182,39 @@ unless(caller) {
     my @results;
 
     # TODO: handle '-' as stdin argument
-    if ($opt_type eq 'search') {
-        # Apply union/intersection starting at the first argument
-        my $first = shift;
-        my %query_args = (type => 'search', by => $opt_search_by, callback => \&parse_json_aur);
-        @results = query(term => $first, %query_args);
+    try {
+        if ($opt_type eq 'search') {
+            # Apply union/intersection starting at the first argument
+            my $first = shift;
+            my %query_args = (type => 'search', by => $opt_search_by, callback => \&parse_json_aur);
+            @results = query(term => $first, %query_args);
 
-        my %seen;
-        for my $arg (@ARGV) {
-            my @next = query(term => $arg, %query_args);
+            my %seen;
+            for my $arg (@ARGV) {
+                my @next = query(term => $arg, %query_args);
 
-            if ($opt_multiple eq 'union') {
-                results_union(\@next, \@results, \%seen, 'Name');
-            }
-            elsif ($opt_multiple eq 'section') {
-                results_isect(\@next, \@results, 'Name');
-            }
-            else {
-                push(@results, @next);
+                if ($opt_multiple eq 'union') {
+                    results_union(\@next, \@results, \%seen, 'Name');
+                }
+                elsif ($opt_multiple eq 'section') {
+                    results_isect(\@next, \@results, 'Name');
+                }
+                else {
+                    push(@results, @next);
+                }
             }
         }
+        elsif ($opt_type eq 'info') {
+            # Union/intersection do not apply to info-style requests
+            @results = query_multi(terms => \@ARGV, type => 'info', callback => \&parse_json_aur);
+        }
     }
-    elsif ($opt_type eq 'info') {
-        # Union/intersection do not apply to info-style requests
-        @results = query_multi(terms => \@ARGV, type => 'info', callback => \&parse_json_aur);
+    catch ($error) {
+        if ($error isa AUR::Exception) {
+            say STDERR $error->message;
+            exit($error->exit_code);
+        }
+        die $error;  # re-throw unexpected errors
     }
     exit(1) if scalar @results == 0;
 

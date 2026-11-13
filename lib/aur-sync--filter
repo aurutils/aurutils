@@ -3,6 +3,7 @@ use v5.40;
 
 use AUR::Depends qw(prune);
 use AUR::Json    qw(parse_json_aur);
+use AUR::Exception;
 my $argv0 = "sync--filter";
 
 # TODO: depends: adjust pkgname for lib32
@@ -40,9 +41,18 @@ unless(caller) {
     my @results;
     open(my $fh, '<', $opt_json) or die $!;
 
-    while(<$fh>) {
-        chomp $_;
-        push(@results, parse_json_aur($_));
+    try {
+        while(<$fh>) {
+            chomp $_;
+            push(@results, parse_json_aur($_));
+        }
+    }
+    catch ($error) {
+        if ($error isa AUR::Exception) {
+            say STDERR $error->message;
+            exit($error->exit_code);
+        }
+        die $error;  # re-throw unexpected errors
     }
     close($fh);
 

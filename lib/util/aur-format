@@ -6,6 +6,7 @@ use v5.40;
 
 use AUR::Json qw(parse_json parse_json_aur);
 use AUR::Options qw(dump_options);
+use AUR::Exception;
 my $argv0 = 'format';
 
 # Dictionary for formatter string - subset of package-query(1) format options
@@ -212,10 +213,19 @@ unless (caller) {
         my ($fmt, $suffix) = tokenize($opt_format);
         die unless (scalar @{$fmt} eq scalar @{$suffix});
 
-        while (my $row = <ARGV>) {
-            my @results = parse_json_aur($row);
+        try {
+            while (my $row = <ARGV>) {
+                my @results = parse_json_aur($row);
 
-            map { info_format($_, $fmt, $suffix, $opt_delim, $opt_verbose, $opt_time_fmt) } @results;
+                map { info_format($_, $fmt, $suffix, $opt_delim, $opt_verbose, $opt_time_fmt) } @results;
+            }
+        }
+        catch ($error) {
+            if ($error isa AUR::Exception) {
+                say STDERR $error->message;
+                exit($error->exit_code);
+            }
+            die $error;  # re-throw unexpected errors
         }
         die if $!;
     }
