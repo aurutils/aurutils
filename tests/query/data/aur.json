@@ -1,0 +1,17 @@
+{
+  "resultcount": 2,
+  "results": [
+    {
+      "Name": "aurutils",
+      "PackageBase": "aurutils",
+      "Version": "22.2-1"
+    },
+    {
+      "Name": "aurutils-git",
+      "PackageBase": "aurutils-git",
+      "Version": "22.2.r0.g9669f4b6-1"
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}
