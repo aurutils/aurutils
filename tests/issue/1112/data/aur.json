@@ -1,0 +1,19 @@
+{
+  "resultcount": 1,
+  "results": [
+    {
+      "Name": "lib32-blas",
+      "PackageBase": "lib32-lapack",
+      "Version": "3.12.1-1",
+      "Depends": [
+        "lib32-gcc-libs"
+      ],
+      "MakeDepends": [
+        "cmake",
+        "gcc-fortran"
+      ]
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}
