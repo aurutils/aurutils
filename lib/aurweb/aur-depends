@@ -7,6 +7,7 @@ use AUR::Query   qw(query_multi);
 use AUR::Depends qw(recurse prune graph);
 use AUR::Options qw(add_from_stdin dump_options);
 use AUR::Exception;
+use AUR::Term    qw(sanitize);
 my $argv0 = 'depends';
 
 sub solve {
@@ -48,7 +49,7 @@ sub table_v10_compat {
     for my $pkg (values %{$results}) {
         next if not defined $pkg->{'PackageBase'};
 
-        my ($name, $base, $version) = (
+        my ($name, $base, $version) = map { sanitize($_) } (
             $pkg->{'Name'}, $pkg->{'PackageBase'}, $pkg->{'Version'}
         );
         say join("\t", $name, $name, $base, $version, 'Self');
@@ -60,7 +61,7 @@ sub table_v10_compat {
             for my $dep (@{$depends}) {
                 my ($provider) = @{$replaced->{(split /[<>=]/, $dep)[0]} // []};
 
-                say join("\t", $name, $provider // $dep, $base, $version, $deptype);
+                say join("\t", $name, sanitize($provider // $dep), $base, $version, $deptype);
             }
         }
     }
@@ -71,12 +72,13 @@ sub table {
     my $results = shift;
 
     for my $pkg (values %{$results}) {
-        my ($name, $base, $version, $reqby) = (
-            $pkg->{'Name'}, $pkg->{'PackageBase'}, $pkg->{'Version'}, $pkg->{'RequiredBy'}
+        my ($name, $base, $version) = map { sanitize($_) } (
+            $pkg->{'Name'}, $pkg->{'PackageBase'}, $pkg->{'Version'}
         );
+        my $reqby = $pkg->{'RequiredBy'};
 
         for my $dep (keys %{$reqby}) {
-            say join("\t", $name, $dep, $base // '-', $version // '-', $reqby->{$dep});
+            say join("\t", $name, sanitize($dep), $base // '-', $version // '-', $reqby->{$dep});
         }
     }
 }
@@ -94,7 +96,7 @@ sub pairs {
             my $rdep = $key eq 'Name' ? $reqby : $results->{$reqby}->{$key} // '-';
             my @pair = $reverse ? ($target, $rdep) : ($rdep, $target);
 
-            say join("\t", @pair) if not $seen{$target}{$rdep};
+            say join("\t", map { sanitize($_) } @pair) if not $seen{$target}{$rdep};
             $seen{$target}{$rdep} = 1;
         }
     }

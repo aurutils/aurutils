@@ -7,6 +7,7 @@ use v5.40;
 use AUR::Json qw(parse_json parse_json_aur);
 use AUR::Options qw(dump_options);
 use AUR::Exception;
+use AUR::Term qw(sanitize);
 my $argv0 = 'format';
 
 # Dictionary for formatter string - subset of package-query(1) format options
@@ -81,11 +82,11 @@ sub info_expand_field {
     if (not defined($value)) {
         return "";
     } elsif (ref($value) eq 'ARRAY') {
-        return join($delim, @{$value});
+        return join($delim, map { sanitize($_) } @{$value});
     } elsif ($aur_types{$label} eq 'epoch') {
         return strftime($time_fmt, gmtime $value);
     } else {
-        return $value;
+        return sanitize($value);
     }
 }
 

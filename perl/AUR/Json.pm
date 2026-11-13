@@ -3,6 +3,7 @@ use v5.40;
 
 use Carp;
 use AUR::Exception;
+use AUR::Term qw(sanitize);
 use Exporter qw(import);
 our @EXPORT_OK = qw(parse_json parse_json_aur write_json);
 our $VERSION = 'unstable';
@@ -120,7 +121,7 @@ sub parse_json_aur {
         my $error = $obj->{'error'};
 
         if (defined($error)) {
-            croak(AUR::Exception->new(__PACKAGE__ . ': response error (' . $error . ')', 4));
+            croak(AUR::Exception->new(__PACKAGE__ . ': response error (' . sanitize($error) . ')', 4));
         }
         return @{$obj->{'results'}};
     }
