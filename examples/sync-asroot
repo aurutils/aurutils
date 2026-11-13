@@ -2,9 +2,10 @@
 # run as: `sudo sync-asroot -U <user> ...`
 [[ -v AUR_DEBUG ]] && set -o xtrace
 argv0=sync-asroot
+example_dir=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
 
 # default options
-build_args=(-LR --chroot) sync_args=() keep_going=1
+build_args=(-LR) sync_args=() keep_going=1 chroot=1
 
 # colors (for build summary)
 source /usr/share/makepkg/util/message.sh
@@ -15,7 +16,7 @@ fi
 
 # option parsing
 unset build_user
-while getopts :U:d:k:fSuN OPT; do
+while getopts :U:d:k:fSuNn OPT; do
     case $OPT in
         d) build_args+=(-d "$OPTARG"); sync_args+=(-d "$OPTARG") ;;
         f) build_args+=(-f) ;;
@@ -24,6 +25,7 @@ while getopts :U:d:k:fSuN OPT; do
         k) keep_going=$OPTARG ;;
         u) sync_args+=(-u) ;;
         N) sync_args+=(--no-ver) ;;
+        n) chroot=0 ;;
     esac
 done
 shift $(( OPTIND-1 ))
@@ -65,6 +67,15 @@ build_env=(AUR_MAKEPKG="${as_user[*]} makepkg"
            AUR_GPG="${as_user[*]} gpg"
            AUR_REPO_ADD="${as_user[*]} repo-add"
            AUR_BUILD_PKGLIST="${as_user[*]} aur build--pkglist")
+
+if (( chroot )); then
+    build_args+=(--chroot)
+else
+    # Dependencies are installed and removed as root by makepkg-asroot, which
+    # runs makepkg as the build user.
+    build_args+=(--syncdeps --rmdeps)
+    build_env[0]="AUR_MAKEPKG=bash $example_dir/makepkg-asroot -U $build_user"
+fi
 
 # 2. retrieve sources ------------------------------------------------------------->
 # ninja runs as root: build.ninja and the stamp files are kept in a directory

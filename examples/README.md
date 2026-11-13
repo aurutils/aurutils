@@ -52,6 +52,13 @@ privileges through `setuid` programs such as `sudo`.
 
 Other possible agents are `runuser` and `systemd-run`.
 
+By default, packages are built in a container (`aur build --chroot`). With `-n`,
+packages are built on the host. `makepkg` is then replaced by `makepkg-asroot`,
+which installs missing dependencies with `pacman -S --asdeps` as root, runs
+`makepkg` as the build user, and removes the installed dependencies with
+`pacman -Rnu`. As with `makepkg --rmdeps`, the removed packages are those which
+were not installed before.
+
 The build user is specified with `-U` and has no default. If the invoking user
 is specified, package files are retrieved, inspected and built with access to
 the files of this user.
