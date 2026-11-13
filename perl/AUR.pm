@@ -32,6 +32,10 @@ Helpers for option parsing.
 
 Requests to the AurJSON interface.
 
+=item L<AUR::Term>
+
+Helpers for text output of AUR data.
+
 =item L<AUR::Vercmp>
 
 Compare package versions with vercmp(8).
