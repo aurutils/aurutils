@@ -161,11 +161,16 @@ subtest 'dump_options: empty spec' => sub {
     is_deeply([dump_lines([])], [], 'nothing printed');
 };
 
-subtest 'dump_options: negatable and incremental options' => sub {
-    # Getopt::Long modifiers are not stripped
-    local $TODO = '! and + modifiers are printed as part of the name';
-    is_deeply([dump_lines(['color!'])],   ['--color'],   'negatable');
-    is_deeply([dump_lines(['verbose+'])], ['--verbose'], 'incremental');
+subtest 'dump_options: unsupported specs croak' => sub {
+    for my $entry ('color!', 'c|color!', 'verbose+', '<>') {
+        eval { dump_lines(['help', $entry]) };
+        like($@, qr/^dump_options: unsupported option spec '\Q$entry\E'/, "'$entry' croaks");
+    }
+};
+
+subtest 'dump_options: optional incremental argument' => sub {
+    # `:+` is an argument type, not the `+` modifier
+    is_deeply([dump_lines(['level|l:+'])], ['--level:', '-l:'], ':+');
 };
 
 subtest 'dump_options: spec as used by aur(1) programs' => sub {

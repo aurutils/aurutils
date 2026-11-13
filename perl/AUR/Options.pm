@@ -66,7 +66,8 @@ sub add_from_stdin {
 Print long and short options from a GetOptions spec list, one per
 line, matching the format of the bash --dump-options output.
 Argument-taking options carry a trailing C<:>. The C<dump-options>
-option itself is not printed.
+option itself is not printed. Dies on the C<!> and C<+> modifiers and
+on C<< <> >>, which have no equivalent in this format.
 
 =cut
 
@@ -78,6 +79,7 @@ sub dump_options {
         # Split "name|alias|alias2=s" into names and type
         my ($names, $type) = split /[=:]/, $entry, 2;
         my $suffix = defined $type ? ':' : '';
+        croak "dump_options: unsupported option spec '$entry'" if $names =~ /[!+]|^<>$/;
 
         for my $name (split /\|/, $names) {
             next if $name eq 'dump-options';
