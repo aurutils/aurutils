@@ -212,8 +212,9 @@ if [[ -v AUR_MAKEPKG_GNUPGHOME ]]; then
 fi
 
 tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX") || exit
-var_tmp=$(mktemp -d --tmpdir="${TMPDIR:-/var/tmp/}" "aurutils-$argv0.XXXXXXXX") || exit
+trap 'rm -rf -- "$tmp"' EXIT
 
+var_tmp=$(mktemp -d --tmpdir="${TMPDIR:-/var/tmp/}" "aurutils-$argv0.XXXXXXXX") || exit
 trap 'trap_exit' EXIT
 trap 'exit' INT
 
