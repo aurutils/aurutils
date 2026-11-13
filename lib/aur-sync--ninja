@@ -6,6 +6,13 @@ if [[ -v AUR_DEBUG ]]; then
     PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 fi
 
+# Ranges such as a-z include other letters outside of the C locale. The
+# locale is only set for the match: quoted expansion (@Q) depends on it.
+valid_name() {
+    local LC_ALL=C
+    [[ $1 =~ ^[a-zA-Z0-9@_+][a-zA-Z0-9@._+-]*$ ]]
+}
+
 # parent of PKGBUILD directories (relative or absolute)
 srcdir=.
 if [[ -d $1 ]]; then
@@ -19,6 +26,27 @@ shift
 # for ninja. Heredocs are expanded like double-quoted strings.
 command=${*@Q} command=${command//\$/\$\$}
 
+# Names are written to build.ninja as is, and are part of the build
+# directory. The input is not necessarily from aur-sync: only accept
+# package names. All input is read first, so that every invalid name is
+# printed (once), and nothing is written to build.ninja in this case.
+pkgbases=() depends=()
+declare -A invalid
+
+while read -r pkgbase depends_pkgbase _; do
+    for name in "$pkgbase" "$depends_pkgbase"; do
+        if ! valid_name "$name" && [[ ! -v invalid["x$name"] ]]; then
+            printf >&2 'sync--ninja: invalid package name: %q\n' "$name"
+            invalid["x$name"]=1  # x: an empty key is not allowed
+        fi
+    done
+    pkgbases+=("$pkgbase") depends+=("$depends_pkgbase")
+done
+
+if (( ${#invalid[@]} )); then
+    exit 2
+fi
+
 # shellcheck disable=SC2154
 cat <<EOF
 rule aurbuild
@@ -28,7 +56,9 @@ EOF
 
 # input is assumed to be ordered by pkgbase (e.g. aur-depends --graph)
 current_package=
-while read -r pkgbase depends_pkgbase _; do
+for i in "${!pkgbases[@]}"; do
+    pkgbase=${pkgbases[i]} depends_pkgbase=${depends[i]}
+
     if [[ $pkgbase != "$current_package" ]] && [[ $current_package ]]; then
         directory=$srcdir/$current_package
         printf '\n%-4sdirectory = %s\n' ' ' "${directory@Q}"
