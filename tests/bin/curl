@@ -1,22 +1,115 @@
 #!/usr/bin/env perl
-# curl stand-in for AUR::Query: answer info requests (POST, query_multi)
-# with the packages in $AUR_TEST_FIXTURE (an info response) that match the
-# requested names. GET requests (query, e.g. search) are not supported.
+# curl stand-in for the tests: answer the requests of AUR::Query from a file
+# instead of aurweb.
+#
+# The file is set in AUR_TEST_FIXTURE and holds an info response:
+#
+#   { "resultcount": 1, "results": [ { "Name": "foo", ... } ], ... }
+#
+# The packages in "results" stand for the packages in the AUR. A response
+# is this file, with only the packages that match the request:
+#
+#   POST <rpc>/v5/info          Name is one of the names in --data-raw
+#   GET  <rpc>/v5/info/NAME     Name is NAME
+#   GET  <rpc>/v5/search/TERM   TERM is part of Name or Description
+#                               (with ?by=name: part of Name)
+#
+# As with aurweb, a search for a TERM of less than two characters results
+# in an error response. Any other request is not supported, and an error.
 use strict;
 use warnings;
 use JSON::PP;
 
-my $fixture = $ENV{AUR_TEST_FIXTURE} // die "$0: AUR_TEST_FIXTURE is not set\n";
+my $fixture = $ENV{AUR_TEST_FIXTURE};
+defined $fixture or die "$0: AUR_TEST_FIXTURE is not set\n";
 
-# data: &arg[]=name1&arg[]=name2 with names percent-encoded
-my ($data) = map { $ARGV[$_ + 1] } grep { $ARGV[$_] eq '--data-raw' } 0..$#ARGV-1;
-defined $data or die "$0: only POST requests are supported: @ARGV\n";
-my %names = map { s/%(..)/chr(hex($1))/ger => 1 } $data =~ /arg\[\]=([^&]*)/g;
+sub unsupported {
+    die "$0: request not supported: @ARGV\n";
+}
 
+# AUR::Query percent-encodes names and search terms
+sub urldecode {
+    my $str = shift;
+    $str =~ s/%([0-9A-Fa-f]{2})/chr(hex($1))/ge;
+    return $str;
+}
+
+# Arguments: [options] URL [--data-raw DATA]
+my ($url, $data);
+
+for (my $i = 0; $i < @ARGV; $i++) {
+    if ($ARGV[$i] eq '--data-raw') {
+        $data = $ARGV[++$i];
+    }
+    elsif ($ARGV[$i] eq '-A') {
+        $i++; # user agent
+    }
+    elsif ($ARGV[$i] !~ /^-/) {
+        $url = $ARGV[$i];
+    }
+}
+defined $url or unsupported();
+
+# URL: <rpc>/v5/TYPE, <rpc>/v5/TYPE/TERM or <rpc>/v5/TYPE/TERM?by=BY
+my ($path, $by) = split(/\?by=/, $url, 2);
+my ($type, $term) = $path =~ m{/rpc/v\d+/([^/]+)(?:/(.*))?$} or unsupported();
+
+# Select packages with $is_match, or respond with $error
+my ($is_match, $error);
+
+if ($type eq 'info' and defined $data) {
+    # DATA: &arg[]=NAME1&arg[]=NAME2
+    my %names;
+    for my $name ($data =~ /arg\[\]=([^&]*)/g) {
+        $names{urldecode($name)} = 1;
+    }
+    $is_match = sub { my $pkg = shift; exists $names{$pkg->{Name}} };
+}
+elsif ($type eq 'info' and defined $term) {
+    my $name = urldecode($term);
+
+    $is_match = sub { my $pkg = shift; $pkg->{Name} eq $name };
+}
+elsif ($type eq 'search' and defined $term) {
+    my $str = lc urldecode($term);
+    my $contains = sub { my $field = shift; index(lc($field // ''), $str) >= 0 };
+    $by //= 'name-desc';
+
+    if (length($str) < 2) {
+        $error = 'Query arg too small.';
+    }
+    elsif ($by eq 'name') {
+        $is_match = sub { my $pkg = shift; $contains->($pkg->{Name}) };
+    }
+    elsif ($by eq 'name-desc') {
+        $is_match = sub {
+            my $pkg = shift;
+            $contains->($pkg->{Name}) or $contains->($pkg->{Description})
+        };
+    }
+    else {
+        unsupported();
+    }
+}
+else {
+    unsupported();
+}
+
+# Response
 open(my $fh, '<', $fixture) or die "$0: $fixture: $!\n";
-my $obj = decode_json(do { local $/ = undef; <$fh> });
+my $response = decode_json(join('', <$fh>));
+close($fh);
 
-# AUR::Query reads a single line
-$obj->{results} = [grep { $names{$_->{Name}} } @{$obj->{results}}];
-$obj->{resultcount} = scalar @{$obj->{results}};
-print encode_json($obj), "\n";
+if (defined $error) {
+    $response->{type}    = 'error';
+    $response->{error}   = $error;
+    $response->{results} = [];
+}
+else {
+    $response->{type}    = $type eq 'search' ? 'search' : 'multiinfo';
+    $response->{results} = [grep { $is_match->($_) } @{$response->{results}}];
+}
+$response->{resultcount} = scalar @{$response->{results}};
+
+# A single line without newline, as aurweb (aur-query adds the newline)
+print encode_json($response);
