@@ -2,6 +2,8 @@ package AUR::Json;
 use strict;
 use warnings;
 use v5.20;
+use feature 'try';
+no warnings 'experimental::try';  # stable in 5.40
 
 use Exporter qw(import);
 our @EXPORT_OK = qw(parse_json parse_json_aur write_json);
@@ -51,18 +53,30 @@ else {
 
 =head2 parse_json($str)
 
-Decode the first JSON text in C<$str> and return the resulting hash or
-array reference. Dies if C<$str> does not start with a JSON object or
-array.
+Decode the JSON text in C<$str> and return the resulting hash or array
+reference. Whitespace around the text is allowed. Dies if C<$str> is
+not valid JSON, has text after the first JSON value, or is not an
+object or array. The error is one line, without a source location.
 
 =cut
 
 sub parse_json {
     my $str = shift;
-    my $obj = $aur_json->incr_parse($str)
-        or die __PACKAGE__ . ": expected JSON object or array at beginning of string";
-    $aur_json->incr_reset();
+    my $obj;
 
+    try {
+        $obj = $aur_json->decode($str);
+    }
+    catch ($e) {
+        # decode croaks with the location of this file
+        $e =~ s/ at \Q${\__FILE__}\E line \d+(?:, <\S*> (?:line|chunk) \d+)?\.\n\z//;
+        chomp($e);
+        die "$e\n";
+    }
+
+    if (ref($obj) ne 'HASH' and ref($obj) ne 'ARRAY') {
+        die "expected JSON object or array\n";
+    }
     return $obj;
 }
 
@@ -83,15 +97,24 @@ aur-repo-parse(1))
 
 =back
 
-If the response contains an C<error>, or is neither an array nor an
-object, a message is printed to standard error and the program exits
-with status 4.
+If C<$str> is not valid input for C<parse_json>, or the response
+contains an C<error>, a message is printed to standard error and the
+program exits with status 4.
 
 =cut
 
 sub parse_json_aur {
     my $str = shift;
-    my $obj = parse_json($str);
+    my $obj;
+
+    try {
+        $obj = parse_json($str);
+    }
+    catch ($e) {
+        chomp($e);
+        say STDERR __PACKAGE__ . ': invalid input (' . $e . ')';
+        exit(4);
+    }
 
     # Possible AUR responses:
     # - JSON arrays: REST (suggests), metadata archives (packages-meta-v1.json)
@@ -109,12 +132,8 @@ sub parse_json_aur {
     elsif (ref($obj) eq 'HASH') {
         return ($obj);
     }
-    elsif (ref($obj) eq 'ARRAY') {
-        return @{$obj};
-    }
     else {
-        say STDERR __PACKAGE__ . ": not an array or hash";
-        exit(4);
+        return @{$obj};  # ARRAY, checked by parse_json
     }
 }
 

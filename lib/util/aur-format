@@ -5,6 +5,8 @@ use warnings;
 use open ":std", ":encoding(UTF-8)";
 use POSIX qw(strftime);
 use v5.20;
+use feature 'try';
+no warnings 'experimental::try';  # stable in 5.40
 
 use AUR::Json qw(parse_json parse_json_aur);
 use AUR::Options qw(dump_options);
@@ -195,7 +197,16 @@ unless (caller) {
     # main loops
     if ($opt_mode eq 'gron') {
         while (my $row = <ARGV>) {
-            my $obj = parse_json($row);
+            my $obj;
+
+            try {
+                $obj = parse_json($row);
+            }
+            catch ($e) {
+                chomp($e);
+                say STDERR "$argv0: invalid input ($e)";
+                exit(4);
+            }
 
             info_gron($obj, "json");
         }

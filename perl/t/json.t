@@ -2,7 +2,9 @@
 use strict;
 use warnings;
 use v5.20;
-use File::Temp qw(tempfile);
+use File::Copy qw(copy);
+use File::Path qw(make_path);
+use File::Temp qw(tempdir tempfile);
 use Test::More;
 
 # Check if module can be imported
@@ -31,10 +33,6 @@ sub run_child {
     my $err = do { local $/; <$in> };
     return ($status, $err);
 }
-
-# --- Helper: reset parser state between subtests ---
-# A failed parse leaves the incremental buffer filled (see TODO below).
-sub reset_parser { $AUR::Json::aur_json->incr_reset() }
 
 subtest 'backend: JSON::XS or JSON::PP' => sub {
     my $ref = ref($AUR::Json::aur_json);
@@ -76,9 +74,11 @@ subtest 'parse_json: unicode' => sub {
     is($obj->{s}, "\x{e9}", 'escaped code point decoded');
 };
 
-subtest 'parse_json: only the first JSON text is decoded' => sub {
-    is_deeply(parse_json('{"a":1}{"b":2}'), { a => 1 }, 'second object ignored');
-    is_deeply(parse_json('[1]'), [1], 'remainder discarded, next call is clean');
+subtest 'parse_json: text after the JSON value dies' => sub {
+    eval { parse_json('{"a":1}{"b":2}') };
+    ok($@, 'second object');
+    eval { parse_json('[1] x') };
+    ok($@, 'trailing text');
 };
 
 subtest 'parse_json: consecutive calls are independent' => sub {
@@ -89,43 +89,43 @@ subtest 'parse_json: consecutive calls are independent' => sub {
 
 subtest 'parse_json: empty string dies' => sub {
     eval { parse_json('') };
-    like($@, qr/^AUR::Json: expected JSON object or array/, 'dies with message');
-    reset_parser();
+    ok($@, 'dies');
 };
 
 subtest 'parse_json: incomplete JSON dies' => sub {
     eval { parse_json('{"a":') };
-    like($@, qr/^AUR::Json: expected JSON object or array/, 'dies with message');
-    reset_parser();
+    ok($@, 'dies');
 };
 
 subtest 'parse_json: malformed JSON dies' => sub {
     eval { parse_json('garbage') };
     ok($@, 'dies on malformed input');
-    reset_parser();
 };
 
-subtest 'parse_json: scalar top-level value' => sub {
-    local $TODO = 'non-references are returned, contrary to the POD';
-    my $obj = eval { parse_json('"str"') };
-    ok(!defined $obj, 'string rejected');
-    $obj = eval { parse_json('1') };
-    ok(!defined $obj, 'number rejected');
-    reset_parser();
+subtest 'parse_json: scalar top-level value dies' => sub {
+    for my $str ('"str"', '1', 'null', 'true') {
+        eval { parse_json($str) };
+        is($@, "expected JSON object or array\n", "$str rejected");
+    }
+};
+
+subtest 'parse_json: error is one line without source location' => sub {
+    for my $str ('', 'garbage', '{"a":', '{}{}') {
+        eval { parse_json($str) };
+        like($@, qr/\A[^\n]+\n\z/, "one line for '$str'");
+        unlike($@, qr/ line \d+/,  "no source location for '$str'");
+    }
 };
 
 subtest 'parse_json: state after a failed parse' => sub {
-    local $TODO = 'incremental buffer is not reset on failure';
     eval { parse_json('{"a":') };
 
     my $obj = eval { parse_json('[1]') };
     is_deeply($obj, [1], 'valid input parses after incomplete input');
-    reset_parser();
 
     eval { parse_json('garbage') };
     $obj = eval { parse_json('[1]') };
     is_deeply($obj, [1], 'valid input parses after malformed input');
-    reset_parser();
 };
 
 subtest 'parse_json_aur: info/search response' => sub {
@@ -179,20 +179,41 @@ subtest 'parse_json_aur: error without results' => sub {
     is_deeply(\@results, [{ error => 'x' }], 'returned as single object');
 };
 
-subtest 'parse_json_aur: neither array nor hash exits 4' => sub {
-    my ($status, $err) = run_child(sub {
-        no warnings 'redefine';
-        local *AUR::Json::parse_json = sub { return 'scalar' };
-        parse_json_aur('ignored');
-    });
+subtest 'parse_json_aur: scalar exits 4' => sub {
+    my ($status, $err) = run_child(sub { parse_json_aur('"str"') });
     is($status, 4, 'exit status 4');
-    is($err, "AUR::Json: not an array or hash\n", 'error on stderr');
+    is($err, "AUR::Json: invalid input (expected JSON object or array)\n", 'error on stderr');
 };
 
-subtest 'parse_json_aur: invalid input dies' => sub {
-    eval { parse_json_aur('') };
-    like($@, qr/^AUR::Json: expected JSON object or array/, 'dies from parse_json');
-    reset_parser();
+subtest 'parse_json_aur: invalid input exits 4' => sub {
+    for my $str ('', 'garbage', '{"a":', '{}{}') {
+        my ($status, $err) = run_child(sub { parse_json_aur($str) });
+        is($status, 4, "exit status 4 for '$str'");
+        like($err, qr/^AUR::Json: invalid input \(.+\)\n\z/, "one line on stderr for '$str'");
+        unlike($err, qr/ line \d+/, "no source location for '$str'");
+    }
+};
+
+subtest 'parse_json_aur: invalid input from a file handle' => sub {
+    # die appends ", <$fh> line N." after reading from a handle
+    my ($status, $err) = run_child(sub {
+        open my $fh, '<', \"garbage\n" or die;
+        while (my $row = <$fh>) { parse_json_aur($row) }
+    });
+    is($status, 4, 'exit status 4');
+    unlike($err, qr/ line \d+/, 'no source location');
+};
+
+subtest 'parse_json_aur: invalid input, module path with spaces' => sub {
+    my $dir = tempdir(CLEANUP => 1) . '/a b';
+    make_path("$dir/AUR");
+    copy($INC{'AUR/Json.pm'}, "$dir/AUR/Json.pm") or die "copy: $!";
+
+    my ($status, $err) = run_child(sub {
+        exec $^X, "-I$dir", '-MAUR::Json=parse_json_aur', '-e', 'parse_json_aur("garbage")';
+    });
+    is($status, 4, 'exit status 4');
+    unlike($err, qr/ line \d+/, 'no source location');
 };
 
 subtest 'write_json: sorted keys, no newline' => sub {
