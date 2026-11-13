@@ -389,9 +389,12 @@ the default command runs faster by not linting the
 The command used to sign packages. The arguments
 .BR \-\-batch ,
 .BR \-\-detach\-sign ,
-and
 .BR \-\-no\-armor
-must be supported by this command.
+and
+.BR \-\-output
+must be supported by this command. The package file is passed after
+.BR \-\- ,
+which must be taken as the end of options.
 .
 .TP
 .B AUR_REPO_ADD
@@ -399,7 +402,11 @@ The command used to update the local repository. Any
 .BR repo\-add (8)
 options (see the
 .B repo\-add options
-section) forwarded must be supported by this command.
+section) forwarded must be supported by this command, as well as
+.BR \-\-wait\-for\-lock .
+The database file and package files are passed after
+.BR \-\- ,
+which must be taken as the end of options.
 .
 .TP
 .B AUR_PACMAN_AUTH

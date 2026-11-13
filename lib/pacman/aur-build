@@ -419,10 +419,9 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         fi
 
         cd -- "$var_tmp"
-        # Only take package files from the build: other names, in particular
-        # those starting with -, are not passed to mv, gpg or repo-add.
-        # Signatures from makepkg --sign are discarded (#410)
-        pkglist=([!-]*.pkg.tar!(*.sig))
+        # Only take package files from the build, not other files in the
+        # package directory. Signatures from makepkg --sign are discarded (#410)
+        pkglist=(*.pkg.tar!(*.sig))
     else
         cd -- "$var_tmp"
         # pkglist has paths to $db_root/<pkg>
@@ -446,7 +445,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
         # No candidate signature, generate one
         elif (( sign_pkg )); then
             #shellcheck disable=SC2086
-            ${AUR_GPG:-gpg} "${gpg_args[@]}" --output "$p_base".sig "$p"
+            ${AUR_GPG:-gpg} "${gpg_args[@]}" --output "$p_base".sig -- "$p"
 
             printf >&2 '%s: created signature file %q\n' "$argv0" "$p_base".sig
             siglist+=("$p_base".sig)
@@ -476,7 +475,7 @@ while IFS= read "${read_args[@]}" -ru "$fd" path; do
     # Update database. Wait for the lock file if another aur-build process
     # updates the same database.
     #shellcheck disable=SC2086
-    env -C "$db_root" LANG=C ${AUR_REPO_ADD:-repo-add} --wait-for-lock "${repo_add_args[@]}" "$db_path" "${pkglist[@]}"
+    env -C "$db_root" LANG=C ${AUR_REPO_ADD:-repo-add} --wait-for-lock "${repo_add_args[@]}" -- "$db_path" "${pkglist[@]}"
 
     if (( chroot )) || (( no_sync )); then
         continue
