@@ -90,12 +90,10 @@ subtest 'urlencode: two hex digits, upper case' => sub {
     is(urlencode("\xff"), '%FF', 'upper case');
 };
 
-subtest 'urlencode: wide characters' => sub {
-    # Code points above 0xFF are not encoded as UTF-8 bytes
-    is(urlencode("\x{e9}"), '%E9', 'Latin-1 code point');
-
-    local $TODO = 'wide characters are not UTF-8 encoded';
-    is(urlencode("\x{263a}"), '%E2%98%BA', 'code point above 0xFF');
+subtest 'urlencode: byte strings' => sub {
+    # Arguments are passed as bytes, UTF-8 stays UTF-8
+    is(urlencode("caf\xc3\xa9"), 'caf%C3%A9', 'UTF-8 bytes');
+    is(urlencode("\xe2\x98\xba"), '%E2%98%BA', 'three-byte sequence');
 };
 
 subtest 'query: GET request path' => sub {

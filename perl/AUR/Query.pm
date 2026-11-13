@@ -71,7 +71,9 @@ our $aur_splitno  = $ENV{AUR_QUERY_RPC_SPLITNO} // 5000;
 =head2 urlencode($str)
 
 Return C<$str> with every character except C<A-Z>, C<a-z> and C<0-9>
-percent-encoded.
+percent-encoded. C<$str> is a byte string, such as an undecoded
+argument from C<@ARGV>: UTF-8 input results in percent-encoded UTF-8.
+Characters above U+00FF are not encoded correctly.
 
 =cut
 
