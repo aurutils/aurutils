@@ -4,9 +4,25 @@
   + set `attr.tree` in package repositories, such that `git` does not read
     attributes (`.gitattributes`) from the package (requires `git` 2.43)
 
+* `aur-query`, `aur-search`, `aur-depends`
+  + exit 2 on a response of multiple lines (was 255)
+  + print `AUR::Query: curl failed (exit status <n>)` if `curl` fails
+
 * `aur-view`
   + do not read attributes from the package; with `-diff`, changes were
     shown as `Binary files differ`
+
+* `perl`
+  + `AUR::Exception`: `new` croaks on exit codes outside 1..255
+  + `AUR::Json`: `parse_json_aur` throws an `AUR::Exception` (exit code 4)
+    instead of calling `exit`
+  + `AUR::Query`: throw an `AUR::Exception` (exit code 2) if `curl` is not
+    found, fails or prints multiple lines, instead of calling `exit` or `die`
+
+* `tests`
+  + add `exit-code`, `fetch-attributes` and `view-attributes`
+  + `completion-bash`: only print failures and a summary
+  + `repo-parse`: do not read standard input
 
 ## 23.1
 
