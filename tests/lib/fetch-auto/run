@@ -1,0 +1,92 @@
+#!/bin/bash
+# Check aur-fetch --auto, which reads aurutils.rebase for each package:
+# rebase if true, merge if false or not set, and an error otherwise.
+#
+# foo and bar are cloned from repositories in a temporary directory. Merges
+# only fast-forward by default, so that a local commit in foo is only kept
+# on top of new upstream commits with a rebase.
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    [[ ! -s $tmp/stderr ]] || cat >&2 "$tmp"/stderr
+    exit 1
+}
+
+# Ignore git configuration of the user
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+
+# commit DIRECTORY MESSAGE
+commit() {
+    git -C "$1" -c user.name=test -c user.email=test@localhost \
+        commit --quiet --allow-empty -m "$2" || exit
+}
+
+# subject DIRECTORY REVISION
+subject() {
+    git -C "$1" log -1 --format=%s "$2"
+}
+
+for pkg in foo bar; do
+    git init --quiet --initial-branch=master "$tmp/aur/$pkg" || exit
+    commit "$tmp/aur/$pkg" "$pkg 1"
+done
+
+export AUR_LOCATION=file://$tmp/aur
+mkdir "$tmp"/clones
+cd "$tmp"/clones || exit
+
+aur fetch foo bar >/dev/null 2>"$tmp"/stderr ||
+    fail 'failed to clone'
+
+# fetch_auto: the exit status is that of aur-fetch
+fetch_auto() {
+    aur fetch --auto foo bar >/dev/null 2>"$tmp"/stderr
+}
+
+# 1. not set: merge, and no message on aurutils.rebase
+commit "$tmp"/aur/foo 'foo 2'
+
+fetch_auto ||
+    fail 'aurutils.rebase not set: failed'
+[[ $(subject foo HEAD) == 'foo 2' ]] ||
+    fail 'aurutils.rebase not set: foo was not updated'
+! grep -q 'aurutils\.rebase' "$tmp"/stderr ||
+    fail 'aurutils.rebase not set: unexpected message'
+
+# 2. invalid value: exit before new commits are retrieved
+commit "$tmp"/aur/foo 'foo 3'
+git -C foo config aurutils.rebase maybe
+
+if fetch_auto; then
+    fail 'aurutils.rebase=maybe: no error'
+fi
+grep -Fxq 'fetch: failed to read aurutils.rebase for foo' "$tmp"/stderr ||
+    fail 'aurutils.rebase=maybe: no diagnostic'
+[[ $(subject foo origin/HEAD) == 'foo 2' ]] ||
+    fail 'aurutils.rebase=maybe: new commits were retrieved'
+
+# 3. false: merge, which fails with a local commit
+commit foo 'local'
+git -C foo config aurutils.rebase false
+
+if fetch_auto; then
+    fail 'aurutils.rebase=false: merged with a local commit'
+fi
+grep -Fxq 'fetch: foo: aurutils.rebase is set to false' "$tmp"/stderr ||
+    fail 'aurutils.rebase=false: no message'
+
+# 4. true: rebase, the local commit is kept on top of foo 3
+git -C foo config aurutils.rebase true
+
+fetch_auto ||
+    fail 'aurutils.rebase=true: failed'
+grep -Fxq 'fetch: foo: aurutils.rebase is set to true' "$tmp"/stderr ||
+    fail 'aurutils.rebase=true: no message'
+[[ $(subject foo HEAD) == 'local' && $(subject foo HEAD~1) == 'foo 3' ]] ||
+    fail 'aurutils.rebase=true: foo was not rebased'
+
+# the value is read for each package: no message for bar
+! grep -q 'bar: aurutils\.rebase' "$tmp"/stderr ||
+    fail 'aurutils.rebase=true for foo: message for bar'

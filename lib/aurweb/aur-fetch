@@ -235,12 +235,19 @@ for pkg in "${!packages[@]}"; do
         pkg_sync=$sync
 
         if [[ $sync = auto ]]; then
-            case $(git config --default=false --get --type bool aurutils.rebase) in
-                true)  pkg_sync=rebase ;;
-                false) pkg_sync=merge
-            esac
+            pkg_sync=merge
 
-            warn 'aurutils.rebase is set for %s\n' "$pkg_sync"
+            if rebase=$(git config --get --type bool aurutils.rebase); then
+                [[ $rebase = true ]] && pkg_sync=rebase
+                warn '%s: aurutils.rebase is set to %s\n' "$pkg" "$rebase"
+
+            # git-config exits with 1 if the key is not set. Any other status
+            # is an error printed by git, such as a value which is not a
+            # boolean or an invalid configuration file (both 128).
+            elif (( $? != 1 )); then
+                warn 'failed to read aurutils.rebase for %s\n' "$pkg"
+                exit 1
+            fi
         fi
 
         # Retrieve new upstream commits

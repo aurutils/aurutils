@@ -1,0 +1,68 @@
+#!/bin/bash
+# Update local clones of aur-fetch--mirror with aur-fetch
+set -e
+tmp=$(mktemp -d)
+trap 'rm -rf -- "$tmp"' EXIT
+trap 'printf >&2 "%s: failed at line %s\n" "$0" "$LINENO"' ERR
+
+# Ignore git configuration of the user
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+
+commit() {
+    git -C "$tmp"/src -c user.name=test -c user.email=test@localhost \
+        commit --quiet --allow-empty -m "$1"
+}
+
+# Add a commit to foo in the mirror
+commit_foo() {
+    commit "$1"
+    git -C "$tmp"/src push --quiet "$tmp"/mirror.git foo
+}
+
+subject() {
+    git -C "$1" log -1 --format=%s
+}
+
+# Mirror with one branch for each pkgbase (github.com/archlinux/aur)
+git init --quiet --initial-branch=main "$tmp"/src
+commit main
+git -C "$tmp"/src checkout --quiet --orphan bar
+commit 'bar 1'
+git -C "$tmp"/src checkout --quiet --orphan foo
+commit 'foo 1'
+git clone --quiet --bare "$tmp"/src "$tmp"/mirror.git
+
+# Packages are not available from AUR_LOCATION
+export AUR_MIRROR=file://$tmp/mirror.git AUR_ROOT=$tmp/aur AUR_LOCATION=file://$tmp/none
+mkdir "$tmp"/clones
+cd "$tmp"/clones
+
+aur fetch--mirror --lclone foo >/dev/null 2>&1
+
+for mode in merge rebase reset; do
+    commit_foo "foo $mode"
+
+    # Retrieve new commits to AUR_ROOT, then update the local clone
+    aur fetch--mirror foo >/dev/null 2>&1
+    aur fetch --"$mode" foo >/dev/null 2>&1
+
+    [[ $(subject foo) == "foo $mode" ]]
+done
+
+# Without a mode, new commits are retrieved but not merged. The results
+# file has the new revision.
+commit_foo 'foo fetch'
+aur fetch--mirror foo >/dev/null 2>&1
+aur fetch --results "$tmp"/results foo >/dev/null 2>&1
+
+[[ $(subject foo) == 'foo reset' ]]
+[[ $(<"$tmp"/results) == "fetch:$(git -C foo rev-parse HEAD):$(git -C "$tmp"/src rev-parse foo):file://$PWD/foo" ]]
+
+# With AUR_FETCH_USE_MIRROR, aur-fetch runs fetch--mirror itself: foo is
+# updated, and bar is cloned.
+commit_foo 'foo mirror'
+AUR_FETCH_USE_MIRROR=1 aur fetch --merge --results "$tmp"/results foo bar >/dev/null 2>&1
+
+[[ $(subject foo) == 'foo mirror' ]]
+[[ $(subject bar) == 'bar 1' ]]
+grep -q "^clone:.*:$(git -C "$tmp"/src rev-parse bar):file://$PWD/bar\$" "$tmp"/results
