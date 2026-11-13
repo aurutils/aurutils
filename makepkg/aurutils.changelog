@@ -1,12 +1,55 @@
+## 22.2
+
+* `aur`
+  + create temporary files directly in `TMPDIR` (`aur-build`, `aur-srcver`,
+    `aur-sync`, `aur-vercmp`, `aur-view`)
+
+* `aur-build`
+  + only move package files (`*.pkg.tar*`) to the local repository
+  + `build--sync`: exit if no terminal is available, unless `--no-confirm` is specified
+    - `pactrans` takes end-of-file as confirmation
+
+* `aur-sync`
+  + check `pkgbase` in `.SRCINFO` against the retrieved packages
+  + `sync--ninja`: quote the build directory, escape `$` in the build command
+
+* `examples`
+  + `sync-asroot`
+    - require a build user (`-U`)
+    - drop privileges with `setpriv --no-new-privs`
+    - use the home directory of the build user
+    - keep ninja files in a directory owned by root
+    - do not pass an argument with `-f`
+  + `sync-devel`, `vercmp-devel`: create temporary files directly in `TMPDIR`
+  + correct sudoers option and source of cached credentials (`README.md`)
+
+* `make`
+  + add `issue-test` and `test-shell` targets (#1231)
+
+* `man1`
+  + containers are not a security boundary (`aur-chroot.1`)
+  + describe the transaction run by `build--sync`, add warning on the
+    sudoers policy for a build user (`aur-build.1`)
+
+* `tests`
+  + add `build-sync`, `sync-ninja` and `tmpdir`
+  + `issue-test`: exit 1 if a test fails
+
+## 22.1
+
+* `aur-format`
+  + read `%%` as a literal `%` (#1279)
+
+* `tests`
+  + one directory for each test, with `run` and `data`
+  + check the order of `aur-view` and `aur-graph` in `aur-sync`
+
 ## 22
 
 * `aur-build`
   + check the signature of the database file (`<name>.db.sig`)
   + pass `--dbext` to `aur-repo`
   + resolve the `--pool` directory
-  + `build--sync`: exit if no terminal is available, unless `--no-confirm`
-    is specified
-  + only move package files (`*.pkg.tar*`) to the local repository
 
 * `aur-depends`
   + do not report a complete tree as out of range
