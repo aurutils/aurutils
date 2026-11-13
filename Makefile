@@ -33,6 +33,7 @@ shellcheck: aur
 test: aur shellcheck
 # tests which run the source tree's lib/ through `aur`, with AUR_EXEC_PATH
 # and PERL5LIB set here and ~/.config/aurutils/env ignored
+	@$(TEST_ENV) tests/lib/build-pkglist/run
 	@$(TEST_ENV) tests/lib/build-sync/run
 	@$(TEST_ENV) tests/lib/depends/run
 	@$(TEST_ENV) tests/lib/format/run

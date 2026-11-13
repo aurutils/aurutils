@@ -1,0 +1,62 @@
+#!/bin/bash
+# Check the package paths printed by aur-build--pkglist. makepkg only
+# creates the debug package for packages with debug symbols: it is only
+# printed if it exists in PKGDEST (#1218).
+#
+# The PKGBUILDs and makepkg configuration are created in a temporary
+# directory; no package is built.
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    exit 1
+}
+
+# makepkg_conf FILE OPTION...
+makepkg_conf() {
+    printf '%s\n' 'CARCH=x86_64' 'PKGEXT=.pkg.tar.zst' "OPTIONS=(${*:2})" >"$1"
+}
+makepkg_conf "$tmp"/debug.conf strip debug
+makepkg_conf "$tmp"/nodebug.conf strip '!debug'
+
+# pkgbuild NAME LINE...
+pkgbuild() {
+    mkdir -- "$tmp/$1" || exit
+    printf '%s\n' "${@:2}" 'pkgver=1' 'pkgrel=1' >"$tmp/$1"/PKGBUILD
+}
+pkgbuild single 'pkgname=foo' 'epoch=2' 'arch=(any)'
+pkgbuild split 'pkgbase=base' 'pkgname=(a b)' 'arch=(x86_64)' \
+    'package_a() { :; }' 'package_b() { arch=(any); }'
+pkgbuild named 'pkgbase=bar' 'pkgname=(bar bar-debug)' 'arch=(x86_64)' \
+    'package_bar() { :; }' 'package_bar-debug() { :; }'
+
+mkdir -- "$tmp"/dest || exit
+
+# check NAME CONF PACKAGE...: PACKAGE... are printed, as paths in PKGDEST
+check() {
+    local name=$1 conf=$2 expected actual
+    shift 2
+    expected=$(printf "$tmp/dest/%s.pkg.tar.zst\n" "$@")
+
+    actual=$(cd -- "$tmp/$name" && PKGDEST=$tmp/dest aur build--pkglist --config "$tmp/$conf") ||
+        fail "$name ($conf): aur-build--pkglist failed"
+    [[ $actual == "$expected" ]] ||
+        fail "$name ($conf): expected ${expected@Q}, got ${actual@Q}"
+}
+
+# The debug package is not printed if it does not exist
+check single debug.conf   'foo-2:1-1-any'
+check split  debug.conf   'a-1-1-x86_64' 'b-1-1-any'
+check single nodebug.conf 'foo-2:1-1-any'
+
+# The debug package has the name of pkgbase, and is printed if it exists
+touch -- "$tmp/dest/foo-debug-2:1-1-any.pkg.tar.zst" "$tmp"/dest/base-debug-1-1-x86_64.pkg.tar.zst
+
+check single debug.conf   'foo-2:1-1-any' 'foo-debug-2:1-1-any'
+check split  debug.conf   'a-1-1-x86_64' 'b-1-1-any' 'base-debug-1-1-x86_64'
+check single nodebug.conf 'foo-2:1-1-any'
+
+# Without the debug option, a package named <pkgbase>-debug is a regular
+# package, which is printed if it does not exist
+check named nodebug.conf 'bar-1-1-x86_64' 'bar-debug-1-1-x86_64'
