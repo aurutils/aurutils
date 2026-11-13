@@ -16,9 +16,7 @@ filter_vcs() {
 }
 
 # Scratch space for intermediary results.
-# mktemp creates the path exclusively, with access for the owner only. A
-# parent directory of fixed name in /tmp could be created by another user.
-tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX")
+tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXXX") || exit
 trap 'rm -rf "$tmp"' EXIT
 
 # Retrieve a list of the local repository contents. The repository

@@ -81,9 +81,7 @@ if (( patch )); then
     log_args+=(--patch)
 fi
 
-# mktemp creates the path exclusively, with access for the owner only. A
-# parent directory of fixed name in /tmp could be created by another user.
-tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXX")
+tmp=$(mktemp -d --tmpdir "aurutils-$argv0.XXXXXXX") || exit
 trap 'trap_exit' EXIT
 
 # Directory for git checksums (revisions viewed by the user, #379)

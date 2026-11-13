@@ -13,8 +13,8 @@ fi
 
 # Create a scratch space. /var/tmp ensures sufficient space for built
 # packages (not on tmpfs by default)
-var_tmp=$(mktemp -d --tmpdir="${TMPDIR:-/var/tmp/}")
-tmp=$(mktemp -d)
+var_tmp=$(mktemp -d --tmpdir="${TMPDIR:-/var/tmp/}") || exit
+tmp=$(mktemp -d) || exit
 trap 'rm -rf "$tmp" "$var_tmp"' EXIT # comment this if inspecting the contents
 
 # 1. Avoid concurrent use

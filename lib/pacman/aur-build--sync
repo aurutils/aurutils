@@ -92,7 +92,7 @@ fi
 
 # Restricted configuration for pactrans. Use a temporary file instead of
 # process substitution, so that errors are caught before the transaction.
-tmp=$(mktemp)
+tmp=$(mktemp) || exit
 trap 'rm -f "$tmp"' EXIT
 
 if [[ $pacman_conf ]]; then
