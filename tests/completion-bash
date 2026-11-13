@@ -46,10 +46,9 @@ assert_contains() {
     local desc=$1 needle=$2
     if printf '%s\n' "${COMPREPLY[@]}" | grep -qxF -- "$needle"; then
         PASS=$((PASS + 1))
-        printf 'ok   %s\n' "$desc"
     else
         FAIL=$((FAIL + 1))
-        printf 'FAIL %s (missing: %s)\n' "$desc" "$needle"
+        printf >&2 'FAIL %s (missing: %s)\n' "$desc" "$needle"
     fi
 }
 
@@ -108,6 +107,5 @@ for cmd in build sync repo; do
     assert_contains "repo completion: aur $cmd -d" "testrepo"
 done
 
-echo "---"
-printf 'PASS: %d  FAIL: %d\n' "$PASS" "$FAIL"
+printf '%s: %d passed, %d failed\n' "${BASH_SOURCE##*/}" "$PASS" "$FAIL"
 exit $((FAIL > 0 ? 1 : 0))
