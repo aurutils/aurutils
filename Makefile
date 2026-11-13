@@ -7,7 +7,7 @@ ETCDIR ?= /etc
 AURUTILS_LIB_DIR ?= $(LIBDIR)/$(PROGNM)
 AURUTILS_VERSION ?= $(shell git describe --tags || true)
 ifeq ($(AURUTILS_VERSION),)
-AURUTILS_VERSION := 23.1
+AURUTILS_VERSION := 23.2
 endif
 AURUTILS_LIB := $(shell find lib/ -type f -name 'aur-*')
 TEST_EXEC_PATH := $(CURDIR)/lib:$(CURDIR)/lib/pacman:$(CURDIR)/lib/aurweb:$(CURDIR)/lib/util
