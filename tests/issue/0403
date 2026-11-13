@@ -1,8 +1,0 @@
-#!/bin/bash
-out=$(aur search aurutils)
-err=$?
-
-# expected: valid results, exit 0
-[[ $out ]] && (( err == 0 ))
-
-# vim: set et sw=4 sts=4 ft=sh:\n

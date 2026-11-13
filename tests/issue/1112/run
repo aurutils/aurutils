@@ -1,0 +1,12 @@
+#!/bin/bash
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/data/aur.json
+
+# check combination of AUR and non-AUR package on the command-line
+aur depends lib32-blas python || exit
+
+# check no odd number of tokens
+aur depends lib32-blas python | tsort || exit

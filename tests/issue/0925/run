@@ -1,0 +1,18 @@
+#!/bin/bash
+# one request per argument, with the responses concatenated
+set -o pipefail
+export AUR_QUERY_RPC_SPLITNO=1
+
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/data/aur.json
+
+# search requests: results for both arguments
+aur query --raw -t search 'perl' 'rpm' | jq -s -e \
+    'length == 2 and all(.[]; .type == "search" and .resultcount == 1)' || exit
+
+# info requests: no results on second argument
+aur query --raw -t info 'perl-git' 'rpm' | jq -s -e \
+    'length == 2 and .[0].resultcount == 1 and .[1].resultcount == 0' || exit

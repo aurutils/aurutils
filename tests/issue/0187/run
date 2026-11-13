@@ -1,0 +1,14 @@
+#!/bin/bash
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/data/aur.json
+
+out=$(aur search .invalid)
+err=$?
+
+# expected: empty output, exit 1
+[[ ! $out ]] && (( err == 1 ))
+
+# vim: set et sw=4 sts=4 ft=sh:\n

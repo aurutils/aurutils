@@ -1,8 +1,0 @@
-#!/bin/bash
-out=$(aur search p)
-err=$?
-
-# expected: "Query arg too small", exit 4
-(( err == 4 ))
-
-# vim: set et sw=4 sts=4 ft=sh:\n

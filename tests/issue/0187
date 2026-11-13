@@ -1,8 +1,0 @@
-#!/bin/bash
-out=$(aur search .invalid)
-err=$?
-
-# expected: empty output, exit 1
-[[ ! $out ]] && (( err == 1 ))
-
-# vim: set et sw=4 sts=4 ft=sh:\n

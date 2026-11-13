@@ -1,5 +1,18 @@
 #!/bin/bash
+# Build a package, retrieve its update with aur-sync --upgrades, and build
+# the new version. Input is in data/:
+#
+# * aur.json: the AUR lists foo 2-1 (answered by ../../bin/curl)
+# * foo-1.PKGBUILD, foo-1.SRCINFO, foo-2.PKGBUILD, foo-2.SRCINFO: committed
+#   as PKGBUILD and .SRCINFO to a git repository for foo, which starts at
+#   version 1-1
 set -e
+cd "$(dirname "${BASH_SOURCE[0]}")"
+data=$PWD/data
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
+export AUR_TEST_FIXTURE=$data/aur.json
 
 tmp=$(mktemp -d)
 #trap 'rm -rf -- "$tmp"' EXIT
@@ -12,10 +25,6 @@ Architecture = auto
 CheckSpace
 SigLevel = Required DatabaseOptional
 LocalFileSigLevel = Optional
-[core]
-Include = /etc/pacman.d/mirrorlist
-[extra]
-Include = /etc/pacman.d/mirrorlist
 [$tmp_uid]
 Server = file://$tmp
 EOF
@@ -24,16 +33,28 @@ EOF
 repo-add "$tmp/$tmp_uid".db.tar
 
 config=(--pacman-conf "$tmp"/pacman.conf)
-pkg=aurutils
-rev=c07b5215df935cfe02f5c47411d2d717d9bb6aab
-ver=17
+pkg=foo
+ver=1
+
+# git repository, cloned by aur-fetch
+commit() {
+    local ver=$1
+
+    cp "$data/$pkg-$ver.PKGBUILD" "$tmp/aur/$pkg"/PKGBUILD
+    cp "$data/$pkg-$ver.SRCINFO"  "$tmp/aur/$pkg"/.SRCINFO
+    git -C "$tmp/aur/$pkg" add PKGBUILD .SRCINFO
+    git -C "$tmp/aur/$pkg" -c user.name=test -c user.email=test@localhost \
+        commit -q -m "$pkg $ver"
+}
+git init -q -b master "$tmp/aur/$pkg"
+export AUR_LOCATION=file://$tmp/aur
 
 # checkout and build previous revision
+commit "$ver"
 cd "$tmp"
-env - HOME=$HOME USER=$USER PATH=$PATH aur fetch "$pkg"
+aur fetch "$pkg"
 
 cd "$pkg"
-git reset --hard "$rev"
 env_unset=(-u AUR_REPO -u AUR_DBROOT -u AUR_DBEXT -u MAKEPKG -u XDG_CACHE_HOME)
 
 env "${env_unset[@]}" AUR_ENV=/dev/null aur build --no-sync \
@@ -44,6 +65,7 @@ found_package=$(pacsift --config "$tmp"/pacman.conf --dbpath "$tmp" --repo="$tmp
 [[ -n $found_package ]]
 
 # update to latest revision
+commit 2
 cd -
 env "${env_unset[@]}" -u AUR_SYNC_NINJA AUR_ENV=/dev/null AURDEST="$tmp" \
     aur sync --no-build --upgrades --ignore-file=/dev/null -d "$tmp_uid" --no-view --pacman-conf "$tmp"/pacman.conf

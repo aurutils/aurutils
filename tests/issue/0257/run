@@ -1,0 +1,14 @@
+#!/bin/bash
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
+export AUR_TEST_FIXTURE=$PWD/data/aur.json
+
+out=$(aur search p)
+err=$?
+
+# expected: "Query arg too small", exit 4
+(( err == 4 ))
+
+# vim: set et sw=4 sts=4 ft=sh:\n
