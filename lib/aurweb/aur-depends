@@ -28,17 +28,22 @@ sub solve {
     push @to_prune, @{$opt_installed} if $opt_installed && @{$opt_installed};
 
     if (@to_prune) {
-        my @removed = prune($dag, \@to_prune);  # mutates $dag
-        delete @{$results}{@removed};           # drop from results
+        # Packages replaced by their provider have no node in $dag, and
+        # are not returned by prune()
+        push @to_prune, prune($dag, \@to_prune);  # mutates $dag
+
+        delete @{$results}{@to_prune};            # drop from results
+        prune($dag_foreign, \@to_prune);
     }
 
-    # Possible further pruning by the caller
-    return ($results, $dag, $dag_foreign);
+    # Possible further pruning by the caller. Names replaced by their
+    # provider are returned for --table.
+    return ($results, $dag, $dag_foreign, $opt_provides ? $pkgmap : {});
 }
 
 # tsv output for usage with aur-sync (aurutils <=10)
 sub table_v10_compat {
-    my ($results, $types) = @_;
+    my ($results, $types, $replaced) = @_;
 
     for my $pkg (values %{$results}) {
         next if not defined $pkg->{'PackageBase'};
@@ -53,7 +58,9 @@ sub table_v10_compat {
             next if (ref($depends) ne 'ARRAY');
 
             for my $dep (@{$depends}) {
-                say join("\t", $name, $dep, $base, $version, $deptype);
+                my ($provider) = @{$replaced->{(split /[<>=]/, $dep)[0]} // []};
+
+                say join("\t", $name, $provider // $dep, $base, $version, $deptype);
             }
         }
     }
@@ -163,11 +170,11 @@ unless(caller) {
 
     # Retrieve AUR results
     #    JSON -> hash -> extract depends[] -> repeat until none -> prune
-    my ($results, $dag, $dag_foreign);
+    my ($results, $dag, $dag_foreign, $replaced);
 
     try {
-        ($results, $dag, $dag_foreign) = solve(\@ARGV, \@types, \&callback_query,
-                                               $opt_verify, $opt_provides, $opt_installed);
+        ($results, $dag, $dag_foreign, $replaced) = solve(\@ARGV, \@types, \&callback_query,
+                                                          $opt_verify, $opt_provides, $opt_installed);
     }
     catch ($error) {
         if ($error isa AUR::Exception) {
@@ -196,7 +203,7 @@ unless(caller) {
         table($results);
     }
     elsif ($opt_mode eq 'table') {
-        table_v10_compat($results, \@types);
+        table_v10_compat($results, \@types, $replaced);
     }
     elsif ($opt_mode eq 'json') {
         say write_json($results);

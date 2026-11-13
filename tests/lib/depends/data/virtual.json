@@ -1,0 +1,26 @@
+{
+  "resultcount": 2,
+  "results": [
+    {
+      "Name": "brave-bin",
+      "PackageBase": "brave-bin",
+      "Version": "1:1.60-1",
+      "Provides": [
+        "brave-browser=1.60"
+      ],
+      "Depends": [
+        "gtk3"
+      ]
+    },
+    {
+      "Name": "app",
+      "PackageBase": "app",
+      "Version": "1-1",
+      "Depends": [
+        "brave-browser>=1.50"
+      ]
+    }
+  ],
+  "type": "multiinfo",
+  "version": 5
+}

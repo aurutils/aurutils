@@ -109,6 +109,11 @@ can be disabled with the
 .B \-\-no\-provides
 option. In particular, any packages listed on the command-line can
 only provide themselves with this option enabled.
+Otherwise, a dependency which is not listed on the command-line is
+replaced by a package that provides it, also in the
+.I depends
+column of
+.BR \-\-table .
 .
 .PP
 Dependencies can be removed selectively with the

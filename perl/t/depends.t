@@ -127,6 +127,25 @@ subtest 'graph: provider ($provides=1)' => sub {
         'libfoo not in DAG (replaced by provider-pkg)');
 };
 
+subtest 'graph: provider of a name which is not a package' => sub {
+    my %results = make_results(
+        { Name => 'mypkg',        Version => '1.0-1' },
+        { Name => 'provider-pkg', Version => '3.0-1' },
+    );
+    # libfoo is not in the results
+    my %pkgdeps = make_pkgdeps(['mypkg', 'provider-pkg'], {
+        'mypkg' => [['libfoo', 'Depends']],
+    });
+    my %pkgmap = ( 'libfoo' => ['provider-pkg', '2.0'] );
+
+    my ($dag, $dag_foreign) = graph(\%results, \%pkgdeps, \%pkgmap, 0, 1);
+    is($dag->{'provider-pkg'}{'mypkg'}, 'Depends', 'dependency on libfoo goes to provider-pkg');
+    ok(not(defined $dag_foreign->{'libfoo'}), 'libfoo is not foreign');
+
+    ($dag, $dag_foreign) = graph(\%results, \%pkgdeps, \%pkgmap, 0, 0);
+    is($dag_foreign->{'libfoo'}{'mypkg'}, 'Depends', 'libfoo is foreign when $provides=0');
+};
+
 subtest 'graph: versioned dependencies ($verify=1)' => sub {
     my %results = make_results(
         { Name => 'app',    Version => '1-1' },
@@ -441,6 +460,24 @@ subtest 'recurse: provides populate pkgmap' => sub {
     is($pkgmap->{'virtual-pkg'}[1], '2.0',      'provider version is 2.0');
 };
 
+subtest 'recurse: target which is a package is not in pkgmap' => sub {
+    my $callback = sub {
+        my ($deps) = @_;
+        my %db = (
+            'libfoo'     => { Name => 'libfoo',     Version => '2.0-1' },
+            'libfoo-git' => { Name => 'libfoo-git', Version => '2.1-1',
+                              Provides => ['libfoo=2.1'] },
+        );
+        return map { $db{$_} // () } @{$deps};
+    };
+
+    my ($results, $pkgdeps, $pkgmap) = recurse(['libfoo', 'libfoo-git'], ['Depends'], $callback);
+    ok(not(defined $pkgmap->{'libfoo'}), 'libfoo as target not in pkgmap');
+
+    ($results, $pkgdeps, $pkgmap) = recurse(['libfoo-git'], ['Depends'], $callback);
+    is($pkgmap->{'libfoo'}[0], 'libfoo-git', 'libfoo otherwise provided by libfoo-git');
+};
+
 subtest 'recurse: self-provide excluded from pkgmap' => sub {
     my $callback = sub {
         my ($deps) = @_;
@@ -490,6 +527,30 @@ subtest 'recurse: first provider takes precedence' => sub {
     );
 
     is($pkgmap->{'virt'}[0], 'first', 'first provider wins');
+};
+
+subtest 'recurse: providers which are replaced themselves' => sub {
+    # Provider of each replaced name. Packages are given as [name,
+    # provides...], and retrieved in this order as dependencies of app.
+    my $replaced = sub {
+        my %db = map { $_->[0] => { Name => $_->[0], Version => '1-1',
+                                    Provides => [@{$_}[1..$#{$_}]] } } @_;
+        $db{'app'} = { Name => 'app', Version => '1-1', Depends => [map { $_->[0] } @_] };
+
+        my (undef, undef, $pkgmap) = recurse(
+            ['app'], ['Depends'], sub { map { $db{$_} // () } @{$_[0]} }
+        );
+        return { map { $_ => $pkgmap->{$_}[0] } keys %{$pkgmap} };
+    };
+
+    is_deeply($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full']),
+        { 'foo-full' => 'foo-full-git' }, 'foo-full does not replace foo');
+    is_deeply($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full', 'foo']),
+        { 'foo-full' => 'foo-full-git', 'foo' => 'foo-full-git' }, 'second provider of foo');
+    is_deeply($replaced->(['a'], ['b', 'a'], ['c', 'b'], ['d', 'c']),
+        { 'a' => 'b', 'c' => 'd' }, 'chain of three');
+    is_deeply($replaced->(['p', 'q'], ['q', 'p']),
+        { 'q' => 'p' }, 'packages which provide each other');
 };
 
 subtest 'recurse: dep type filtering' => sub {
@@ -590,6 +651,23 @@ subtest 'graph: versioned dep fails vercmp' => sub {
     eval { graph(\%results, \%pkgdeps, \%pkgmap, 1, 0) };
     like($@, qr/invalid node: libold=1\.0/,
         'graph croaks on version mismatch');
+};
+
+subtest 'graph: provides without a version ($verify=1)' => sub {
+    my %results = make_results(
+        { Name => 'app',          Version => '1-1' },
+        { Name => 'provider-pkg', Version => '3.0-1' },
+    );
+    my %pkgmap = ( 'libfoo' => ['provider-pkg', undef] );
+
+    # True if the dependency of app is satisfied by provider-pkg
+    my $satisfies = sub {
+        my %pkgdeps = make_pkgdeps(['app'], { 'app' => [[$_[0], 'Depends']] });
+        return eval { graph(\%results, \%pkgdeps, \%pkgmap, 1, 1); 1 };
+    };
+    ok($satisfies->('libfoo'), 'unversioned dependency');
+    ok(!$satisfies->('libfoo>=2.0'), 'versioned dependency');
+    like($@, qr/invalid node: provider-pkg \(required: >=2\.0 by: app\)/, 'no version in message');
 };
 
 subtest 'tsort: cycle detection' => sub {

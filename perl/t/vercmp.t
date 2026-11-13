@@ -34,6 +34,13 @@ subtest 'unversioned dependency is always true' => sub {
     ok(vercmp('1.0', undef, '=='),  'invalid operator not checked');
 };
 
+subtest 'provides without a version is always false' => sub {
+    local $ENV{PATH} = '/nonexistent';   # vercmp must not be called
+
+    ok(!vercmp(undef, '1.0', '>='), 'undef left version');
+    ok(!vercmp(undef, '1.0', '='),  'undef left version, =');
+};
+
 subtest 'operator table' => sub {
     # Version pairs for each result of vercmp(8). pkgrel is only compared
     # if both versions have one, so 1.0 and 1.0-1 are equal.

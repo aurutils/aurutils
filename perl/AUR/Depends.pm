@@ -108,7 +108,8 @@ type C<Self>.
 =item C<$pkgmap>
 
 Provided name to C<[$name, $version]> of the first package that
-provides it.
+provides it, and that is not replaced by a provider itself. Targets
+which are a package are left out.
 
 =back
 
@@ -122,7 +123,7 @@ sub recurse {
     my ($targets, $types, $callback) = @_;
     my @depends = @{$targets};
 
-    my (%results, %pkgdeps, %pkgmap, %tally);
+    my (%results, %pkgdeps, %pkgmap, %providers, %tally);
 
     # Populate depends map with command-line targets (#1136)
     for my $target (@{$targets}) {
@@ -158,11 +159,7 @@ sub recurse {
             for my $spec (@{$node->{'Provides'} // []}) {
                 my ($prov, $prov_version) = split(/=/, $spec);
 
-                # XXX: the first provider takes precedence
-                #      keep multiple providers and warn on ambiguity instead
-                if (not defined $pkgmap{$prov} and $prov ne $name) {
-                    $pkgmap{$prov} = [$name, $prov_version];
-                }
+                push @{$providers{$prov}}, [$name, $prov_version] if $prov ne $name;
             }
 
             # Filter out dependency types early (#882)
@@ -206,6 +203,36 @@ sub recurse {
     if (not $complete) {
         croak(AUR::Exception->new(__PACKAGE__ . ": total requests: $a (out of range)", EX_OUT_OF_RANGE));
     }
+    # Targets are not replaced: they fulfill dependencies on their name, even
+    # if another package provides it (#1255), as in pacman: see resolvedep()
+    # in libalpm.
+    my %is_target = map { $_ => 1 } grep { defined $results{$_} } @{$targets};
+    my %checked;
+
+    # Set $pkgmap{$name} to the first provider of $name which is not
+    # replaced itself. Whether a provider is replaced is only known after
+    # its own providers are checked, so the function calls itself on every
+    # provider first (foo <- foo-full <- foo-full-git).
+    my $replace = sub {
+        my ($name) = @_;
+
+        # Check every name once. This also ends the recursion for packages
+        # which provide each other: the name that is checked first is not
+        # replaced.
+        return if $is_target{$name} or $checked{$name}++;
+
+        for my $provider (@{$providers{$name} // []}) {
+            __SUB__->($provider->[0]);  # recursion: sets $pkgmap{provider}
+            next if defined $pkgmap{$provider->[0]};
+
+            $pkgmap{$name} = $provider;
+            return;
+        }
+    };
+    # Sorted, so that the name which is checked first does not depend on
+    # hash order
+    $replace->($_) for sort keys %providers;
+
     return \%results, \%pkgdeps, \%pkgmap;
 }
 
@@ -235,7 +262,7 @@ Check versioned dependencies with C<vercmp> (default true).
 =item C<$provides>
 
 Let providers in C<$pkgmap> take precedence over packages of the same
-name.
+name, and fulfill dependencies on names which are not a package.
 
 =back
 
@@ -266,14 +293,14 @@ sub graph {
             # Retrieve dependency requirements
             my ($dep_name, $dep_op, $dep_req) = split(/(<=|>=|<|=|>)/, $dep_spec);
 
-            if (defined $results->{$dep_name}) {
-                # Provides take precedence over regular packages, unless
-                # $provides is false.
-                my ($prov_name, $prov_ver) = ($dep_name, $results->{$dep_name}->{'Version'});
+            my $provider = $provides ? $pkgmap->{$dep_name} : undef;
 
-                if ($provides and defined $pkgmap->{$dep_name}) {
-                    ($prov_name, $prov_ver) = @{$pkgmap->{$dep_name}};
-                }
+            if (defined $results->{$dep_name} or defined $provider) {
+                # Provides take precedence over regular packages, unless
+                # $provides is false. This includes names which are not a
+                # package, e.g. brave-browser provided by brave-bin.
+                my ($prov_name, $prov_ver) = defined $provider ? @{$provider}
+                    : ($dep_name, $results->{$dep_name}->{'Version'});
 
                 # Run vercmp with provider and versioned dependency
                 # XXX: a dependency can be both fulfilled by a package and a
@@ -283,8 +310,8 @@ sub graph {
                     $dag{$prov_name}{$name} = $dep_type;
                 }
                 else {
-                    push @invalid,
-                        "invalid node: $prov_name=$prov_ver (required: $dep_op$dep_req by: $name)";
+                    push @invalid, "invalid node: " . join('=', $prov_name, $prov_ver // ())
+                        . " (required: $dep_op$dep_req by: $name)";
                 }
             }
             # Dependency is foreign
