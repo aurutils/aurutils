@@ -36,6 +36,7 @@ test: aur shellcheck
 	@$(TEST_ENV) tests/lib/build-sync/run
 	@$(TEST_ENV) tests/lib/depends/run
 	@$(TEST_ENV) tests/lib/exit-code/run
+	@$(TEST_ENV) tests/lib/fetch-attributes/run
 	@$(TEST_ENV) tests/lib/fetch-auto/run
 	@$(TEST_ENV) tests/lib/fetch-mirror/run
 	@$(TEST_ENV) tests/lib/format/run
@@ -45,6 +46,7 @@ test: aur shellcheck
 	@$(TEST_ENV) tests/lib/sync-ninja/run
 	@$(TEST_ENV) tests/lib/sync-view/run
 	@$(TEST_ENV) tests/lib/tmpdir/run
+	@$(TEST_ENV) tests/lib/view-attributes/run
 
 # tests which use script paths directly
 	@tests/parseopt-consistency

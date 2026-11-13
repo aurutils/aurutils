@@ -1,0 +1,62 @@
+#!/bin/bash
+# Check that aur-view shows the changes to files, when the package sets
+# attributes for them in .gitattributes. With `* -diff`, git shows "Binary
+# files a/PKGBUILD and b/PKGBUILD differ" instead of the changes, and
+# likewise for .gitattributes itself.
+#
+# The package (foo) is a git repository in a temporary directory, with two
+# revisions. The first has a PKGBUILD, and is inspected. The second adds
+# .gitattributes and a build() function to the PKGBUILD. AUR_PAGER prints
+# the changes that aur-view presents for inspection.
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    exit 1
+}
+
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+# files written by aur-view; no attributes or settings of the user
+export AUR_VIEW_DB=$tmp/db XDG_CONFIG_HOME=$tmp/config
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+unset AUR_CONFIRM_PAGER
+
+commit() {
+    git -C "$tmp"/foo add -A &&
+        git -C "$tmp"/foo -c user.name=test -c user.email=test@localhost \
+            commit -q -m "$1"
+}
+
+view() {
+    env -C "$tmp" aur view "$@" foo
+}
+
+git init -q -b master "$tmp"/foo || exit
+printf 'pkgname=foo\n' >"$tmp"/foo/PKGBUILD
+commit 'version 1' || exit
+
+# The first revision is inspected (and marked as such)
+AUR_PAGER=true view || fail 'aur-view failed on the first revision'
+read -r viewed <"$AUR_VIEW_DB"/foo || fail 'aur-view did not mark foo as inspected'
+
+# An update of the package sets the attribute and changes PKGBUILD
+printf '* -diff\n' >"$tmp"/foo/.gitattributes
+printf 'build() { false; }\n' >>"$tmp"/foo/PKGBUILD
+commit 'version 2' || exit
+
+for format in diff log; do
+    printf '#!/bin/sh\ncat "$1"/foo.%s\n' "$format" >"$tmp"/pager
+    chmod +x "$tmp"/pager
+    printf '%s\n' "$viewed" >"$AUR_VIEW_DB"/foo
+
+    AUR_PAGER=$tmp/pager view --format "$format" >"$tmp"/changes ||
+        fail "aur-view --format $format failed"
+    grep -Fxq '+* -diff' "$tmp"/changes ||
+        fail "--format $format: the change to .gitattributes is not shown"
+    grep -Fxq '+build() { false; }' "$tmp"/changes ||
+        fail "--format $format: the change to PKGBUILD is not shown"
+    ! grep -q '^Binary files' "$tmp"/changes ||
+        fail "--format $format: changes are shown as binary files"
+done

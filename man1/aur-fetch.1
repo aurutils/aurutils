@@ -41,6 +41,15 @@ from
 .B origin/HEAD
 reference), independent of the checked out branch.
 Local changes may however live in different branches.
+.PP
+In every repository,
+.B attr.tree
+is set to an empty tree, such that
+.BR git (1)
+does not read attributes from
+.B .gitattributes
+files in the package. See
+.BR gitattributes (5).
 .
 .SH OPTIONS
 .TP

@@ -108,6 +108,9 @@ for b in "${target_remotes[@]}"; do
         git init --quiet
         git remote add origin "$AUR_ROOT"
 
+        # Do not read attributes from the package (see aur-fetch)
+        git config attr.tree "$(git hash-object -t tree /dev/null)"
+
         # Compared to git clone --local, using $refspec as both source and
         # destination allows updates from `git-fetch` in $AUR_ROOT to be
         # directly visible in local clones.  $AUR_ROOT does not require
