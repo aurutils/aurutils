@@ -1,9 +1,6 @@
 #!/usr/bin/env perl
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 use Carp;
-use Scalar::Util qw(blessed);
 use Test::More;
 
 # Check if module can be imported
@@ -63,12 +60,14 @@ subtest 'croak: object is preserved in $@' => sub {
 
 subtest 'catch pattern from POD' => sub {
     my ($message, $code);
-    eval { croak AUR::Exception->new("caught", 6); 1 } or do {
-        my $error = $@;
-        if (blessed($error) and $error->isa('AUR::Exception')) {
+    try {
+        croak AUR::Exception->new("caught", 6);
+    }
+    catch ($error) {
+        if ($error isa AUR::Exception) {
             ($message, $code) = ($error->message, $error->exit_code);
         }
-    };
+    }
     is($message, 'caught', 'message from handler');
     is($code,    6,        'exit code from handler');
 };
@@ -86,11 +85,13 @@ subtest 'top-level exit code' => sub {
     if ($pid == 0) {
         Test::More->builder->no_ending(1);
         open STDERR, '>', '/dev/null';
-        eval { croak AUR::Exception->new("child", 9); 1 } or do {
-            my $error = $@;
-            exit($error->exit_code) if blessed($error) and $error->isa('AUR::Exception');
+        try {
+            croak AUR::Exception->new("child", 9);
+        }
+        catch ($error) {
+            exit($error->exit_code) if $error isa AUR::Exception;
             exit(255);
-        };
+        }
         exit(0);
     }
     waitpid($pid, 0);

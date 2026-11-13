@@ -16,8 +16,7 @@
 #
 # As with aurweb, a search for a TERM of less than two characters results
 # in an error response. Any other request is not supported, and an error.
-use strict;
-use warnings;
+use v5.40;
 use JSON::PP;
 
 my $fixture = $ENV{AUR_TEST_FIXTURE};

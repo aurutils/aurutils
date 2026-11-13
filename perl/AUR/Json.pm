@@ -1,9 +1,5 @@
 package AUR::Json;
-use strict;
-use warnings;
-use v5.20;
-use feature 'try';
-no warnings 'experimental::try';  # stable in 5.40
+use v5.40;
 
 use Exporter qw(import);
 our @EXPORT_OK = qw(parse_json parse_json_aur write_json);

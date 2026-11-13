@@ -1,7 +1,5 @@
 #!/usr/bin/env perl
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 use File::Copy qw(copy);
 use File::Path qw(make_path);
 use File::Temp qw(tempdir tempfile);

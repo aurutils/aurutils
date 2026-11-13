@@ -1,7 +1,5 @@
 package AUR::Query;
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 use Carp;
 
 use Exporter qw(import);

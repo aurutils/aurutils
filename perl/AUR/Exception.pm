@@ -1,7 +1,5 @@
 package AUR::Exception;
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 
 # bool: an exception is true whatever its message, for `if ($@)`
 # fallback: eq, ne, . etc. are derived from ""
@@ -30,16 +28,18 @@ context, an exception is always true.
 Programs catch these exceptions at the top level, print the message and
 exit with the exit code:
 
-  use Scalar::Util qw(blessed);
+  use v5.40;
 
-  eval { main(); 1 } or do {
-      my $error = $@;
-      if (blessed($error) and $error->isa('AUR::Exception')) {
+  try {
+      main();
+  }
+  catch ($error) {
+      if ($error isa AUR::Exception) {
           say STDERR $error->message;
           exit($error->exit_code);
       }
       die $error;
-  };
+  }
 
 =head1 METHODS
 

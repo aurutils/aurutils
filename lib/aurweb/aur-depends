@@ -1,10 +1,7 @@
 #!/usr/bin/env perl
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 
 use List::Util   qw(first);
-use Scalar::Util qw(blessed);
 use AUR::Json    qw(parse_json_aur write_json);
 use AUR::Query   qw(query_multi);
 use AUR::Depends qw(recurse prune graph);
@@ -90,8 +87,8 @@ sub pairs {
             my $rdep = $key eq 'Name' ? $reqby : $results->{$reqby}->{$key} // '-';
             my @pair = $reverse ? ($target, $rdep) : ($rdep, $target);
 
-            say join("\t", @pair) if not defined $seen{($target, $rdep)};
-            $seen{($target, $rdep)} = 1;
+            say join("\t", @pair) if not $seen{$target}{$rdep};
+            $seen{$target}{$rdep} = 1;
         }
     }
 }
@@ -166,12 +163,14 @@ unless(caller) {
 
     # Retrieve AUR results
     #    JSON -> hash -> extract depends[] -> repeat until none -> prune
-    my ($results, $dag, $dag_foreign) = eval {
-        solve(\@ARGV, \@types, \&callback_query,
-              $opt_verify, $opt_provides, $opt_installed);
-    };
-    if (my $error = $@) {
-        if (blessed($error) && $error->isa('AUR::Exception')) {
+    my ($results, $dag, $dag_foreign);
+
+    try {
+        ($results, $dag, $dag_foreign) = solve(\@ARGV, \@types, \&callback_query,
+                                               $opt_verify, $opt_provides, $opt_installed);
+    }
+    catch ($error) {
+        if ($error isa AUR::Exception) {
             say STDERR $error->message;
             exit($error->exit_code);
         }

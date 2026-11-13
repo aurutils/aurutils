@@ -1,7 +1,5 @@
 package AUR::Depends;
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 
 use List::Util qw(first);
 use Carp;

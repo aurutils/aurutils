@@ -1,12 +1,8 @@
 #!/usr/bin/env perl
-use strict;
-use warnings;
 
 use open ":std", ":encoding(UTF-8)";
 use POSIX qw(strftime);
-use v5.20;
-use feature 'try';
-no warnings 'experimental::try';  # stable in 5.40
+use v5.40;
 
 use AUR::Json qw(parse_json parse_json_aur);
 use AUR::Options qw(dump_options);

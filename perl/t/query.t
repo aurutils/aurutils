@@ -1,7 +1,5 @@
 #!/usr/bin/env perl
-use strict;
-use warnings;
-use v5.20;
+use v5.40;
 use File::Temp qw(tempdir tempfile);
 use Test::More;
 
