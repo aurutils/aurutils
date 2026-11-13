@@ -1,0 +1,103 @@
+#!/bin/bash
+# Check that aur-fetch sets attr.tree to an empty tree in the repository of
+# a package, such that git does not read .gitattributes from the package.
+#
+# The package (foo) is a git repository in a temporary directory, with two
+# revisions. The first has a PKGBUILD and .gitattributes with the lines:
+#
+#   * -diff             (changes are shown as "Binary files differ")
+#   PKGBUILD eol=crlf   (PKGBUILD is checked out with CRLF line endings)
+#
+# The second adds a build() function to the PKGBUILD. Afterwards, git is run
+# as is: git-diff shows the changes to PKGBUILD, and PKGBUILD is checked out
+# with the line endings of the package.
+cd "$(dirname "${BASH_SOURCE[0]}")" || exit
+
+fail() {
+    printf >&2 '%s: %s\n' "${BASH_SOURCE[0]}" "$1"
+    exit 1
+}
+
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+
+# no attributes or settings of the user
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
+export AUR_LOCATION=file://$tmp/aur XDG_CACHE_HOME=$tmp/cache
+unset AUR_FETCH_USE_MIRROR AUR_MIRROR AUR_MIRROR_BRANCH AUR_ROOT
+
+# git repository instead of the AUR
+commit() {
+    # core.safecrlf: no warning on the line endings set by the package
+    git -C "$tmp"/aur/foo -c core.safecrlf=false add -A &&
+        git -C "$tmp"/aur/foo -c user.name=test -c user.email=test@localhost \
+            commit -q -m "$1"
+}
+
+git init -q -b master "$tmp"/aur/foo || exit
+printf 'pkgname=foo\n' >"$tmp"/aur/foo/PKGBUILD
+printf '%s\n' '* -diff' 'PKGBUILD eol=crlf' >"$tmp"/aur/foo/.gitattributes
+commit 'version 1' || exit
+version1=$(git -C "$tmp"/aur/foo rev-parse HEAD) || exit
+
+# Checks on a repository of foo at version 2, where $1 describes how the
+# repository was retrieved and $3 is the line added to PKGBUILD in version 2
+check() {
+    local desc=$1 dir=$2 line=$3 empty_tree
+
+    empty_tree=$(git -C "$dir" hash-object -t tree /dev/null)
+    [[ $(git -C "$dir" config --get attr.tree) == "$empty_tree" ]] ||
+        fail "$desc: attr.tree is not set to an empty tree"
+
+    git -C "$dir" --no-pager diff "$version1" HEAD >"$tmp"/changes ||
+        fail "$desc: git-diff failed"
+    grep -Fxq "+$line" "$tmp"/changes ||
+        fail "$desc: git-diff does not show the change to PKGBUILD"
+
+    grep -Fxq "$line" "$dir"/PKGBUILD ||
+        fail "$desc: version 2 was not merged"
+    ! grep -q $'\r' "$dir"/PKGBUILD ||
+        fail "$desc: PKGBUILD has CRLF line endings"
+}
+
+# 1. Version 1 is retrieved with aur-fetch (git-clone)
+mkdir "$tmp"/clone "$tmp"/existing "$tmp"/mirror-clone || exit
+env -C "$tmp"/clone aur fetch foo >/dev/null 2>&1 ||
+    fail 'aur-fetch failed to clone foo'
+
+# 2. Version 1 is retrieved without aur-fetch, and the package applies its
+# attributes: PKGBUILD has other contents than committed.
+git clone -q "$tmp"/aur/foo "$tmp"/existing/foo || exit
+grep -q $'\r' "$tmp"/existing/foo/PKGBUILD ||
+    fail 'git-clone did not apply the attributes of foo'
+
+# Update to version 2
+version2_line='build() { false; }'
+printf '%s\n' "$version2_line" >>"$tmp"/aur/foo/PKGBUILD
+commit 'version 2' || exit
+
+env -C "$tmp"/clone aur fetch --merge foo >/dev/null 2>&1 ||
+    fail 'aur-fetch failed to update foo'
+check 'new repository' "$tmp"/clone/foo "$version2_line"
+
+# Without the attributes, git takes PKGBUILD as modified. The update is not
+# merged until the modification is discarded.
+if env -C "$tmp"/existing aur fetch --merge foo >/dev/null 2>&1; then
+    fail 'aur-fetch merged with a modified PKGBUILD (existing repository)'
+fi
+[[ -n $(git -C "$tmp"/existing/foo status --porcelain -- PKGBUILD) ]] ||
+    fail 'PKGBUILD is not shown as modified (existing repository)'
+
+env -C "$tmp"/existing aur fetch --merge --discard foo >/dev/null 2>&1 ||
+    fail 'aur-fetch failed to update foo (existing repository)'
+check 'existing repository' "$tmp"/existing/foo "$version2_line"
+
+# 3. Version 2 is retrieved from a mirror (aur-fetch--mirror), which has
+# the package as branch
+git init -q --bare -b main "$tmp"/mirror || exit
+git -C "$tmp"/aur/foo push -q "$tmp"/mirror master:main master:foo || exit
+
+AUR_FETCH_USE_MIRROR=1 AUR_MIRROR=file://$tmp/mirror AUR_ROOT=$tmp/root \
+    env -C "$tmp"/mirror-clone aur fetch foo >/dev/null 2>&1 ||
+    fail 'aur-fetch failed to retrieve foo from a mirror'
+check 'repository from a mirror' "$tmp"/mirror-clone/foo "$version2_line"

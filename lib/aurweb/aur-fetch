@@ -42,6 +42,16 @@ export GIT_HTTP_USER_AGENT=aurutils
 # Placeholder for repositories without commits
 git_empty_object=$(git hash-object -t tree /dev/null)
 
+# Do not read attributes from the package (attr.tree, git 2.43): with
+# .gitattributes, a package can hide changes from git-diff (-diff) or have
+# files checked out with other contents (eol=crlf).
+git_attr_tree() {
+    local tree
+    tree=$(git -C "$1" hash-object -t tree /dev/null) || return
+
+    git -C "$1" config attr.tree "$tree"
+}
+
 # Default options
 existing=0 recurse=0 discard=0 sync=fetch
 
@@ -212,7 +222,9 @@ for pkg in "${!packages[@]}"; do
 
     # Clone package if not existing
     elif [[ ! -d $pkg/.git ]]; then
-        git clone "$remote" "$pkg" || exit 1
+        # Set attr.tree before any files are checked out
+        git clone -c attr.tree="$git_empty_object" "$remote" "$pkg" || exit 1
+        git_attr_tree "$pkg" || exit 1
 
         head=$(git -C "$pkg" rev-parse --verify HEAD)
 
@@ -227,6 +239,9 @@ for pkg in "${!packages[@]}"; do
         # Per-package lock
         exec {fd}< "$pkg"/.git
         flock --wait 5 "$fd" || exit 1
+
+        # Repositories which were not retrieved by aur-fetch
+        git_attr_tree "$pkg" || exit 1
 
         # Avoid issues with filesystem boundaries (#274)
         git() { command git -C "$pkg" "$@"; }

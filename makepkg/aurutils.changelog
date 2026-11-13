@@ -1,10 +1,12 @@
 ## 23.2
 
+* `aur-fetch`
+  + set `attr.tree` in package repositories, such that `git` does not read
+    attributes (`.gitattributes`) from the package (requires `git` 2.43)
+
 * `aur-view`
-  + do not read attributes (`.gitattributes`) from the package
-    - a package could set `-diff` to show changes to its files as
-      `Binary files differ`
-    - requires `git` 2.41 or later
+  + do not read attributes from the package; with `-diff`, changes were
+    shown as `Binary files differ`
 
 ## 23.1
 
