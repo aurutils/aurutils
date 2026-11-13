@@ -4,7 +4,7 @@ use open ":std", ":encoding(UTF-8)";
 use POSIX qw(strftime);
 use v5.40;
 
-use AUR::Json qw(parse_json parse_json_aur);
+use AUR::Json qw(parse_json parse_json_aur write_json);
 use AUR::Options qw(dump_options);
 use AUR::Exception;
 use AUR::Term qw(sanitize);
@@ -118,6 +118,14 @@ sub info_format {
     print($fmt_string);
 }
 
+# JSON string for gron output. The encoder escapes C0 control characters
+# (RFC 8259); escape DEL and C1 as well, which JSON allows unescaped.
+sub gron_string {
+    my $str = write_json('' . shift);  # string, also for numeric scalars
+    $str =~ s/([\x7F-\x9F])/sprintf('\\u%04X', ord $1)/ge;
+    return $str;
+}
+
 sub info_gron {
     my ($pkg, $prefix, $key) = @_;
 
@@ -128,11 +136,11 @@ sub info_gron {
         # Use known types instead of best-effort basis (`looks_like_number`)
         my $aur_type = $aur_types{$key // ""};
 
-        if (not (defined $aur_type and ($aur_type eq 'numeric' or $aur_type eq 'epoch'))) {
-            $pkg =~ s/\\/\\\\/g;         # escape backslashes
-            $pkg =~ s/(?<!\\)\"/\\"/g;   # escape double quotes
-            $pkg =~ s/\x1B/\\u001B/g;    # escape ANSI sequences
-            $pkg = "\"$pkg\"";           # enquote
+        my $is_numeric = defined $aur_type && ($aur_type eq 'numeric' or $aur_type eq 'epoch');
+
+        # Numeric fields are printed as is if they hold a JSON number
+        if (not ($is_numeric and $pkg =~ /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?$/)) {
+            $pkg = gron_string($pkg);
         }
         say join(' = ', $prefix, $pkg . ';');
     }
@@ -142,7 +150,7 @@ sub info_gron {
         for my $key (sort keys %{$pkg}) {
             my $value = $pkg->{$key};
 
-            info_gron($value, join(".", $prefix, $key), $key);
+            info_gron($value, join(".", $prefix, sanitize($key)), $key);
         }
     }
     elsif (ref($pkg) eq 'ARRAY') {
