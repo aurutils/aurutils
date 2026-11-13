@@ -1,6 +1,7 @@
 #!/bin/bash
 # Check that aur-sync--ninja quotes the source directory and the build
-# command, for ninja and for the shell which runs the command.
+# command, for ninja and for the shell which runs the command, and that it
+# only accepts package names on standard input.
 #
 # build.ninja is generated for bar and foo, where foo depends on bar, and is
 # built with ninja. The build command writes its working directory and its
@@ -73,3 +74,54 @@ check() {
     check "$tmp/it's \"x\" && touch INJECTED7"
     check "$tmp/x>z*?[a]&y"
 }
+
+# Package names are written to build.ninja as is.
+names() {
+    printf '%s\n' "$1" | aur sync--ninja "$tmp/src" -- true 2>"$tmp"/stderr
+}
+
+for name in foo Foo foo-bar foo.bar foo_bar foo+bar foo@bar @foo _foo +foo 0foo; do
+    names "$name $name" >/dev/null ||
+        fail "package name was not accepted: $name"
+done
+
+# shellcheck disable=SC2016
+for name in -foo .foo ../foo foo/bar 'foo;touch${IFS}INJECTED8' '$(id)' '`id`' \
+            'foo|bar' 'foo\bar' 'foo$bar' 'foo:bar' "foo'bar" 'foo*' fooé; do
+    for line in "$name $name" "foo $name" "$name foo"; do
+        if names "$line" >"$tmp"/build.ninja; then
+            fail "invalid package name was accepted: ${line@Q}"
+        fi
+        grep -q 'invalid package name' "$tmp"/stderr ||
+            fail "no diagnostic for ${line@Q}"
+    done
+done
+
+# a line without dependency
+if names foo >/dev/null; then
+    fail 'line with a single name was accepted'
+fi
+
+# Every invalid name is printed once, and build.ninja is left empty.
+# shellcheck disable=SC2016
+if names $'bar bar\nfoo -a\nfoo $(id)\n../b foo\nfoo -a' >"$tmp"/build.ninja; then
+    fail 'invalid package names were accepted'
+fi
+diff -u "$tmp"/stderr - >"$tmp"/diff <<'EOF' || { cat >&2 "$tmp"/diff; fail 'unexpected diagnostics'; }
+sync--ninja: invalid package name: -a
+sync--ninja: invalid package name: \$\(id\)
+sync--ninja: invalid package name: ../b
+EOF
+[[ ! -s $tmp/build.ninja ]] ||
+    fail 'build.ninja was written for invalid package names'
+
+# In UTF-8 locales other than C.UTF-8, a-z includes letters such as é.
+locale=$(locale -a | grep -im1 '^[a-z][a-z]_[A-Z][A-Z]\.utf-\?8$')
+
+if [[ $locale ]]; then
+    if LC_ALL=$locale names 'fooé fooé' >/dev/null; then
+        fail "invalid package name was accepted in $locale: fooé"
+    fi
+    # the directory is quoted as is, with no escapes for other characters
+    LC_ALL=$locale check "$tmp/é ü"
+fi
