@@ -49,7 +49,7 @@ sub table_v10_compat {
     for my $pkg (values %{$results}) {
         next if not defined $pkg->{'PackageBase'};
 
-        my ($name, $base, $version) = map { sanitize($_) } (
+        my ($name, $base, $version) = sanitize(
             $pkg->{'Name'}, $pkg->{'PackageBase'}, $pkg->{'Version'}
         );
         say join("\t", $name, $name, $base, $version, 'Self');
@@ -72,7 +72,7 @@ sub table {
     my $results = shift;
 
     for my $pkg (values %{$results}) {
-        my ($name, $base, $version) = map { sanitize($_) } (
+        my ($name, $base, $version) = sanitize(
             $pkg->{'Name'}, $pkg->{'PackageBase'}, $pkg->{'Version'}
         );
         my $reqby = $pkg->{'RequiredBy'};
@@ -96,7 +96,7 @@ sub pairs {
             my $rdep = $key eq 'Name' ? $reqby : $results->{$reqby}->{$key} // '-';
             my @pair = $reverse ? ($target, $rdep) : ($rdep, $target);
 
-            say join("\t", map { sanitize($_) } @pair) if not $seen{$target}{$rdep};
+            say join("\t", sanitize(@pair)) if not $seen{$target}{$rdep};
             $seen{$target}{$rdep} = 1;
         }
     }

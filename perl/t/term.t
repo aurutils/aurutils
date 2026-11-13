@@ -55,6 +55,13 @@ subtest 'sanitize: idempotent' => sub {
     is(sanitize($once), $once, 'sanitize(sanitize($s)) eq sanitize($s)');
 };
 
+subtest 'sanitize: list' => sub {
+    is_deeply([sanitize("a\eb", 'c', undef, "\n")], ['a\x1Bb', 'c', undef, '\x0A'],
+              'each element, in order');
+    is_deeply([sanitize()], [], 'empty list');
+    is(scalar(sanitize("a\e", "b\e")), 'a\x1B', 'scalar context: first string');
+};
+
 subtest 'sanitize: undef' => sub {
     ok(!defined sanitize(undef), 'undef returned');
 };

@@ -4,7 +4,7 @@ use open ":std", ":encoding(UTF-8)";
 use POSIX qw(strftime);
 use v5.40;
 
-use AUR::Json qw(parse_json parse_json_aur write_json);
+use AUR::Json qw(parse_json parse_json_aur);
 use AUR::Options qw(dump_options);
 use AUR::Exception;
 use AUR::Term qw(sanitize);
@@ -82,11 +82,11 @@ sub info_expand_field {
     if (not defined($value)) {
         return "";
     } elsif (ref($value) eq 'ARRAY') {
-        return join($delim, map { sanitize($_) } @{$value});
+        return join($delim, join("", @{$value}) =~ tr/\x00-\x1F\x7F-\x9F// ? sanitize(@{$value}) : @{$value});
     } elsif ($aur_types{$label} eq 'epoch') {
         return strftime($time_fmt, gmtime $value);
     } else {
-        return sanitize($value);
+        return $value =~ tr/\x00-\x1F\x7F-\x9F// ? sanitize($value) : $value;
     }
 }
 
@@ -118,14 +118,6 @@ sub info_format {
     print($fmt_string);
 }
 
-# JSON string for gron output. The encoder escapes C0 control characters
-# (RFC 8259); escape DEL and C1 as well, which JSON allows unescaped.
-sub gron_string {
-    my $str = write_json('' . shift);  # string, also for numeric scalars
-    $str =~ s/([\x7F-\x9F])/sprintf('\\u%04X', ord $1)/ge;
-    return $str;
-}
-
 sub info_gron {
     my ($pkg, $prefix, $key) = @_;
 
@@ -140,7 +132,14 @@ sub info_gron {
 
         # Numeric fields are printed as is if they hold a JSON number
         if (not ($is_numeric and $pkg =~ /^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][-+]?[0-9]+)?$/)) {
-            $pkg = gron_string($pkg);
+            # JSON string: escape quotes and backslashes, write control
+            # characters (C0, DEL, C1) as \u00XX. JSON requires this for C0
+            # only (RFC 8259); DEL and C1 would reach the terminal otherwise.
+            $pkg =~ s/(["\\])/\\$1/g;
+            if ($pkg =~ tr/\x00-\x1F\x7F-\x9F//) {
+                $pkg =~ s/([\x00-\x1F\x7F-\x9F])/sprintf('\\u%04X', ord $1)/ge;
+            }
+            $pkg = qq("$pkg");
         }
         say join(' = ', $prefix, $pkg . ';');
     }
@@ -150,7 +149,7 @@ sub info_gron {
         for my $key (sort keys %{$pkg}) {
             my $value = $pkg->{$key};
 
-            info_gron($value, join(".", $prefix, sanitize($key)), $key);
+            info_gron($value, join(".", $prefix, $key =~ tr/\x00-\x1F\x7F-\x9F// ? sanitize($key) : $key), $key);
         }
     }
     elsif (ref($pkg) eq 'ARRAY') {

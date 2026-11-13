@@ -39,10 +39,11 @@ format() {
 [[ $(aur format -f '%d\n' data/control.json) == 'a\x1B[2Jb\x9B31m\x09c\x0Adé' ]]
 [[ $(aur format -d $'\t' -f '%D\n' data/control.json) == $'x\\x09y\tz' ]]
 
-# gron: strings are JSON-encoded, with DEL and C1 escaped
+# gron: strings are JSON strings, with control characters (C0, DEL, C1)
+# written as \u00XX
 gron=$(aur format --gron data/control.json)
 [[ $gron != *[$'\x1b\t']* ]]
-grep -qxF 'json.results[0].Description = "a\u001b[2Jb\u009B31m\tc\ndé";' <<< "$gron"
+grep -qxF 'json.results[0].Description = "a\u001B[2Jb\u009B31m\u0009c\u000Adé";' <<< "$gron"
 grep -qxF 'json.results[0].URL = "q\"q\\";' <<< "$gron"
 grep -qxF 'json.results[0].NumVotes = 1;' <<< "$gron"
 
