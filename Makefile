@@ -35,6 +35,7 @@ test: aur shellcheck
 # and PERL5LIB set here and ~/.config/aurutils/env ignored
 	@$(TEST_ENV) tests/lib/build-sync/run
 	@$(TEST_ENV) tests/lib/depends/run
+	@$(TEST_ENV) tests/lib/exit-code/run
 	@$(TEST_ENV) tests/lib/fetch-auto/run
 	@$(TEST_ENV) tests/lib/fetch-mirror/run
 	@$(TEST_ENV) tests/lib/format/run
