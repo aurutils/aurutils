@@ -132,6 +132,9 @@ for pkg in "${packages[@]}"; do
         exit 2
     fi
 
+    # Tree without files, in the object format of the repository
+    empty_tree=$(git hash-object -t tree /dev/null)
+
     unset path_args
     if (( prefix )); then
         path_args=(--src-prefix="$pkg/" --dst-prefix="$pkg/")
@@ -142,13 +145,15 @@ for pkg in "${packages[@]}"; do
         if ! git cat-file -e "$view"; then
             printf >&2 '%s: %s: invalid git revision\n' "$argv0" "$AUR_VIEW_DB/$pkg"
             printf >&2 '%s: %s: falling back to empty tree\n' "$argv0" "$AUR_VIEW_DB/$pkg" 
-            view=$(git hash-object -t tree /dev/null)
+            view=$empty_tree
         fi
 
         if [[ $view != "$head" ]]; then
             # Point git to current orderFile path (#1167)
             # Preserve default order for outside git calls (#1239)
-            git --no-pager "$log_fmt" -O"$orderfile" --stat "${log_args[@]}" "${path_args[@]}" \
+            # Do not read attributes from the package: .gitattributes can hide
+            # changes, e.g. `PKGBUILD -diff` shows them as "Binary files differ"
+            git --attr-source="$empty_tree" --no-pager "$log_fmt" -O"$orderfile" --stat "${log_args[@]}" "${path_args[@]}" \
                 "$view..$head" -- "${excludes[@]}" > "$tmp/$pkg.$log_fmt"
         fi
 

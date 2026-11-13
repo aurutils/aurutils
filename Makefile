@@ -45,6 +45,7 @@ test: aur shellcheck
 	@$(TEST_ENV) tests/lib/sync-ninja/run
 	@$(TEST_ENV) tests/lib/sync-view/run
 	@$(TEST_ENV) tests/lib/tmpdir/run
+	@$(TEST_ENV) tests/lib/view-attributes/run
 
 # tests which use script paths directly
 	@tests/parseopt-consistency
