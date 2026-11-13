@@ -5,7 +5,7 @@
 # All aur programs are run as is. Input is in data/:
 #
 # * aur.json: the AUR lists foo 1-1, which depends on bar>=2, and bar 2-1
-#   (answered by ../bin/curl)
+#   (answered by ../../bin/curl)
 # * foo.SRCINFO, bar-1.SRCINFO, bar-2.SRCINFO: committed as .SRCINFO to git
 #   repositories for foo and bar. The repository of bar starts at version
 #   1-1. Only aur-graph reads this file, and fails on the dependency of foo.
@@ -23,8 +23,8 @@ fail() {
     exit 1
 }
 
-# answer AUR requests from data/aur.json instead of aurweb (see ../bin/curl)
-export PATH=$PWD/../bin:$PATH
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
 export AUR_TEST_FIXTURE=$data/aur.json
 
 tmp=$(mktemp -d) || exit

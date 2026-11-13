@@ -1,8 +1,8 @@
 #!/bin/bash
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit
 
-# answer AUR requests from data/aur.json instead of aurweb (see ../bin/curl)
-export PATH=$PWD/../bin:$PATH
+# answer AUR requests from data/aur.json instead of aurweb (see ../../bin/curl)
+export PATH=$PWD/../../bin:$PATH
 export AUR_TEST_FIXTURE=$PWD/data/aur.json
 
 # random position of stdin marker
