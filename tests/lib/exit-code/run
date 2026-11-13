@@ -1,0 +1,67 @@
+#!/bin/bash
+# Check that Perl programs exit with the code of an AUR::Exception thrown
+# by the AUR modules, not with 255 or $!:
+#
+# * 2: request failed (AUR::Query)
+# * 4: invalid input or response error (AUR::Json)
+# * 1: no packages found (AUR::Depends)
+tmp=$(mktemp -d) || exit
+trap 'rm -rf -- "$tmp"' EXIT
+printf 'garbage\n' >"$tmp"/garbage.json
+
+# curl stand-in: the response does not depend on the request, and is
+# selected with FAKE_CURL. By default, the AUR has a single package foo.
+mkdir "$tmp"/bin
+cat >"$tmp"/bin/curl <<'EOF_CURL'
+#!/bin/sh
+case $FAKE_CURL in
+    fail)  echo >&2 'curl: (22) The requested URL returned error: 503'
+           exit 22 ;;
+    error) printf '{"error":"Too many package results.","resultcount":0,"results":[],"type":"error","version":5}' ;;
+    empty) printf '{"resultcount":0,"results":[],"type":"multiinfo","version":5}' ;;
+    *)     printf '{"resultcount":1,"results":[{"Name":"foo","PackageBase":"foo","Version":"1.0-1"}],"type":"multiinfo","version":5}' ;;
+esac
+EOF_CURL
+chmod +x "$tmp"/bin/curl
+export PATH=$tmp/bin:$PATH
+unset FAKE_CURL
+
+# expect <code> <command>...: run command, compare exit status
+ret=0
+expect() {
+    local code=$1 err=0
+    shift
+    "$@" >/dev/null 2>"$tmp"/stderr </dev/null || err=$?
+
+    if (( err != code )); then
+        printf >&2 '%s: %s: exit %d, expected %d\n' "${BASH_SOURCE[0]}" "$*" "$err" "$code"
+        cat >&2 "$tmp"/stderr
+        ret=1
+    fi
+}
+
+# request failed
+expect 2 env FAKE_CURL=fail aur query -t info foo
+expect 2 env FAKE_CURL=fail aur search foo
+expect 2 env FAKE_CURL=fail aur search -i foo
+expect 2 env FAKE_CURL=fail aur depends foo
+
+# response error
+expect 4 env FAKE_CURL=error aur search foo
+expect 4 env FAKE_CURL=error aur depends foo
+
+# invalid input
+expect 4 aur format -f '%n' "$tmp"/garbage.json
+expect 4 aur format --gron "$tmp"/garbage.json
+expect 4 aur sync--filter -p "$tmp"/garbage.json
+
+# no packages found
+expect 1 env FAKE_CURL=empty aur depends bar
+
+# success
+expect 0 aur depends foo
+expect 0 aur search -i foo
+
+exit $ret
+
+# vim: set et sw=4 sts=4 ft=sh:

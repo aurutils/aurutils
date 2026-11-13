@@ -3,6 +3,10 @@ use v5.40;
 use File::Temp qw(tempdir tempfile);
 use Test::More;
 
+# dies { ... } returns the exception thrown by the block, or undef if
+# there is none. Test2::Tools::Exception is part of perl since 5.40.
+use Test2::Tools::Exception qw(dies);
+
 # Check if module can be imported
 require_ok "AUR::Query";
 
@@ -63,6 +67,24 @@ sub run_child {
         local $/; scalar <$in>;
     } ($out_file, $err_file);
     return ($status, @output);
+}
+
+# --- Helper: dies { ... } with standard error ---
+# Standard error goes to a file, so that curl (a child process) writes
+# there too. Returns the exception (or undef) and standard error.
+sub dies_stderr :prototype(&) {
+    my ($code) = @_;
+    my ($fh, $file) = tempfile(UNLINK => 1);
+    my $e;
+    {
+        open(my $saved, '>&', \*STDERR) or die "dup stderr: $!";
+        open(STDERR, '>&', $fh) or die "redirect stderr: $!";
+        $e = dies { $code->() };
+        open(STDERR, '>&', $saved) or die "restore stderr: $!";
+    }
+    open my $in, '<', $file or die "$file: $!";
+    my $err = do { local $/; <$in> };
+    return ($e, $err);
 }
 
 my @curl_opts = ('-q', '-A', 'aurutils', '-fgLsS');
@@ -163,32 +185,38 @@ subtest 'query: AUR_DEBUG prints curl command' => sub {
        'quoted command on stderr');
 };
 
-subtest 'query: curl failure exits 2' => sub {
-    my ($status, $out, $err) = run_child(sub {
-        local $ENV{FAKE_CURL} = 'fail';
-        query(type => 'info', term => 'foo');
-    });
-    is($status, 2, 'exit status 2');
+subtest 'query: curl failure throws exit code 2' => sub {
+    local $ENV{FAKE_CURL} = 'fail';
+    my ($e, $err) = dies_stderr { query(type => 'info', term => 'foo') };
+
+    isa_ok($e, 'AUR::Exception');
+    is($e->exit_code, 2, 'exit code 2');
+    is($e->message, 'AUR::Query: curl failed (exit status 22)', 'message');
     like($err, qr/^curl: \(22\)/, 'curl error on stderr');
 };
 
-subtest 'query: curl not found dies with ENOENT' => sub {
-    # `open ... or die $!`: the exit status 2 documented in the POD is
-    # ENOENT, set by an uncaught die at top level, not an explicit exit(2)
+subtest 'query: curl not found throws exit code 2' => sub {
     local $ENV{PATH} = tempdir(CLEANUP => 1);
-    my $err;
-    {
-        local *STDERR;
-        open STDERR, '>', \$err or die "redirect stderr: $!";
-        eval { query(type => 'info', term => 'foo') };
-    }
-    like($@, qr/^No such file or directory/, 'dies with ENOENT');
+    my ($e, $err) = dies_stderr { query(type => 'info', term => 'foo') };
+
+    isa_ok($e, 'AUR::Exception');
+    is($e->exit_code, 2, 'exit code 2');
+    like($e->message, qr/^AUR::Query: curl: No such file or directory\z/, 'message');
 };
 
-subtest 'query: multi-line response croaks' => sub {
+subtest 'query: multi-line response throws exit code 2' => sub {
     local $ENV{FAKE_CURL} = 'multi';
-    eval { query(type => 'info', term => 'foo') };
-    like($@, qr/^response error \(multi-line output\)/, 'croaks');
+    my ($e) = dies_stderr { query(type => 'info', term => 'foo') };
+
+    isa_ok($e, 'AUR::Exception');
+    is($e->exit_code, 2, 'exit code 2');
+    is($e->message, 'AUR::Query: response error (multi-line output)', 'message');
+};
+
+subtest 'query: no zombie process after an error' => sub {
+    local $ENV{FAKE_CURL} = 'multi';
+    dies_stderr { query(type => 'info', term => 'foo') };
+    is(waitpid(-1, 1), -1, 'curl reaped');  # 1: WNOHANG
 };
 
 subtest 'query_multi: POST request' => sub {
@@ -255,12 +283,12 @@ subtest 'query_multi: by croaks' => sub {
     ok($@, 'croaks on by');
 };
 
-subtest 'query_multi: curl failure exits 2' => sub {
-    my ($status) = run_child(sub {
-        local $ENV{FAKE_CURL} = 'fail';
-        query_multi(type => 'info', terms => ['a']);
-    });
-    is($status, 2, 'exit status 2');
+subtest 'query_multi: curl failure throws exit code 2' => sub {
+    local $ENV{FAKE_CURL} = 'fail';
+    my ($e) = dies_stderr { query_multi(type => 'info', terms => ['a']) };
+
+    isa_ok($e, 'AUR::Exception');
+    is($e->exit_code, 2, 'exit code 2');
 };
 
 subtest 'environment: defaults' => sub {

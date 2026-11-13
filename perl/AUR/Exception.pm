@@ -1,6 +1,8 @@
 package AUR::Exception;
 use v5.40;
 
+use Carp;
+
 # bool: an exception is true whatever its message, for `if ($@)`
 # fallback: eq, ne, . etc. are derived from ""
 use overload '""' => \&message, bool => sub { 1 }, fallback => 1;
@@ -45,7 +47,9 @@ exit with the exit code:
 
 =head2 new($message, $exit_code)
 
-Create an exception. C<$exit_code> defaults to 1.
+Create an exception. C<$exit_code> defaults to 1, and must be an
+integer from 1 to 255: 0 would report success, and C<exit> keeps only
+the lower 8 bits of larger values. Croaks otherwise.
 
 =head2 message()
 
@@ -64,6 +68,10 @@ Alad Wenter <https://github.com/AladW>
 sub new {
     my ($class, $message, $exit_code) = @_;
     $exit_code //= 1;
+
+    if ($exit_code !~ /\A[0-9]+\z/ or not 1 <= $exit_code <= 255) {
+        croak __PACKAGE__ . ": exit code must be an integer from 1 to 255";
+    }
     return bless { message => $message, exit_code => $exit_code }, $class;
 }
 
