@@ -1,3 +1,17 @@
+## 23.1
+
+* `aur-fetch`
+  + `--auto`: no message for packages without `aurutils.rebase`
+  + `--auto`: exit on an invalid `aurutils.rebase` value; the package
+    was skipped without an error
+
+* `aur-sync`
+  + `sync--ninja`: exit on input which is not a package name
+
+* `tests`
+  + add `fetch-auto` and `fetch-mirror`
+  + `sync-ninja`: check package names
+
 ## 23
 
 * `aur`
