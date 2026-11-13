@@ -110,7 +110,7 @@ sub parse_json_aur {
     }
     catch ($e) {
         chomp($e);
-        croak(AUR::Exception->new(__PACKAGE__ . ': invalid input (' . $e . ')', 4));
+        croak(AUR::Exception->new(__PACKAGE__ . ': invalid input (' . sanitize($e) . ')', 4));
     }
 
     # Possible AUR responses:

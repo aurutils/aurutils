@@ -210,7 +210,7 @@ unless (caller) {
             }
             catch ($e) {
                 chomp($e);
-                say STDERR "$argv0: invalid input ($e)";
+                say STDERR "$argv0: invalid input (" . sanitize($e) . ")";
                 exit(4);
             }
 
