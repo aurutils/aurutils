@@ -3,8 +3,10 @@ set -e
 core_path=/var/lib/pacman/sync/core.db
 core_files_path=/var/lib/pacman/sync/core.files
 
-# check repository entries are parsed correctly
-diff -u <(pacsift --repo=core | expac -S '%n\t%v' - | sort -u) \
+# check repository entries are parsed correctly. pacsift(1) reads packages
+# from standard input if it is not a terminal: it waits for input, or
+# prints nothing at end-of-file. Use pacman -Sl, which does not read it.
+diff -u <(pacman -Sl core | awk '{print $2 "\t" $3}' | sort -u) \
         <(aur repo-parse -p "$core_path" --list | sort -u)
 
 # check attributes are up-to-date
