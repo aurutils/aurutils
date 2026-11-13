@@ -2,12 +2,12 @@
 use v5.40;
 use Carp;
 use File::Temp qw(tempfile);
-use Test::More;
+# Test2::V0 is part of perl since 5.40. The srand plugin sets a fixed seed,
+# which File::Temp would share between processes; the utf8 plugin changes
+# the encoding of the source and of test output.
+use Test2::V0 -no_srand => 1, -no_utf8 => 1;
 
-# Check if module can be imported
-require_ok "AUR::Exception";
-
-AUR::Exception->import(qw(run_main));
+use AUR::Exception qw(run_main);
 
 # --- Helper: run code in a child process ---
 # Returns the exit status, standard output and standard error of the child.
@@ -18,7 +18,7 @@ sub run_child {
 
     my $pid = fork // die "fork: $!";
     if ($pid == 0) {
-        Test::More->builder->no_ending(1);
+        Test2::API::test2_stack()->top->set_no_ending(1);
         open STDOUT, '>&', $out_fh or die "redirect stdout: $!";
         open STDERR, '>&', $err_fh or die "redirect stderr: $!";
         $code->();
@@ -169,7 +169,7 @@ subtest 'run_main: plain die is re-thrown unchanged' => sub {
 
     my $obj = bless {}, 'Other::Error';
     eval { run_main(sub { die $obj }) };
-    is($@, $obj, 'other object');
+    ref_is($@, $obj, 'other object');
 };
 
 subtest 'run_main: exit inside main' => sub {

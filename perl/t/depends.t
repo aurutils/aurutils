@@ -3,13 +3,13 @@ use v5.40;
 use Carp;
 use File::Basename qw(dirname);
 use File::Temp qw(tempfile);
-use Test::More;
+# Test2::V0 is part of perl since 5.40. The srand plugin sets a fixed seed,
+# which File::Temp would share between processes; the utf8 plugin changes
+# the encoding of the source and of test output.
+use Test2::V0 -no_srand => 1, -no_utf8 => 1;
 use AUR::Json qw(parse_json);
 
-# Check if module can be imported
-require_ok "AUR::Depends";
-
-AUR::Depends->import(qw(recurse graph prune tsort));
+use AUR::Depends qw(recurse graph prune tsort);
 
 # --- Helper: build $results hash from a list of packages ---
 # Each entry: { Name => ..., Version => ..., Provides => [...] }
@@ -543,13 +543,13 @@ subtest 'recurse: providers which are replaced themselves' => sub {
         return { map { $_ => $pkgmap->{$_}[0] } keys %{$pkgmap} };
     };
 
-    is_deeply($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full']),
+    is($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full']),
         { 'foo-full' => 'foo-full-git' }, 'foo-full does not replace foo');
-    is_deeply($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full', 'foo']),
+    is($replaced->(['foo'], ['foo-full', 'foo'], ['foo-full-git', 'foo-full', 'foo']),
         { 'foo-full' => 'foo-full-git', 'foo' => 'foo-full-git' }, 'second provider of foo');
-    is_deeply($replaced->(['a'], ['b', 'a'], ['c', 'b'], ['d', 'c']),
+    is($replaced->(['a'], ['b', 'a'], ['c', 'b'], ['d', 'c']),
         { 'a' => 'b', 'c' => 'd' }, 'chain of three');
-    is_deeply($replaced->(['p', 'q'], ['q', 'p']),
+    is($replaced->(['p', 'q'], ['q', 'p']),
         { 'q' => 'p' }, 'packages which provide each other');
 };
 
@@ -632,9 +632,9 @@ subtest 'recurse: Conflicts and Replaces pass through to results' => sub {
         ['new-app'], ['Depends', 'MakeDepends', 'CheckDepends'], $callback
     );
 
-    is_deeply($results->{'new-app'}{'Conflicts'}, ['old-app', 'rival'],
+    is($results->{'new-app'}{'Conflicts'}, ['old-app', 'rival'],
         'Conflicts preserved verbatim in results');
-    is_deeply($results->{'new-app'}{'Replaces'}, ['old-app'],
+    is($results->{'new-app'}{'Replaces'}, ['old-app'],
         'Replaces preserved verbatim in results');
 };
 

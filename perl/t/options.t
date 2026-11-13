@@ -1,9 +1,9 @@
 #!/usr/bin/env perl
 use v5.40;
-use Test::More;
-
-# Check if module can be imported
-require_ok "AUR::Options";
+# Test2::V0 is part of perl since 5.40. The srand plugin sets a fixed seed,
+# which File::Temp would share between processes; the utf8 plugin changes
+# the encoding of the source and of test output.
+use Test2::V0 -no_srand => 1, -no_utf8 => 1;
 
 use AUR::Options qw(add_from_stdin dump_options);
 
@@ -42,73 +42,73 @@ subtest 'add_from_stdin: no token, stdin untouched' => sub {
     open STDIN, '<', \$input or die "redirect stdin: $!";
     add_from_stdin(\@args, \@tokens);
 
-    is_deeply(\@args, ['foo', 'bar'], 'arguments unchanged');
+    is(\@args, ['foo', 'bar'], 'arguments unchanged');
     is(scalar(<STDIN>), "should\n", 'stdin not consumed');
 };
 
 subtest 'add_from_stdin: single token' => sub {
-    is_deeply([with_stdin("a\nb\n", ['-'], \@tokens)], ['a', 'b'],
+    is([with_stdin("a\nb\n", ['-'], \@tokens)], ['a', 'b'],
               'token replaced by stdin lines');
 };
 
 subtest 'add_from_stdin: alternative token' => sub {
-    is_deeply([with_stdin("a\n", ['/dev/stdin'], \@tokens)], ['a'],
+    is([with_stdin("a\n", ['/dev/stdin'], \@tokens)], ['a'],
               '/dev/stdin replaced');
 };
 
 subtest 'add_from_stdin: stdin appended after remaining arguments' => sub {
-    is_deeply([with_stdin("x\ny\n", ['foo', '-', 'bar'], \@tokens)],
+    is([with_stdin("x\ny\n", ['foo', '-', 'bar'], \@tokens)],
               ['foo', 'bar', 'x', 'y'], 'token removed, stdin at end');
 };
 
 subtest 'add_from_stdin: multiple tokens read stdin once' => sub {
-    is_deeply([with_stdin("x\n", ['-', 'foo', '/dev/stdin', '-'], \@tokens)],
+    is([with_stdin("x\n", ['-', 'foo', '/dev/stdin', '-'], \@tokens)],
               ['foo', 'x'], 'all tokens removed, stdin added once');
 };
 
 subtest 'add_from_stdin: adjacent tokens' => sub {
     # delete_elements splices from the end, indices stay valid
-    is_deeply([with_stdin("x\n", ['a', '-', '-', 'b', '-'], \@tokens)],
+    is([with_stdin("x\n", ['a', '-', '-', 'b', '-'], \@tokens)],
               ['a', 'b', 'x'], 'adjacent tokens removed');
 };
 
 subtest 'add_from_stdin: empty stdin' => sub {
-    is_deeply([with_stdin("", ['foo', '-'], \@tokens)], ['foo'],
+    is([with_stdin("", ['foo', '-'], \@tokens)], ['foo'],
               'token removed, nothing added');
 };
 
 subtest 'add_from_stdin: last line without newline' => sub {
-    is_deeply([with_stdin("a\nb", ['-'], \@tokens)], ['a', 'b'],
+    is([with_stdin("a\nb", ['-'], \@tokens)], ['a', 'b'],
               'final line kept');
 };
 
 subtest 'add_from_stdin: empty lines are kept' => sub {
-    is_deeply([with_stdin("a\n\nb\n", ['-'], \@tokens)], ['a', '', 'b'],
+    is([with_stdin("a\n\nb\n", ['-'], \@tokens)], ['a', '', 'b'],
               'empty line becomes empty argument');
 };
 
 subtest 'add_from_stdin: whitespace is kept' => sub {
-    is_deeply([with_stdin(" a b \n", ['-'], \@tokens)], [' a b '],
+    is([with_stdin(" a b \n", ['-'], \@tokens)], [' a b '],
               'line not split or trimmed');
 };
 
 subtest 'add_from_stdin: token match is exact' => sub {
-    is_deeply([with_stdin("x\n", ['--', '-a', '/dev/stdin2'], \@tokens)],
+    is([with_stdin("x\n", ['--', '-a', '/dev/stdin2'], \@tokens)],
               ['--', '-a', '/dev/stdin2'], 'no partial matches');
 };
 
 subtest 'add_from_stdin: chomp applies to existing arguments' => sub {
     # chomp runs over the whole array once stdin is read
-    is_deeply([with_stdin("x\n", ["foo\n", '-'], \@tokens)], ['foo', 'x'],
+    is([with_stdin("x\n", ["foo\n", '-'], \@tokens)], ['foo', 'x'],
               'trailing newline removed from argument');
 };
 
 subtest 'add_from_stdin: empty argument list' => sub {
-    is_deeply([with_stdin("x\n", [], \@tokens)], [], 'nothing to replace');
+    is([with_stdin("x\n", [], \@tokens)], [], 'nothing to replace');
 };
 
 subtest 'add_from_stdin: empty token list' => sub {
-    is_deeply([with_stdin("x\n", ['-'], [])], ['-'], 'no tokens, no match');
+    is([with_stdin("x\n", ['-'], [])], ['-'], 'no tokens, no match');
 };
 
 subtest 'add_from_stdin: modifies array in place' => sub {
@@ -120,43 +120,43 @@ subtest 'add_from_stdin: modifies array in place' => sub {
     open STDIN, '<', \$input or die "redirect stdin: $!";
     add_from_stdin($ref, \@tokens);
 
-    is_deeply(\@args, ['x'], 'caller array modified');
+    is(\@args, ['x'], 'caller array modified');
 };
 
 subtest 'dump_options: long and short names' => sub {
-    is_deeply([dump_lines(['verbose|v'])], ['--verbose', '-v'], 'long then short');
+    is([dump_lines(['verbose|v'])], ['--verbose', '-v'], 'long then short');
 };
 
 subtest 'dump_options: argument suffix' => sub {
-    is_deeply([dump_lines(['format|f=s'])],    ['--format:', '-f:'], '=s');
-    is_deeply([dump_lines(['delim|d:s'])],     ['--delim:', '-d:'],  ':s (optional)');
-    is_deeply([dump_lines(['count=i'])],       ['--count:'],         '=i');
-    is_deeply([dump_lines(['ignore|i=s@'])],   ['--ignore:', '-i:'], '=s@');
+    is([dump_lines(['format|f=s'])],    ['--format:', '-f:'], '=s');
+    is([dump_lines(['delim|d:s'])],     ['--delim:', '-d:'],  ':s (optional)');
+    is([dump_lines(['count=i'])],       ['--count:'],         '=i');
+    is([dump_lines(['ignore|i=s@'])],   ['--ignore:', '-i:'], '=s@');
 };
 
 subtest 'dump_options: all longs before all shorts' => sub {
-    is_deeply([dump_lines(['a|all', 'b|bar=s', 'c'])],
+    is([dump_lines(['a|all', 'b|bar=s', 'c'])],
               ['--all', '--bar:', '-a', '-b:', '-c'], 'grouped by length');
 };
 
 subtest 'dump_options: spec order kept within groups' => sub {
-    is_deeply([dump_lines(['zeta', 'alpha', 'z', 'a'])],
+    is([dump_lines(['zeta', 'alpha', 'z', 'a'])],
               ['--zeta', '--alpha', '-z', '-a'], 'not sorted');
 };
 
 subtest 'dump_options: multiple aliases' => sub {
-    is_deeply([dump_lines(['repo|database|d=s'])],
+    is([dump_lines(['repo|database|d=s'])],
               ['--repo:', '--database:', '-d:'], 'all aliases printed');
 };
 
 subtest 'dump_options: dump-options is skipped' => sub {
-    is_deeply([dump_lines(['dump-options', 'help|h'])], ['--help', '-h'],
+    is([dump_lines(['dump-options', 'help|h'])], ['--help', '-h'],
               'dump-options omitted');
-    is_deeply([dump_lines(['dump-options'])], [], 'nothing printed');
+    is([dump_lines(['dump-options'])], [], 'nothing printed');
 };
 
 subtest 'dump_options: empty spec' => sub {
-    is_deeply([dump_lines([])], [], 'nothing printed');
+    is([dump_lines([])], [], 'nothing printed');
 };
 
 subtest 'dump_options: unsupported specs croak' => sub {
@@ -168,13 +168,13 @@ subtest 'dump_options: unsupported specs croak' => sub {
 
 subtest 'dump_options: optional incremental argument' => sub {
     # `:+` is an argument type, not the `+` modifier
-    is_deeply([dump_lines(['level|l:+'])], ['--level:', '-l:'], ':+');
+    is([dump_lines(['level|l:+'])], ['--level:', '-l:'], ':+');
 };
 
 subtest 'dump_options: spec as used by aur(1) programs' => sub {
     # aur-format, aur-depends etc. filter out references from @opt_spec
     my @opt_spec = ('format|f=s', \my $format, 'json', 'dump-options');
-    is_deeply([dump_lines([grep { !ref } @opt_spec])],
+    is([dump_lines([grep { !ref } @opt_spec])],
               ['--format:', '--json', '-f:'], 'filtered spec');
 };
 

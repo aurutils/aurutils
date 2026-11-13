@@ -1,10 +1,10 @@
 #!/usr/bin/env perl
 use v5.40;
 use File::Temp qw(tempdir);
-use Test::More;
-
-# Check if module can be imported
-require_ok "AUR::Vercmp";
+# Test2::V0 is part of perl since 5.40. The srand plugin sets a fixed seed,
+# which File::Temp would share between processes; the utf8 plugin changes
+# the encoding of the source and of test output.
+use Test2::V0 -no_srand => 1, -no_utf8 => 1;
 
 use AUR::Vercmp qw(vercmp);
 

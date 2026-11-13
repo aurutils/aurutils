@@ -1,14 +1,10 @@
 #!/usr/bin/env perl
 use v5.40;
 use File::Temp qw(tempdir tempfile);
-use Test::More;
-
-# dies { ... } returns the exception thrown by the block, or undef if
-# there is none. Test2::Tools::Exception is part of perl since 5.40.
-use Test2::Tools::Exception qw(dies);
-
-# Check if module can be imported
-require_ok "AUR::Query";
+# Test2::V0 is part of perl since 5.40. The srand plugin sets a fixed seed,
+# which File::Temp would share between processes; the utf8 plugin changes
+# the encoding of the source and of test output.
+use Test2::V0 -no_srand => 1, -no_utf8 => 1;
 
 use AUR::Query qw(urlencode query query_multi);
 
@@ -53,7 +49,7 @@ sub run_child {
 
     my $pid = fork // die "fork: $!";
     if ($pid == 0) {
-        Test::More->builder->no_ending(1);
+        Test2::API::test2_stack()->top->set_no_ending(1);
         open STDOUT, '>&', $out_fh or die "redirect stdout: $!";
         open STDERR, '>&', $err_fh or die "redirect stderr: $!";
         $code->();
@@ -119,7 +115,7 @@ subtest 'urlencode: byte strings' => sub {
 subtest 'query: GET request path' => sub {
     my @args = curl_args(query(type => 'info', term => 'foo'));
 
-    is_deeply(\@args, [@curl_opts, 'https://aur.test/rpc/v5/info/foo'], 'curl arguments');
+    is(\@args, [@curl_opts, 'https://aur.test/rpc/v5/info/foo'], 'curl arguments');
 };
 
 subtest 'query: term is url-encoded' => sub {
@@ -159,7 +155,7 @@ subtest 'query: callback' => sub {
 
 subtest 'query: callback list context' => sub {
     my @result = query(type => 'info', term => 'foo', callback => sub { return (1, 2, 3) });
-    is_deeply(\@result, [1, 2, 3], 'list returned');
+    is(\@result, [1, 2, 3], 'list returned');
 };
 
 subtest 'query: missing term dies' => sub {
@@ -223,7 +219,7 @@ subtest 'query_multi: POST request' => sub {
     my @responses = query_multi(type => 'info', terms => ['foo', 'bar']);
 
     is(scalar @responses, 1, 'one request');
-    is_deeply([curl_args($responses[0])],
+    is([curl_args($responses[0])],
               [@curl_opts, 'https://aur.test/rpc/v5/info', '--data-raw', '&arg[]=foo&arg[]=bar'],
               'curl arguments');
 };
@@ -238,7 +234,7 @@ subtest 'query_multi: splitno' => sub {
     my @responses = query_multi(type => 'info', terms => \@terms, splitno => 2);
 
     is(scalar @responses, 3, 'ceil(5/2) requests');
-    is_deeply([map { (curl_args($_))[-1] } @responses],
+    is([map { (curl_args($_))[-1] } @responses],
               ['&arg[]=pkg1&arg[]=pkg2', '&arg[]=pkg3&arg[]=pkg4', '&arg[]=pkg5'],
               'terms split in order');
 };
@@ -267,7 +263,7 @@ subtest 'query_multi: callback per request' => sub {
                               callback => sub { $calls++; return ("r$calls", "s$calls") });
 
     is($calls, 3, 'one callback per request');
-    is_deeply(\@results, ['r1', 's1', 'r2', 's2', 'r3', 's3'], 'callback lists flattened');
+    is(\@results, ['r1', 's1', 'r2', 's2', 'r3', 's3'], 'callback lists flattened');
 };
 
 subtest 'query_multi: no terms dies' => sub {

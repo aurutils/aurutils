@@ -3,14 +3,10 @@ use v5.40;
 use Cwd qw(abs_path);
 use File::Basename qw(dirname);
 use File::Temp qw(tempdir);
-use Test::More;
-
-# dies { ... } returns the exception thrown by the block, or undef if
-# there is none. Test2::Tools::Exception is part of perl since 5.40.
-use Test2::Tools::Exception qw(dies);
-
-# Check if module can be imported
-require_ok "AUR::Json";
+# Test2::V0 is part of perl since 5.40. The srand plugin sets a fixed seed,
+# which File::Temp would share between processes; the utf8 plugin changes
+# the encoding of the source and of test output.
+use Test2::V0 -no_srand => 1, -no_utf8 => 1;
 
 use AUR::Json qw(parse_json parse_json_aur write_json);
 
@@ -23,21 +19,21 @@ subtest 'parse_json: object' => sub {
     my $obj = parse_json('{"Name":"foo","Version":"1.0-1"}');
 
     is(ref($obj), 'HASH', 'hash reference');
-    is_deeply($obj, { Name => 'foo', Version => '1.0-1' }, 'content');
+    is($obj, { Name => 'foo', Version => '1.0-1' }, 'content');
 };
 
 subtest 'parse_json: array' => sub {
     my $obj = parse_json('[1,"two",{"three":3}]');
 
     is(ref($obj), 'ARRAY', 'array reference');
-    is_deeply($obj, [1, 'two', { three => 3 }], 'content');
+    is($obj, [1, 'two', { three => 3 }], 'content');
 };
 
 subtest 'parse_json: nested values and literals' => sub {
     my $obj = parse_json('{"a":[],"b":{},"c":null,"d":true,"e":false,"f":1.5}');
 
-    is_deeply($obj->{a}, [], 'empty array');
-    is_deeply($obj->{b}, {}, 'empty object');
+    is($obj->{a}, [], 'empty array');
+    is($obj->{b}, {}, 'empty object');
     ok(!defined $obj->{c},   'null is undef');
     ok($obj->{d},            'true');
     ok(!$obj->{e},           'false');
@@ -45,8 +41,8 @@ subtest 'parse_json: nested values and literals' => sub {
 };
 
 subtest 'parse_json: surrounding whitespace' => sub {
-    is_deeply(parse_json("  [1]  "), [1], 'leading and trailing spaces');
-    is_deeply(parse_json("{}\n"),    {},  'trailing newline');
+    is(parse_json("  [1]  "), [1], 'leading and trailing spaces');
+    is(parse_json("{}\n"),    {},  'trailing newline');
 };
 
 subtest 'parse_json: unicode' => sub {
@@ -62,9 +58,9 @@ subtest 'parse_json: text after the JSON value dies' => sub {
 };
 
 subtest 'parse_json: consecutive calls are independent' => sub {
-    is_deeply(parse_json('[1]'), [1], 'first call');
-    is_deeply(parse_json('[2]'), [2], 'second call');
-    is_deeply(parse_json('{"x":3}'), { x => 3 }, 'third call');
+    is(parse_json('[1]'), [1], 'first call');
+    is(parse_json('[2]'), [2], 'second call');
+    is(parse_json('{"x":3}'), { x => 3 }, 'third call');
 };
 
 subtest 'parse_json: empty string dies' => sub {
@@ -101,11 +97,11 @@ subtest 'parse_json: state after a failed parse' => sub {
     eval { parse_json('{"a":') };
 
     my $obj = eval { parse_json('[1]') };
-    is_deeply($obj, [1], 'valid input parses after incomplete input');
+    is($obj, [1], 'valid input parses after incomplete input');
 
     eval { parse_json('garbage') };
     $obj = eval { parse_json('[1]') };
-    is_deeply($obj, [1], 'valid input parses after malformed input');
+    is($obj, [1], 'valid input parses after malformed input');
 };
 
 subtest 'parse_json_aur: info/search response' => sub {
@@ -114,7 +110,7 @@ subtest 'parse_json_aur: info/search response' => sub {
     my @results = parse_json_aur($str);
 
     is(scalar @results, 2, 'two results');
-    is_deeply([map { $_->{Name} } @results], ['a', 'b'], 'results in order');
+    is([map { $_->{Name} } @results], ['a', 'b'], 'results in order');
 };
 
 subtest 'parse_json_aur: empty results' => sub {
@@ -123,17 +119,17 @@ subtest 'parse_json_aur: empty results' => sub {
 };
 
 subtest 'parse_json_aur: array (suggest, metadata archive)' => sub {
-    is_deeply([parse_json_aur('["foo","foo-git"]')], ['foo', 'foo-git'], 'suggest');
-    is_deeply([parse_json_aur('[{"Name":"a"},{"Name":"b"}]')],
+    is([parse_json_aur('["foo","foo-git"]')], ['foo', 'foo-git'], 'suggest');
+    is([parse_json_aur('[{"Name":"a"},{"Name":"b"}]')],
               [{ Name => 'a' }, { Name => 'b' }], 'metadata archive');
-    is_deeply([parse_json_aur('[]')], [], 'empty array');
+    is([parse_json_aur('[]')], [], 'empty array');
 };
 
 subtest 'parse_json_aur: single object (JSONL)' => sub {
     my @results = parse_json_aur('{"Name":"a","Version":"1-1"}');
 
     is(scalar @results, 1, 'one result');
-    is_deeply($results[0], { Name => 'a', Version => '1-1' }, 'object returned as-is');
+    is($results[0], { Name => 'a', Version => '1-1' }, 'object returned as-is');
 };
 
 subtest 'parse_json_aur: null results is a single object' => sub {
@@ -157,7 +153,7 @@ subtest 'parse_json_aur: error response throws exit code 4' => sub {
 subtest 'parse_json_aur: error without results' => sub {
     # The error check only applies to responses with a `results` array
     my @results = parse_json_aur('{"error":"x"}');
-    is_deeply(\@results, [{ error => 'x' }], 'returned as single object');
+    is(\@results, [{ error => 'x' }], 'returned as single object');
 };
 
 subtest 'parse_json_aur: scalar throws exit code 4' => sub {
@@ -224,7 +220,7 @@ subtest 'write_json: round trip' => sub {
     my $obj = { Name => 'foo', Depends => ['bar', 'baz>=1.0'], NumVotes => 10 };
     my $str = write_json($obj);
 
-    is_deeply(parse_json($str), $obj, 'parse_json(write_json($obj))');
+    is(parse_json($str), $obj, 'parse_json(write_json($obj))');
     is(write_json(parse_json($str)), $str, 'write_json(parse_json($str))');
 };
 
