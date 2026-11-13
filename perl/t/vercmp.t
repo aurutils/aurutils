@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use v5.20;
-use File::Temp qw(tempdir tempfile);
+use File::Temp qw(tempdir);
 use Test::More;
 
 # Check if module can be imported
@@ -12,36 +12,18 @@ use AUR::Vercmp qw(vercmp);
 
 delete local $ENV{AUR_DEBUG};
 
-# --- Fake vercmp ---
-# Prints FAKE_VERCMP (default 0) and appends its arguments to FAKE_VERCMP_LOG.
-# FAKE_VERCMP=fail exits non-zero.
-my $bindir = tempdir(CLEANUP => 1);
-{
-    open my $fh, '>', "$bindir/vercmp" or die "$bindir/vercmp: $!";
-    print $fh <<'EOF';
-#!/bin/sh
-[ -n "$FAKE_VERCMP_LOG" ] && echo "$*" >> "$FAKE_VERCMP_LOG"
-[ "$FAKE_VERCMP" = fail ] && exit 1
-echo "${FAKE_VERCMP:-0}"
-EOF
-    close $fh;
-    chmod 0755, "$bindir/vercmp" or die "chmod: $!";
-}
+# --- Helper: run vercmp() and count calls of vercmp(8) ---
+# Returns the result and the number of calls.
+sub vercmp_calls {
+    my @args = @_;
+    my $calls = 0;
+    my $run = \&AUR::Vercmp::vercmp_run;
 
-# --- Helper: run vercmp() against the fake binary ---
-# Returns the result and the list of vercmp invocations.
-sub fake_vercmp {
-    my ($result, @args) = @_;
-    my (undef, $log) = tempfile(UNLINK => 1);
-
-    local $ENV{PATH} = "$bindir:$ENV{PATH}";
-    local $ENV{FAKE_VERCMP} = $result;
-    local $ENV{FAKE_VERCMP_LOG} = $log;
+    no warnings 'redefine';
+    local *AUR::Vercmp::vercmp_run = sub { $calls++; return $run->(@_) };
     my $ret = vercmp(@args);
 
-    open my $in, '<', $log or die "$log: $!";
-    chomp(my @calls = <$in>);
-    return ($ret, @calls);
+    return ($ret, $calls);
 }
 
 subtest 'unversioned dependency is always true' => sub {
@@ -55,7 +37,9 @@ subtest 'unversioned dependency is always true' => sub {
 };
 
 subtest 'operator table' => sub {
-    # vercmp result: -1 (ver1 < ver2), 0 (equal), 1 (ver1 > ver2)
+    # Version pairs for each result of vercmp(8). pkgrel is only compared
+    # if both versions have one, so 1.0 and 1.0-1 are equal.
+    my %pairs = (-1 => ['1.0', '2.0'], 0 => ['1.0', '1.0-1'], 1 => ['2.0', '1.0']);
     my %expect = (
         '<'  => { -1 => 1, 0 => 0, 1 => 0 },
         '<=' => { -1 => 1, 0 => 1, 1 => 0 },
@@ -65,30 +49,24 @@ subtest 'operator table' => sub {
     );
     for my $op (sort keys %expect) {
         for my $result (-1, 0, 1) {
-            my ($ret, @calls) = fake_vercmp($result, '1.0', '2.0', $op);
-            is(!!$ret, !!$expect{$op}{$result}, "vercmp=$result, op $op");
-            is_deeply(\@calls, ['1.0 2.0'], "vercmp called with versions ($op, $result)");
+            my ($ver1, $ver2) = @{$pairs{$result}};
+            my ($ret, $calls) = vercmp_calls($ver1, $ver2, $op);
+
+            is(!!$ret, !!$expect{$op}{$result}, "$ver1 $op $ver2");
+            is($calls, 1, "vercmp called for $ver1 $op $ver2");
         }
     }
 };
 
 subtest '= with identical strings skips vercmp' => sub {
-    my ($ret, @calls) = fake_vercmp(1, '1.0-1', '1.0-1', '=');
+    my ($ret, $calls) = vercmp_calls('1.0-1', '1.0-1', '=');
 
     ok($ret, 'equal strings');
-    is(scalar @calls, 0, 'vercmp not called');
-};
-
-subtest 'other operators always call vercmp' => sub {
-    for my $op ('<', '<=', '>', '>=') {
-        my (undef, @calls) = fake_vercmp(0, '1.0', '1.0', $op);
-        is(scalar @calls, 1, "vercmp called for $op");
-    }
+    is($calls, 0, 'vercmp not called');
 };
 
 subtest 'invalid operator croaks' => sub {
     for my $op ('==', '!=', '<>', '', 'eq') {
-        local $ENV{PATH} = '/nonexistent';
         eval { vercmp('1.0', '2.0', $op) };
         like($@, qr/^invalid vercmp operation at \Q${\__FILE__}\E/,
              "'$op' croaks at caller");
@@ -96,7 +74,13 @@ subtest 'invalid operator croaks' => sub {
 };
 
 subtest 'vercmp failure dies' => sub {
-    eval { fake_vercmp('fail', '1.0', '2.0', '<') };
+    # vercmp(8) does not fail with two arguments: replace it by false(1)
+    my $bindir = tempdir(CLEANUP => 1);
+    my ($false) = grep { -x } map { "$_/false" } '/usr/bin', '/bin';
+    symlink($false, "$bindir/vercmp") or die "symlink: $!";
+
+    local $ENV{PATH} = "$bindir:$ENV{PATH}";
+    eval { vercmp('1.0', '2.0', '<') };
     like($@, qr/^AUR::Vercmp: vercmp failure/, 'non-zero exit status');
 };
 
@@ -117,44 +101,38 @@ subtest 'AUR_DEBUG prints call' => sub {
     {
         local *STDERR;
         open STDERR, '>', \$err or die "redirect stderr: $!";
-        fake_vercmp(0, '1.0', '2.0', '<');
+        vercmp('1.0', '2.0', '<');
     }
     is($err, "AUR::Vercmp: vercmp 1.0 2.0\n", 'call on stderr');
 };
 
-# Tests against vercmp(8) from pacman
-SKIP: {
-    my $found = grep { -x "$_/vercmp" } split /:/, $ENV{PATH};
-    skip 'vercmp(8) not found', 1 if not $found;
+subtest 'version ordering' => sub {
+    ok(vercmp("1.0", "1.0", '='));
+    ok(vercmp("1.0a", "1.0b", '<'));
+    ok(vercmp("1", "1.0", '<='));
+    ok(vercmp("1:1", "1", '>'));
+    ok(vercmp("2.0", "1.0", '>='));
+    ok(vercmp("abc", undef, '<'));
 
-    subtest 'vercmp(8): version ordering' => sub {
-        ok(vercmp("1.0", "1.0", '='));
-        ok(vercmp("1.0a", "1.0b", '<'));
-        ok(vercmp("1", "1.0", '<='));
-        ok(vercmp("1:1", "1", '>'));
-        ok(vercmp("2.0", "1.0", '>='));
-        ok(vercmp("abc", undef, '<'));
+    # epoch takes precedence
+    ok(vercmp("1:0.1", "9.9", '>'),  'epoch beats version');
+    ok(vercmp("0:1.0", "1.0", '='),  'epoch 0 equals none');
 
-        # epoch takes precedence
-        ok(vercmp("1:0.1", "9.9", '>'),  'epoch beats version');
-        ok(vercmp("0:1.0", "1.0", '='),  'epoch 0 equals none');
+    # alpha suffixes sort before release
+    ok(vercmp("1.0alpha", "1.0", '<'), 'alpha before release');
+    ok(vercmp("1.0rc1", "1.0", '<'),   'rc before release');
 
-        # alpha suffixes sort before release
-        ok(vercmp("1.0alpha", "1.0", '<'), 'alpha before release');
-        ok(vercmp("1.0rc1", "1.0", '<'),   'rc before release');
+    # numeric, not lexical, comparison
+    ok(vercmp("1.10", "1.9", '>'), '1.10 > 1.9');
 
-        # numeric, not lexical, comparison
-        ok(vercmp("1.10", "1.9", '>'), '1.10 > 1.9');
-
-        # pkgrel is only compared if both versions have one
-        ok(vercmp("2.0-3", "2.0-3", '='));
-        ok(vercmp("2.0-3", "2.0", '='));
-        ok(!vercmp("2.0-3", "2.0-4", '='));
-        ok(!vercmp("1:2.0-3", "2.0", '='));
-        ok(!vercmp("2.0-3", "2.0-4", '>='));
-        ok(vercmp("2.0-3", "2.0-4", '<'));
-    };
-}
+    # pkgrel is only compared if both versions have one
+    ok(vercmp("2.0-3", "2.0-3", '='));
+    ok(vercmp("2.0-3", "2.0", '='));
+    ok(!vercmp("2.0-3", "2.0-4", '='));
+    ok(!vercmp("1:2.0-3", "2.0", '='));
+    ok(!vercmp("2.0-3", "2.0-4", '>='));
+    ok(vercmp("2.0-3", "2.0-4", '<'));
+};
 
 done_testing();
 
