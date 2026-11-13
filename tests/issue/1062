@@ -42,8 +42,8 @@ check_count "$cnt" 1
 
 # git is included as non-AUR dependency for aurutils
 cnt=$(aur depends --json --all git aurutils | jq length)
-check_count "$cnt" 7
+check_count "$cnt" 8
 
 # list all direct dependencies
 cnt=$(aur depends --json --all aurutils | jq length)
-check_count "$cnt" 7
+check_count "$cnt" 8

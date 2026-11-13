@@ -15,7 +15,7 @@ TEST_ENV = env AUR_ENV=/dev/null AUR_EXEC_PATH='$(TEST_EXEC_PATH)' PERL5LIB='$(C
 # use the built aur instead of the one in PATH:
 #TEST_ENV += PATH="$(CURDIR):$$PATH"
 
-.PHONY: shellcheck install build completion aur
+.PHONY: shellcheck install build completion aur test issue-test test-shell
 
 build: aur completion
 
@@ -35,14 +35,14 @@ test: aur shellcheck
 # and PERL5LIB set here and ~/.config/aurutils/env ignored
 # TODO: AUR dependencies modified -- turn bitlbee into fixture
 #	@$(TEST_ENV) tests/lib/depends
+	@$(TEST_ENV) tests/build-sync/run
 	@$(TEST_ENV) tests/format/run
 	@$(TEST_ENV) tests/graph/run
 	@$(TEST_ENV) tests/query/run
 	@$(TEST_ENV) tests/repo-parse/run
+	@$(TEST_ENV) tests/sync-ninja/run
 	@$(TEST_ENV) tests/sync-view/run
 	@$(TEST_ENV) tests/tmpdir/run
-	@$(TEST_ENV) tests/build-sync/run
-	@$(TEST_ENV) tests/sync-ninja/run
 
 # tests which use script paths directly
 	@tests/parseopt-consistency
@@ -50,6 +50,14 @@ test: aur shellcheck
 
 # tests run with prove (1perl)
 	@$(MAKE) -C perl test
+
+# tests which query the AUR
+issue-test: aur shellcheck
+	@$(TEST_ENV) tests/issue-test
+
+# interactive shell with the environment of the tests
+test-shell:
+	@$(TEST_ENV) $${SHELL:-/bin/bash}
 
 install-aur: aur
 	@install -Dm755 aur       -t '$(DESTDIR)$(BINDIR)'
