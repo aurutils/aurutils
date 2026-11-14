@@ -98,6 +98,7 @@ _aur-chroot() {
         '(-B --build)'{-B,--build}'[build a package inside the container with makechrootpkg]'
         '(-U --update)'{-U,--update}'[update or create the /root copy of the container with arch-nspawn]'
         '--create[create a new container with mkarchroot]'
+        '--run[run a command as the build user inside the container (standalone mode)]'
 
         # Other options
         '*--bind-rw=[bind a directory read-write to the container]:directory: _files -/'
@@ -109,6 +110,7 @@ _aur-chroot() {
      makepkg'
         '(-M --makepkg-conf)'{-M,--makepkg-conf=}'[the makepkg.conf to use inside the container]:configuration file: _files'
         '--path[print the path to the container template]'
+        '--holdver[do not update VCS sources]'
         
         + '(pacman_conf)'
         {-C,--pacman-conf=}'[the pacman.conf to use inside the container]:configuration file: _files'

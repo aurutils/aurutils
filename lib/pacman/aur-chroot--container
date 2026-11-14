@@ -1,0 +1,86 @@
+#!/bin/bash
+# aur-chroot--container - commands run inside the aur-chroot container
+#
+# Run by aur-chroot (standalone mode) inside systemd-nspawn, as root:
+#   create                    finish setup of a new container
+#   update [package...]       upgrade the container
+#   build uid gid env namcap upgrade command...
+#                             run command as builduser (volatile container)
+set -o errexit
+argv0=chroot--container
+
+# systemd-nspawn sets $container; refuse to modify the host
+# shellcheck disable=SC2154
+if [[ $container != systemd-nspawn ]]; then
+    printf >&2 '%s: must be run inside systemd-nspawn (see aur-chroot)\n' "$argv0"
+    exit 1
+fi
+
+create() {
+    # The keyring is copied from the host by pacstrap (mkarchroot)
+    # XXX: use localedef to generate locales directly (outside of nspawn)
+    locale-gen
+}
+
+update() {
+    # XXX: do not hardcode --noconfirm or allow negating it (--confirm)
+    pacman -Syu --noconfirm "$@"
+}
+
+# The container runs with a volatile overlay, so that the build user is created
+# on each run and changes do not persist in the container template.
+# $1: uid, $2: gid, $3: variables kept for builduser (comma-separated),
+# $4: run namcap (0 or 1), $5: upgrade the container (0 or 1),
+# $6...: command run as builduser
+build() {
+    local uid=$1 gid=$2 env=$3 namcap=$4 upgrade=$5 builduser pkgfile pkgfiles
+    shift 5
+
+    # The container template is only changed by --update. Retrieve packages
+    # added to a local repository since (makechrootpkg -u).
+    if (( upgrade )); then
+        pacman -Syuu --noconfirm
+    fi
+
+    # https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/makechrootpkg.in (prepare_chroot)
+    sed -e '/^builduser:/d' -i /etc/{passwd,shadow,group}
+    printf >>/etc/group  'builduser:x:%d:\n' "$gid"
+    printf >>/etc/passwd 'builduser:x:%d:%d:builduser:/build:/bin/bash\n' "$uid" "$gid"
+    printf >>/etc/shadow 'builduser:!!:%d::::::\n' "$(( $(date -u +%s) / 86400 ))"
+    install -d -o builduser -g builduser /build
+
+    # allow builduser to install packages (e.g. --syncdeps)
+    if ! command -v sudo >/dev/null; then
+        printf >&2 '%s: sudo is required in the container (base-devel)\n' "$argv0"
+        exit 1
+    fi
+    printf '%s\n' 'builduser ALL = NOPASSWD: /usr/bin/pacman' >/etc/sudoers.d/builduser-pacman
+    chmod 440 /etc/sudoers.d/builduser-pacman
+
+    # -H: HOME=/build, as root's home is not accessible to builduser
+    builduser=(sudo -H --preserve-env="$env" -u builduser)
+    "${builduser[@]}" "$@"
+
+    # https://gitlab.archlinux.org/archlinux/devtools/-/blob/master/src/makechrootpkg.in (_chrootnamcap)
+    if (( namcap )); then
+        pacman -S --needed --noconfirm namcap
+        mapfile -t pkgfiles < <("${builduser[@]}" makepkg --packagelist)
+
+        for pkgfile in PKGBUILD "${pkgfiles[@]}"; do
+            if [[ -f $pkgfile ]]; then
+                "${builduser[@]}" namcap "$pkgfile" 2>&1 |
+                    "${builduser[@]}" tee "$LOGDEST/${pkgfile##*/}-namcap.log"
+            fi
+        done
+    fi
+}
+
+case $1 in
+    create|update|build)
+        op=$1; shift; "$op" "$@" ;;
+    *)
+        printf >&2 'usage: %s create|update|build [args...]\n' "$argv0"
+        exit 1 ;;
+esac
+
+# vim: set et sw=4 sts=4 ft=sh:

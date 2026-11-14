@@ -1,23 +1,27 @@
 #!/bin/bash
 # aur-chroot - build packages with systemd-nspawn
 
+PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
 if [[ -v AUR_DEBUG ]]; then
-     PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[1]}(): }'
      set -o xtrace
 fi
 
 set -o errexit
 argv0=chroot
+lib_dir=$(dirname -- "$(realpath -- "${BASH_SOURCE[0]}")")
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 machine=$(uname -m)
+
+# default to using makechrootpkg
+AUR_CHROOT_DEVTOOLS=${AUR_CHROOT_DEVTOOLS:-1}
 
 # default arguments
 directory=/var/lib/aurbuild/$machine
 makechrootpkg_args=(-cu)  # XXX: allow unsetting these options?
-makechrootpkg_makepkg_args=()
+makepkg_args=()
 
 # default options
-update=0 build=0 create=0 status=0 print_path=0
+update=0 build=0 create=0 status=0 print_path=0 run_namcap=0 run=0
 
 args_csv() {
     # shellcheck disable=SC2155
@@ -27,24 +31,13 @@ args_csv() {
 
 # XXX: a missing makepkg.conf usually indicates a missing devtools, whereas
 # a missing pacman.conf usually indicates the local repository was not configured
-diag_makepkg_conf() {
+diag_conf() {
+    local file=$1
+    shift
     echo >&2 'Error:'
 
     cat <<EOF | pr -to 4 >&2
-aur-$argv0 could not find a makepkg.conf(5) file for container usage. Before
-using aur-$argv0, make sure this file is created and valid. See OPTIONS in
-aur-$argv0(1) for configuration details.
-
-The following file paths were checked:
-EOF
-    printf '%s\n' "${@@Q}" | pr -to 8 >&2
-}
-
-diag_pacman_conf() {
-    echo >&2 'Error:'
-
-    cat <<EOF | pr -to 4 >&2
-aur-$argv0 could not find a pacman.conf(5) file for container usage. Before
+aur-$argv0 could not find a $file file for container usage. Before
 using aur-$argv0, make sure this file is created and valid. See OPTIONS in
 aur-$argv0(1) for configuration details.
 
@@ -55,23 +48,35 @@ EOF
 
 usage() {
     printf >&2 'usage: %s [-BU] [--create] [-CDM path] [package...]\n' "$argv0"
+    printf >&2 '       %s --run [-CDM path] command...\n' "$argv0"
     exit 1
 }
 
 opt_short='C:D:M:x:ABNTU'
 opt_long=('directory:' 'pacman-conf:' 'makepkg-conf:' 'build' 'update'
-          'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:'
+          'create' 'bind:' 'bind-rw:' 'user:' 'makepkg-args:' 'holdver'
           'ignorearch' 'namcap' 'checkpkg' 'temp' 'makechrootpkg-args:'
-          'margs:' 'cargs:' 'nocheck' 'suffix:')
-opt_hidden=('dump-options' 'status' 'path')
+          'margs:' 'cargs:' 'nocheck' 'suffix:' 'path' 'run')
+opt_hidden=('dump-options' 'status' 'setenv:')
 
-if opts=$(getopt -o "$opt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
+# --run: stop at the first non-option argument (+), so that options of the
+# command are not taken for options of aur-chroot
+getopt_short=$opt_short
+for arg; do
+    case $arg in
+        --run) getopt_short=+$opt_short; break ;;
+        --)    break ;;
+    esac
+done
+
+if opts=$(getopt -o "$getopt_short" -l "$(args_csv "${opt_long[@]}" "${opt_hidden[@]}")" -n "$argv0" -- "$@"); then
     eval set -- "$opts"
 else
     usage
 fi
 
-unset bindmounts_ro bindmounts_rw makepkg_conf pacman_conf suffix
+unset bindmounts_ro bindmounts_rw makepkg_conf makepkg_user pacman_conf suffix
+orig_argv=("$@")
 while true; do
     case "$1" in
         -x|--suffix)
@@ -84,18 +89,21 @@ while true; do
             create=1 ;;
         --status)
             status=1 ;;
-        --path)  # deprecated
+        --path)
             print_path=1 ;;
+        --run)
+            run=1 ;;
         # makepkg options (`--build`)
         -A|--ignorearch)
-            makechrootpkg_makepkg_args+=(--ignorearch) ;;
+            makepkg_args+=(--ignorearch) ;;
         --nocheck)
-            makechrootpkg_makepkg_args+=(--nocheck) ;;
+            makepkg_args+=(--nocheck) ;;
+        --holdver)
+            makepkg_args+=(--holdver) ;;
         # XXX: cannot take arguments that contain commas (e.g. for file paths)
         --makepkg-args|--margs)
             shift; IFS=, read -a arg -r <<< "$1"
-            makechrootpkg_makepkg_args+=("${arg[@]}") ;;
-        # devtools options (`--build`)
+            makepkg_args+=("${arg[@]}") ;;
         -C|--pacman-conf)
             shift; pacman_conf=$1 ;;
         -D|--directory)
@@ -107,18 +115,25 @@ while true; do
         --bind-rw)
             shift; bindmounts_rw+=("$1") ;;
         -N|--namcap)
-            makechrootpkg_args+=(-n) ;;
+            makechrootpkg_args+=(-n)
+            run_namcap=1 ;;
         --checkpkg)
             makechrootpkg_args+=(-C) ;;
         -T|--temp)
             makechrootpkg_args+=(-T) ;;
         --user)
-            shift; makechrootpkg_args+=(-U "$1") ;;
+            shift; makechrootpkg_args+=(-U "$1")
+            makepkg_user=$1 ;;
         # XXX: cannot take arguments that contain commas (e.g. for file paths)
         --makechrootpkg-args|--cargs)
             shift; IFS=, read -a arg -r <<< "$1"
             makechrootpkg_args+=("${arg[@]}") ;;
-        # other options
+        # NAME=VALUE, used when aur-chroot runs itself as root (standalone mode)
+        --setenv)
+            shift; export "${1?}"
+            if [[ $1 == AUR_DEBUG=* ]]; then
+                set -o xtrace
+            fi ;;
         --dump-options)
             printf -- '--%s\n' "${opt_long[@]}" ${AUR_DEBUG+"${opt_hidden[@]}"}
             printf -- '%s' "${opt_short}" | sed 's/.:\?/-&\n/g'
@@ -127,6 +142,20 @@ while true; do
     esac
     shift
 done
+
+# --run uses the positional arguments as command
+if (( run )); then
+    if (( AUR_CHROOT_DEVTOOLS )); then
+        printf >&2 '%s: --run requires AUR_CHROOT_DEVTOOLS=0\n' "$argv0"
+        exit 1
+    elif (( build + update + create + print_path )); then
+        printf >&2 '%s: --run can not be combined with other operations\n' "$argv0"
+        exit 1
+    elif ! (( $# )); then
+        printf >&2 '%s: --run requires a command\n' "$argv0"
+        exit 1
+    fi
+fi
 
 # XXX: default paths can be set through the Makefile (`aur-chroot.in`)
 etcdir=/etc/aurutils shrdir=/usr/share/devtools
@@ -175,45 +204,145 @@ done
 # No pacman configuration is available for the container, or it points to a
 # non-existing file. Print a matching diagnostic and exit.
 if [[ ! -v pacman_conf ]]; then
-    diag_pacman_conf "${default_pacman_paths[@]}"
+    diag_conf 'pacman.conf(5)' "${default_pacman_paths[@]}"
     exit 2
 elif [[ ! -f $pacman_conf ]]; then
-    diag_pacman_conf "$pacman_conf"
+    diag_conf 'pacman.conf(5)' "$pacman_conf"
     exit 2
 elif [[ ! -v makepkg_conf ]]; then
-    diag_makepkg_conf "${default_makepkg_paths[@]}"
+    diag_conf 'makepkg.conf(5)' "${default_makepkg_paths[@]}"
     exit 2
 elif [[ ! -f $makepkg_conf ]]; then
-    diag_makepkg_conf "$makepkg_conf"
+    diag_conf 'makepkg.conf(5)' "$makepkg_conf"
     exit 2
 fi
 
 # Print paths to container and used makepkg/pacman paths. This does
-# not require a priorly created container.
-if (( status )) || ! (( update + build + create + print_path )); then
+# not require a priorly created container, nor root privileges.
+if (( status )) || ! (( update + build + create + print_path + run )); then
     printf 'chroot:%s\npacman:%s\nmakepkg:%s\n' "$directory" "$pacman_conf" "$makepkg_conf"
     exit 0
 fi
 
-# Custom elevation command (#1024)
-unset auth_args
-AUR_PACMAN_AUTH=${AUR_PACMAN_AUTH:-sudo}
+# Define the user mapping for the container before elevation, so that it does
+# not depend on the elevation command setting SUDO_USER.
+reexec_args=()
+if (( build + run )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    if [[ ! -v makepkg_user ]]; then
+        if (( EUID == 0 )); then
+            makepkg_user=${SUDO_USER:-root}
+        else
+            makepkg_user=$(id -un)
+        fi
+        reexec_args=(--user "$makepkg_user")
+    fi
 
+    if ! builduser_uid=$(id -u "$makepkg_user") || ! builduser_gid=$(id -g "$makepkg_user"); then
+        printf >&2 "%s: error: user '%s' is invalid\n" "$argv0" "$makepkg_user"
+        exit 1
+    elif (( builduser_uid == 0 )); then
+        printf >&2 '%s: error: running makepkg as root is not allowed\n' "$argv0"
+        exit 1
+    fi
+fi
+
+# Custom elevation command (#1024)
+AUR_PACMAN_AUTH=${AUR_PACMAN_AUTH:-sudo}
+keepenv=(SRCDEST SRCPKGDEST PKGDEST LOGDEST MAKEFLAGS PACKAGER GNUPGHOME SSH_AUTH_SOCK
+         SOURCE_DATE_EPOCH BUILDTOOL BUILDTOOLVER AUR_CHROOT_DEVTOOLS AUR_DEBUG)
+auth_args=()
+
+# preserve variables for makechrootpkg (devtools mode)
 case $AUR_PACMAN_AUTH in
-    sudo) auth_args+=('--preserve-env=SRCDEST,SRCPKGDEST,PKGDEST,LOGDEST,MAKEFLAGS,PACKAGER,GNUPGHOME,SSH_AUTH_SOCK') ;;
-    run0) auth_args+=('--setenv=SRCDEST'   '--setenv=SRCPKGDEST' '--setenv=PKGDEST'   '--setenv=LOGDEST'
-                      '--setenv=MAKEFLAGS' '--setenv=PACKAGER'   '--setenv=GNUPGHOME' '--setenv=SSH_AUTH_SOCK') ;;
+    sudo) auth_args+=(--preserve-env="$(args_csv "${keepenv[@]}")") ;;
+    run0) for v in "${keepenv[@]}"; do
+              # only pass set variables (AUR_DEBUG is checked with -v)
+              if [[ -v $v ]]; then
+                  auth_args+=(--setenv="$v")
+              fi
+          done ;;
 esac
 
-# bind mount file:// paths to container (#461)
-# required for update/build steps
+# devtools commands are elevated individually, which allows for the sudoers(5)
+# policy in aur-chroot(1). The standalone mode runs several privileged commands
+# and is re-executed as a whole. Variables are passed as arguments (--setenv),
+# which does not depend on the agent or its policy. Added options are
+# prepended, since orig_argv ends with `--`.
+if (( EUID != 0 )) && (( create + update + build + run )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    for v in "${keepenv[@]}"; do
+        # only pass set variables (AUR_DEBUG is checked with -v)
+        if [[ -v $v ]]; then
+            reexec_args+=(--setenv "$v=${!v}")
+        fi
+    done
+
+    # shellcheck disable=SC2086
+    exec $AUR_PACMAN_AUTH -- "${BASH_SOURCE[0]}" "${reexec_args[@]}" "${orig_argv[@]}"
+fi
+
+is_multilib=0 cache_dirs=()
 while read -r key _ value; do
     case $key=$value in
         Server=file://*)
+            # bind mount file:// paths to container (#461)
+            # required for update/build steps
             bindmounts_rw+=("${value#file://}") ;;
+        CacheDir=*)
+            cache_dirs+=("$value") ;;
+        \[multilib\]=)
+            # also matches [multilib] sections from Include directives (pacini does not)
+            is_multilib=1 ;;
     esac
 done < <(pacman-conf --config "$pacman_conf")
 wait "$!"
+
+if (( ! AUR_CHROOT_DEVTOOLS )); then
+    # define bind mounts between host and container. Configuration files are
+    # mounted to their default paths, as arch-nspawn -C/-M copies them there:
+    # makepkg --syncdeps runs pacman without --config.
+    bindmounts_ro+=("$pacman_conf":/etc/pacman.conf "$makepkg_conf":/etc/makepkg.conf
+                    /etc/pacman.d/mirrorlist)
+
+    # Drop-in files are mounted one by one. /etc/makepkg.conf.d has files owned
+    # by pacman, which can not be upgraded if the directory is a read-only mount.
+    for conf in "$makepkg_conf.d"/*.conf; do
+        if [[ -f $conf ]]; then
+            bindmounts_ro+=("$conf":/etc/makepkg.conf.d/"${conf##*/}")
+        fi
+    done
+    bindmounts_rw+=("${cache_dirs[@]}")
+
+    # Builds use /root as overlay lower directory, which must not change while
+    # mounted, and hold a shared lock for their whole duration. --create and
+    # --update take an exclusive lock. Wait for the lock, instead of failing on
+    # the non-blocking lock taken by systemd-nspawn. (devtools uses the same file)
+    lock_root() {
+        local mode=$1
+
+        if [[ ! -v lock_fd ]]; then
+            exec {lock_fd}>"$directory"/root.lock
+        fi
+        if ! flock -n "$mode" "$lock_fd"; then
+            printf >&2 '%s: waiting for lock on %s\n' "$argv0" "$directory"/root.lock
+            flock "$mode" "$lock_fd"
+        fi
+    }
+
+    # As arch-nspawn: do not register with systemd-machined, and use a unique
+    # machine name. The default name is derived from the directory (root), and
+    # is the same for every container.
+    nspawn_args=(--as-pid2 --register=no --machine="aur-chroot-$$")
+
+    # Commands run inside the container (aur-chroot--container). The script is
+    # passed as argument, so that nothing is written to /root outside of the
+    # container (and its lock).
+    container_script=$(<"$lib_dir"/aur-chroot--container)
+fi
+
+if (( create )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    install -d "$directory" -m 755
+    lock_root -x
+fi
 
 # create new container, required for update/build steps
 if (( create )); then
@@ -222,43 +351,73 @@ if (( create )); then
     # available packages depend on the configured pacman configuration
     if (( $# )); then
         base_packages=("$@")
-
-    # XXX: use pacini to not process Include directives in pacman.conf
-    # (not supported by devtools)
-    elif [[ $(pacini --section=multilib "$pacman_conf") ]] && [[ $machine == "x86_64" ]]; then
+    elif (( is_multilib )) && [[ $machine == "x86_64" ]]; then
         base_packages=('base-devel' 'multilib-devel')
     else
         base_packages=('base-devel')
     fi
 
-    # parent path is not created by mkarchroot (#371)
-    if [[ ! -d $directory ]]; then
-        # shellcheck disable=SC2086
-        $AUR_PACMAN_AUTH install -d "$directory" -m 755 -v
-    fi
+    if [[ ! -d $directory/root ]] && (( AUR_CHROOT_DEVTOOLS )); then
+        # parent path is not created by mkarchroot (#371). The working
+        # directory itself must not exist, or mkarchroot exits.
+        if [[ ! -d $directory ]]; then
+            # shellcheck disable=SC2086
+            $AUR_PACMAN_AUTH install -d "$directory" -m 755 -v
+        fi
 
-    if [[ ! -d $directory/root ]]; then
         # shellcheck disable=SC2086
         $AUR_PACMAN_AUTH mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root "${base_packages[@]}"
-    else
-        create=0
+
+    elif [[ ! -d $directory/root ]]; then
+        # same steps as mkarchroot: pacstrap mounts API file systems for
+        # install scriptlets, and copies the host keyring
+        install -d "$directory"/root -m 755
+        unshare --mount pacstrap -Mc -C "$pacman_conf" "$directory"/root \
+            "${cache_dirs[@]/#/--cachedir=}" "${base_packages[@]}"
+
+        printf '%s.UTF-8 UTF-8\n' en_US de_DE >"$directory"/root/etc/locale.gen
+        printf 'LANG=C.UTF-8\n' >"$directory"/root/etc/locale.conf
+        systemd-machine-id-setup --root="$directory"/root
+
+        systemd-nspawn "${nspawn_args[@]}" -D "$directory"/root \
+            /bin/bash -c "$container_script" bash create
+
+        # Marks the container as complete, as checked below and by arch-nspawn
+        # (CHROOT_VERSION in devtools). mkarchroot writes it after pacstrap.
+        printf '%s\n' v6 >"$directory"/root/.arch-chroot
     fi
 fi >&2
 
-# arch-nspawn makes no distinction between a missing working directory
-# and one which does not exist
 if [[ ! -d $directory/root ]]; then
-    printf >&2 '%s: %q is not a directory\n' "$argv0" "$directory"/root
-    printf >&2 '%s: did you run aur chroot --create?\n' "$argv0"
+    printf '%s: %s is not a directory\n' "$argv0" "$directory"/root
+    printf '%s: did you run aur chroot --create?\n' "$argv0"
     exit 20
+
+# A failed or interrupted --create leaves a partial container (arch-nspawn)
+elif (( ! AUR_CHROOT_DEVTOOLS )) && [[ ! -f $directory/root/.arch-chroot ]]; then
+    printf '%s: %s does not appear to be an Arch chroot\n' "$argv0" "$directory"/root
+    printf '%s: remove the directory and run aur chroot --create\n' "$argv0"
+    exit 20
+fi >&2
+
+if (( update )) && (( ! AUR_CHROOT_DEVTOOLS )); then
+    lock_root -x
 fi
 
-if (( update )); then
-    # locking is done by systemd-nspawn
+# commands run inside the container for the update step
+if (( update )) && (( AUR_CHROOT_DEVTOOLS )); then
     # shellcheck disable=SC2086
     $AUR_PACMAN_AUTH arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$directory"/root \
-         "${bindmounts_ro[@]/#/--bind-ro=}" \
-         "${bindmounts_rw[@]/#/--bind=}" pacman -Syu --noconfirm "$@"
+        "${bindmounts_ro[@]/#/--bind-ro=}" \
+        "${bindmounts_rw[@]/#/--bind=}"    \
+        pacman -Syu --noconfirm "$@"
+
+# XXX: allow running arbitrary commands similar to arch-nspawn
+elif (( update )); then
+    systemd-nspawn "${nspawn_args[@]}" -D "$directory"/root \
+        "${bindmounts_ro[@]/#/--bind-ro=}" \
+        "${bindmounts_rw[@]/#/--bind=}"    \
+        /bin/bash -c "$container_script" bash update "$@"
 fi >&2
 
 # print path for processing by other tools (e.g. makepkg --packagelist)
@@ -267,13 +426,87 @@ if (( print_path )); then
     exit $?
 fi
 
-if (( build )); then
+# commands run inside the container for build step
+if (( build )) && (( AUR_CHROOT_DEVTOOLS )); then
     # use makechrootpkg -c as default build command (sync /root container)
     # arguments after -- are used as makechrootpkg arguments
     # shellcheck disable=SC2086
     $AUR_PACMAN_AUTH "${auth_args[@]}" makechrootpkg -r "$directory" \
-         "${bindmounts_ro[@]/#/-D}" "${bindmounts_rw[@]/#/-d}" \
-         "${makechrootpkg_args[@]}" -- "${makechrootpkg_makepkg_args[@]}"
-fi >&2
+        "${bindmounts_ro[@]/#/-D}" \
+        "${bindmounts_rw[@]/#/-d}" \
+        "${makechrootpkg_args[@]}" -- "${makepkg_args[@]}" >&2
+
+# --run: same container and mounts as --build, with an arbitrary command
+elif (( build )) || (( run )); then
+    # converts an exclusive lock from --create/--update
+    lock_root -s
+
+    # Directories used by makepkg (and PWD as BUILDDIR) are mounted to the same
+    # path as on the host. Links created by makepkg in the build directory and
+    # paths printed by makepkg --packagelist are then valid on the host.
+    bindmounts_rw+=("$PWD")
+    makepkg_env=()
+
+    for var in PKGDEST LOGDEST SRCDEST SRCPKGDEST; do
+        dest=${!var:-$PWD}
+        makepkg_env+=(--setenv="$var=$dest")
+
+        if [[ $dest != "$PWD" ]]; then
+            bindmounts_rw+=("$dest")
+        fi
+    done
+
+    # --run: connect output directly (no pseudo TTY) when not on a terminal,
+    # so that it can be processed by other tools. Output of --build goes to
+    # stderr, as for devtools.
+    if (( run )); then
+        command=("$@") run_namcap=0 run_upgrade=0 output_fd=1
+        nspawn_output_args=(--console=autopipe --quiet)
+    else
+        output_fd=2 nspawn_output_args=() run_upgrade=1
+        # makechrootpkg defaults, except --holdver and --skipinteg: sources are
+        # retrieved and verified inside the container, not on the host
+        makepkg_args=(--syncdeps --noconfirm --log "${makepkg_args[@]}")
+
+        # install built packages for namcap checks (makechrootpkg -n)
+        if (( run_namcap )); then
+            makepkg_args+=(--install)
+        fi
+        command=(makepkg "${makepkg_args[@]}")
+    fi
+
+    # GNUPGHOME and SSH_AUTH_SOCK are not passed, since their paths are not
+    # available in the container
+    preserved_envvars=(
+        BUILDTOOL
+        BUILDTOOLVER
+        MAKEFLAGS
+        PACKAGER
+    )
+
+    # variables kept when switching from root to builduser inside the container
+    builduser_env=(PKGDEST LOGDEST SRCDEST SRCPKGDEST BUILDDIR SOURCE_DATE_EPOCH
+                   "${preserved_envvars[@]}")
+
+    # --volatile implies --read-only, for which systemd-nspawn takes a shared
+    # lock on the directory tree: builds can run in parallel, and exclude
+    # --create and --update (exclusive lock).
+    systemd-nspawn \
+        -D "$directory"/root \
+        "${nspawn_args[@]}" \
+        --chdir="$PWD" \
+        --volatile=overlay \
+        "${nspawn_output_args[@]}" \
+        "${makepkg_env[@]}" \
+        --setenv=BUILDDIR="$PWD" \
+        --setenv=SOURCE_DATE_EPOCH="${SOURCE_DATE_EPOCH:-$(date +%s)}" \
+        "${preserved_envvars[@]/#/--setenv=}" \
+        "${bindmounts_ro[@]/#/--bind-ro=}" \
+        "${bindmounts_rw[@]/#/--bind=}" \
+        /bin/bash -c "$container_script" bash build \
+        "$builduser_uid" "$builduser_gid" "$(args_csv "${builduser_env[@]}")" \
+        "$run_namcap" "$run_upgrade" \
+        "${command[@]}" >&"$output_fd"
+fi
 
 # vim: set et sw=4 sts=4 ft=sh:
